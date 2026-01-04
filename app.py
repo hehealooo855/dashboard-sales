@@ -7,7 +7,8 @@ import datetime # Tambahan untuk filter tanggal
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # --- 1. FUNGSI LOAD DATA ---
-@st.cache_data
+# ttl=3600 artinya data akan kadaluarsa/refresh otomatis tiap 3600 detik (1 jam)
+@st.cache_data(ttl=3600) 
 def load_data():
     # ---------------------------------------------------------
     # LINK CSV GOOGLE SHEET ANDA
