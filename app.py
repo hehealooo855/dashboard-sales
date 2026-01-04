@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sales Dashboard", layout="wide")
 def load_data():
     # ---------------------------------------------------------
     # GANTI LINK DI BAWAH INI DENGAN LINK CSV GOOGLE SHEET ANDA
-    url = "PASTE_LINK_GOOGLE_SHEET_DISINI"
+    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     # ---------------------------------------------------------
     
     try:
@@ -134,3 +134,4 @@ if not st.session_state['logged_in']:
     login_page()
 else:
     main_dashboard()
+
