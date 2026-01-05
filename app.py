@@ -7,7 +7,6 @@ import datetime
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # --- KAMUS PERBAIKAN NAMA SALES (DATA DARI EXCEL ANDA) ---
-# Kode ini akan otomatis menyatukan nama yang mirip
 SALES_MAPPING = {
     # GRUP MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG",
@@ -169,8 +168,6 @@ def main_dashboard():
     else:
         df_global_period = df
 
-    total_omset_perusahaan = df_global_period['Jumlah'].sum()
-
     # --- LOGIKA FILTER SALES ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
@@ -227,24 +224,30 @@ def main_dashboard():
         col1.metric("Total Omset", f"Rp {total_omset:,.0f}".replace(",", "."))
         col2.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
         
-        # --- FITUR 2: CHART MARKET SHARE (Omset Sales / Total Perusahaan) ---
+        # --- FITUR 2: CHART PIE RINCIAN SALES (TOTAL SALES BREAKDOWN) ---
         with col3:
-            # Hitung Sisa Omset (Omset orang lain)
-            omset_lainnya = total_omset_perusahaan - total_omset
-            if omset_lainnya < 0: omset_lainnya = 0
-            
-            if total_omset_perusahaan > 0:
-                persen = (total_omset / total_omset_perusahaan) * 100
-                st.caption(f"Kontribusi: **{persen:.1f}%** dari Total Perusahaan")
+            if not df_global_period.empty:
+                # Mengelompokkan data global berdasarkan Sales untuk Pie Chart
+                # Ini akan menampilkan persentase tiap sales (contoh: Lisman 0.4%, Fauziah 1%)
+                sales_breakdown = df_global_period.groupby('Penjualan')['Jumlah'].sum().reset_index()
                 
-                # Buat Donut Chart Simpel
+                st.caption("Kontribusi Sales (Market Share)")
+                
+                # Buat Pie Chart
                 fig_share = px.pie(
-                    names=['Sales Ini', 'Lainnya'],
-                    values=[total_omset, omset_lainnya],
-                    hole=0.5,
-                    color_discrete_sequence=['#3498db', '#ecf0f1']
+                    sales_breakdown,
+                    names='Penjualan',
+                    values='Jumlah',
+                    hole=0.5
                 )
-                fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=100)
+                
+                # Menampilkan persentase di dalam chart, nama muncul saat di-hover (agar tidak berantakan)
+                fig_share.update_traces(textposition='inside', textinfo='percent')
+                fig_share.update_layout(
+                    showlegend=False, 
+                    margin=dict(t=0, b=0, l=0, r=0), 
+                    height=120
+                )
                 st.plotly_chart(fig_share, use_container_width=True)
 
         st.divider()
