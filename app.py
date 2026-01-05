@@ -95,8 +95,7 @@ SALES_MAPPING = {
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
-# --- KAMUS PERBAIKAN BRAND (SANGAT PENTING UTK TARGET) ---
-# Format: "NAMA DI DATA CSV" : "NAMA DI TARGET DATABASE"
+# --- KAMUS PERBAIKAN BRAND (NORMALISASI) ---
 BRAND_MAPPING_NORMALIZATION = {
     "JAYA": "Masami",
     "MAJU": "Mad For Make Up",
@@ -110,15 +109,13 @@ BRAND_MAPPING_NORMALIZATION = {
     "ARTIS": "Artist Inc",
     "REN": "Ren & R & L",
     "AINIE": "Sekawan",
-    # Perbaikan Y2000 dan Diosys (Mengantisipasi Typo di CSV)
     "DYOSIS": "Diosys",
     "DIOSYS": "Diosys",
     "Y2000": "Y2000"
 }
 
-# --- HELPER FUNCTION: FORMAT STRING INDONESIA ---
+# --- HELPER FUNCTION: FORMAT RUPIAH ---
 def format_idr(value):
-    # Mengubah angka jadi Rp 5.000.000
     return f"Rp {value:,.0f}".replace(",", ".")
 
 # --- 1. FUNGSI LOAD DATA ---
@@ -130,22 +127,15 @@ def load_data():
     except Exception as e:
         return None
 
-    # 1. STANDARISASI SALES NAME
     if 'Penjualan' in df.columns:
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
         df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
-    # 2. STANDARISASI BRAND (AGAR TARGET MATCH)
     if 'Merk' in df.columns:
-        df['Merk'] = df['Merk'].astype(str).str.strip().str.upper() # Uppercase agar aman
-        
-        # Kita buat mapping dictionary yang uppercase juga kuncinya
+        df['Merk'] = df['Merk'].astype(str).str.strip().str.upper() 
         brand_map_upper = {k.upper(): v for k, v in BRAND_MAPPING_NORMALIZATION.items()}
-        
-        # Replace brand di data sesuai kamus
         df['Merk'] = df['Merk'].replace(brand_map_upper)
 
-    # Cleaning Angka & Tanggal
     if 'Jumlah' in df.columns:
         df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
         df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
@@ -233,8 +223,7 @@ def main_dashboard():
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
     elif is_supervisor:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Regex fleksibel untuk Supervisor view
-        brands_pattern = '|'.join([re.escape(b) for b in my_brands])
+        brands_pattern = '|'.join([re.escape(b) for b in my_brands]).replace("Diosys", "D[iy]osis") 
         df_view = df_global_period[df_global_period['Merk'].str.contains(brands_pattern, case=False, na=False)]
         target_sales_filter = my_name 
     else:
@@ -262,50 +251,53 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- RAPOR TARGET MANAGER (FIX FORMAT & WARNA HIJAU 80%) ---
+        # --- RAPOR TARGET MANAGER (TABEL WARNA) ---
         if role == 'manager' and target_sales_filter == "SEMUA":
             st.markdown("### 🏢 Rapor Target Supervisor (All Brand)")
             with st.expander("Klik untuk melihat Detail Target Semua Supervisor", expanded=True):
                 summary_data = []
                 for spv, brands_dict in TARGET_DATABASE.items():
                     for brand, target in brands_dict.items():
-                        # Pencarian Brand secara Eksak/Contains
-                        # Data sudah dinormalisasi di load_data, jadi pencarian lebih akurat
-                        realisasi = df_global_period[df_global_period['Merk'].str.contains(brand, case=False, na=False)]['Jumlah'].sum()
+                        search_term = brand
+                        if "Diosys" in brand: search_term = "D[iy]osis"
                         
+                        realisasi = df_global_period[df_global_period['Merk'].str.contains(search_term, case=False, na=False)]['Jumlah'].sum()
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
-                        
-                        # Logic Status Text
-                        status_text = "✅" if pct_val >= 80 else "⚠️"
                         
                         summary_data.append({
                             "Supervisor": spv,
                             "Brand": brand,
-                            # Format String Rp X.XXX.XXX
-                            "Target": format_idr(target), 
-                            "Realisasi": format_idr(realisasi), 
-                            # String persen bulat "80%"
-                            "Pencapaian": f"{pct_val:.0f}%", 
-                            "Status": status_text,
-                            "_pct_raw": pct_val # Helper data untuk warna background
+                            "Target": format_idr(target),
+                            "Realisasi": format_idr(realisasi),
+                            "Persentase": pct_val / 100, 
+                            "Status": "✅" if pct_val >= 80 else "🔻",
+                            "_pct_raw": pct_val 
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
                 
-                # Fungsi Warna Latar: Hijau jika >= 80%
                 def highlight_row_manager(row):
-                    color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' # Hijau Muda vs Merah Muda
+                    color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
-                # Tampilkan Tabel
+                # PERBAIKAN: Style dulu, baru hide kolom helper
                 st.dataframe(
-                    df_summary.drop(columns=['_pct_raw']).style.apply(highlight_row_manager, axis=1),
+                    df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
-                    hide_index=True
+                    hide_index=True,
+                    column_config={
+                        "Persentase": st.column_config.ProgressColumn(
+                            "Pencapaian",
+                            format="%.0f%%",
+                            min_value=0,
+                            max_value=1,
+                        ),
+                        "Status": st.column_config.TextColumn("Ket")
+                    }
                 )
             st.divider()
 
-        # --- KPI CARDS ---
+        # --- KPI CARDS & GROWTH ---
         prev_omset = 0
         growth_html = ""
         if len(date_range) == 2:
@@ -313,6 +305,7 @@ def main_dashboard():
             days_diff = (end_date - start_date).days + 1
             prev_start = start_date - datetime.timedelta(days=days_diff)
             prev_end = end_date - datetime.timedelta(days=days_diff)
+            
             df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
             
             if role == 'manager' and target_sales_filter == "SEMUA":
@@ -321,7 +314,7 @@ def main_dashboard():
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor:
                  my_brands_prev = TARGET_DATABASE[my_name_key].keys()
-                 pat_prev = '|'.join([re.escape(b) for b in my_brands_prev])
+                 pat_prev = '|'.join([re.escape(b) for b in my_brands_prev]).replace("Diosys", "D[iy]osis")
                  df_prev = df_prev_global[df_prev_global['Merk'].str.contains(pat_prev, case=False, na=False)]
             else:
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == my_name]
@@ -375,15 +368,18 @@ def main_dashboard():
                 with st.expander("Lihat Rincian Target per Brand", expanded=True):
                     brand_data = []
                     for brand, target_brand in active_target_data.items():
-                        realisasi_brand = df_global_period[df_global_period['Merk'].str.contains(brand, case=False, na=False)]['Jumlah'].sum()
+                        search_term = brand
+                        if "Diosys" in brand: search_term = "D[iy]osis" 
+
+                        realisasi_brand = df_global_period[df_global_period['Merk'].str.contains(search_term, case=False, na=False)]['Jumlah'].sum()
                         pct = (realisasi_brand / target_brand) * 100 if target_brand > 0 else 0
-                        status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process"
+                        status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process" 
                         
                         brand_data.append({
                             "Brand": brand,
                             "Target": format_idr(target_brand),
                             "Realisasi": format_idr(realisasi_brand),
-                            "Pencapaian": f"{pct:.0f}%", # Bulat "80%"
+                            "Pencapaian": pct / 100, 
                             "Status": status_label,
                             "_pct_val": pct
                         })
@@ -394,10 +390,18 @@ def main_dashboard():
                         color = '#d4edda' if row['_pct_val'] >= 80 else '#f8d7da'
                         return [f'background-color: {color}; color: black'] * len(row)
 
+                    # PERBAIKAN: Style dulu baru hide
                     st.dataframe(
-                        df_target_breakdown.drop(columns=['_pct_val']).style.apply(highlight_row, axis=1),
+                        df_target_breakdown.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['_pct_val']),
                         use_container_width=True, 
-                        hide_index=True
+                        hide_index=True,
+                        column_config={
+                            "Pencapaian": st.column_config.ProgressColumn(
+                                format="%.0f%%",
+                                min_value=0,
+                                max_value=1,
+                            ),
+                        }
                     )
 
         st.divider()
