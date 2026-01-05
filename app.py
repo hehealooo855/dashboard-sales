@@ -309,7 +309,6 @@ def main_dashboard():
                             "Ach (%)": f"{pct_val:.0f}%", # Kolom Angka Persen
                             "Pencapaian": pct_val / 100, # Kolom Bar
                             "Status": status_text,
-                            "_pct_raw": pct_val # Helper
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
