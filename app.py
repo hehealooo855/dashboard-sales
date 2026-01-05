@@ -7,7 +7,7 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
-# --- DATABASE TARGET (HARDCODED SESUAI REQUEST) ---
+# --- DATABASE TARGET ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -17,7 +17,7 @@ TARGET_DATABASE = {
     },
     "AKBAR": {
         "Thai": 300_000_000, "Inesia": 100_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000,
-        "Y2000": 180_000_000, "Diosys": 520_000_000,
+        "Y2000": 180_000_000, "Diosys": 520_000_000, 
         "Sociolla": 600_000_000, "Skin1004": 400_000_000,
         "Masami": 40_000_000, "Oimio": 0, "Cassandra": 30_000_000, "Clinelle": 80_000_000
     },
@@ -34,7 +34,47 @@ TARGET_DATABASE = {
     }
 }
 
-# --- KAMUS PERBAIKAN NAMA SALES ---
+# --- KAMUS "BELAJAR" OTOMATIS (KEYWORD MATCHING) ---
+# Sistem akan mencari kata kunci ini di kolom Merk Excel.
+# Jika ketemu, otomatis dimasukkan ke Brand Target yang sesuai.
+BRAND_ALIASES = {
+    # FORMAT: "Target Database Key": ["List", "Kata", "Kunci", "Di Excel"]
+    
+    # --- AKBAR ---
+    "Diosys": ["DIOSYS", "DYOSIS", "DIO"], # Menangkap Dyosis (Typo)
+    "Y2000": ["Y2000", "Y 2000", "Y-2000"], # Menangkap Y2000
+    "Masami": ["MASAMI", "JAYA"],
+    "Cassandra": ["CASSANDRA", "CASANDRA"],
+    "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
+    "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"],
+    "Oimio": ["OIMIO"], "Clinelle": ["CLINELLE"],
+
+    # --- MADONG ---
+    "Ren & R & L": ["REN", "R & L", "R&L"], # Otomatis kenal "Ren" atau "R&L"
+    "Sekawan": ["SEKAWAN", "AINIE"],
+    "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU"], # Menangkap "Maju"
+    "Avione": ["AVIONE"], "SYB": ["SYB"], "Satto": ["SATTO"],
+    "Liora": ["LIORA"], "Mykonos": ["MYKONOS"], "Somethinc": ["SOMETHINC"],
+
+    # --- LISMAN ---
+    "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW"],
+    "Artist Inc": ["ARTIST", "ARTIS"],
+    "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"], "Goute": ["GOUTE"],
+    "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
+    "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"],
+
+    # --- WILLIAM ---
+    "Walnutt": ["WALNUT", "WALNUTT"],
+    "Elizabeth Rose": ["ELIZABETH"],
+    "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
+    "Saviosa": ["SAVIOSA"],
+    "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
+    "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"],
+    "Maskit": ["MASKIT"], "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"],
+    "Rose All Day": ["ROSE ALL DAY"]
+}
+
+# --- KAMUS SALES ---
 SALES_MAPPING = {
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG",
     "ROZY AINIE": "ROZY",
@@ -77,35 +117,11 @@ SALES_MAPPING = {
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
-# --- KAMUS PERBAIKAN BRAND (NORMALISASI AGAR DATA TIDAK TERTUKAR) ---
-BRAND_MAPPING_NORMALIZATION = {
-    # Format: "NAMA DI CSV" : "NAMA BAKU (SESUAI TARGET DATABASE)"
-    "JAYA": "Masami",
-    "MAJU": "Mad For Make Up",
-    "MAD FOR MAKEUP": "Mad For Make Up", # Variasi spasi
-    "GLOOWBI": "Gloow & Be",
-    "GLOOW BI": "Gloow & Be",
-    "CASANDRA": "Cassandra",
-    "WALNUTS": "Walnutt",
-    "ELIZABETH": "Elizabeth Rose",
-    "O.TWO.O": "OtwooO",
-    "SAVIOSA": "Saviosa",
-    "ARTIS": "Artist Inc",
-    "REN": "Ren & R & L",
-    "AINIE": "Sekawan",
-    # PERBAIKAN Y2000 & DIOSYS (MAPPING PASTI)
-    "DYOSIS": "Diosys",
-    "DIOSYS": "Diosys",
-    "Y2000": "Y2000",
-    "Y 2000": "Y2000",
-    "Y-2000": "Y2000"
-}
-
 # --- HELPER FUNCTION: FORMAT RUPIAH ---
 def format_idr(value):
     return f"Rp {value:,.0f}".replace(",", ".")
 
-# --- 1. FUNGSI LOAD DATA ---
+# --- 1. FUNGSI LOAD DATA (DENGAN LOGIKA BELAJAR OTOMATIS) ---
 @st.cache_data(ttl=3600) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
@@ -119,19 +135,21 @@ def load_data():
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
         df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
-    # Normalisasi Nama Brand (KUNCI PERBAIKAN DATA Y2000/DIOSYS)
+    # --- FITUR BARU: NORMALISASI MERK OTOMATIS (BELAJAR) ---
+    # Logika: Mencari Keyword di kolom 'Merk', lalu mengubahnya menjadi Nama Standar Target
     if 'Merk' in df.columns:
-        # Ubah ke uppercase dulu biar match
-        df['Merk'] = df['Merk'].astype(str).str.strip().str.upper() 
-        # Buat dictionary map juga jadi uppercase key-nya
-        brand_map_upper = {k.upper(): v for k, v in BRAND_MAPPING_NORMALIZATION.items()}
-        # Replace
-        df['Merk'] = df['Merk'].replace(brand_map_upper)
-        # Kembalikan ke Title Case agar rapi di tabel (Opsional, tapi bagus utk display)
-        # Tapi karena Target Database kuncinya Case Sensitive (huruf besar kecil ngaruh),
-        # Kita harus pastikan data di df['Merk'] SAMA PERSIS dengan key di TARGET_DATABASE.
-        # Strategi: Kita biarkan saja apa adanya hasil replace, karena values di BRAND_MAPPING_NORMALIZATION
-        # sudah kita set sama persis dengan Key di TARGET_DATABASE.
+        # Fungsi kecil untuk normalisasi
+        def normalize_brand(raw_brand):
+            raw_upper = str(raw_brand).upper()
+            # Cek satu per satu keyword di kamus BRAND_ALIASES
+            for target_brand, keywords in BRAND_ALIASES.items():
+                for keyword in keywords:
+                    if keyword in raw_upper:
+                        return target_brand # Jika ketemu "DIOSYS" di "DYOSIS CREAM", return "Diosys"
+            return raw_brand # Jika tidak ada yang cocok, biarkan apa adanya
+
+        # Terapkan ke seluruh kolom Merk
+        df['Merk'] = df['Merk'].apply(normalize_brand)
 
     # Cleaning Angka
     if 'Jumlah' in df.columns:
@@ -143,7 +161,6 @@ def load_data():
     if 'Tanggal' in df.columns:
         df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
 
-    # Pastikan kolom lain string
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -223,8 +240,8 @@ def main_dashboard():
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
     elif is_supervisor:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Filter data global hanya yang Merk-nya ada di list brand supervisor ini
-        # Gunakan isin() untuk pencocokan pasti (Exact Match) agar Diosys tidak kecampur Y2000
+        # Data sudah dinormalisasi di load_data, jadi kita bisa langsung filter dengan exact match/isin
+        # Ini menghindari Y2000 ketarik Diosys atau sebaliknya
         df_view = df_global_period[df_global_period['Merk'].isin(my_brands)]
         target_sales_filter = my_name 
     else:
@@ -259,8 +276,8 @@ def main_dashboard():
                 summary_data = []
                 for spv, brands_dict in TARGET_DATABASE.items():
                     for brand, target in brands_dict.items():
-                        # Hitung Realisasi dengan EXACT MATCH (isin) agar akurat
-                        # Data 'Merk' di df_global_period sudah dinormalisasi di load_data
+                        # Pencarian Realisasi MENGGUNAKAN MERK YANG SUDAH DINORMALISASI
+                        # Cukup Exact Match (==) karena load_data sudah merapikan namanya
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
@@ -271,26 +288,24 @@ def main_dashboard():
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Pencapaian": pct_val / 100, # Float 0.0 - 1.0 untuk progress bar
+                            "Pencapaian": pct_val / 100, # Float untuk progress bar
                             "Status": status_text,
-                            "_pct_raw": pct_val # Kolom rahasia untuk logic warna
+                            "_pct_raw": pct_val 
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
                 
-                # Logic Warna Baris (Hijau jika >= 80)
                 def highlight_row_manager(row):
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
-                # Tampilkan Tabel (Hide _pct_raw)
                 st.dataframe(
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
-                            format="%.0f%%", # Tampil sebagai 80%
+                            format="%.0f%%", # Angka Bulat
                             min_value=0,
                             max_value=1,
                         )
@@ -315,7 +330,6 @@ def main_dashboard():
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor:
                  my_brands_prev = TARGET_DATABASE[my_name_key].keys()
-                 # Exact match untuk supervisor juga
                  df_prev = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
             else:
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == my_name]
@@ -369,7 +383,7 @@ def main_dashboard():
                 with st.expander("Lihat Rincian Target per Brand", expanded=True):
                     brand_data = []
                     for brand, target_brand in active_target_data.items():
-                        # Exact Match
+                        # Hitung Realisasi
                         realisasi_brand = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         pct = (realisasi_brand / target_brand) * 100 if target_brand > 0 else 0
                         status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process"
