@@ -79,9 +79,7 @@ def load_data():
 
     # --- FITUR 1: STANDARDISASI NAMA SALES ---
     if 'Penjualan' in df.columns:
-        # Bersihkan spasi
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
-        # Ganti nama sesuai kamus
         df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
     # CLEANING DATA
@@ -149,7 +147,7 @@ def main_dashboard():
         st.error("⚠️ Gagal memuat data! Pastikan Link Google Sheet sudah benar dan dipublish ke CSV.")
         return
 
-    # --- SETTING PERIODE TANGGAL (Harus di awal agar bisa hitung Total Perusahaan) ---
+    # --- SETTING PERIODE TANGGAL ---
     st.sidebar.markdown("---")
     st.sidebar.subheader("Filter Tanggal")
     
@@ -158,8 +156,7 @@ def main_dashboard():
     
     date_range = st.sidebar.date_input("Periode", [min_date, max_date])
     
-    # 1. Buat Dataframe Global (Berdasarkan Tanggal Saja)
-    # Ini untuk menghitung Total Omset Seluruh Perusahaan
+    # Dataframe Global (Filtered by Date)
     if len(date_range) == 2:
         df_global_period = df[
             (df['Tanggal'].dt.date >= date_range[0]) & 
@@ -170,24 +167,25 @@ def main_dashboard():
 
     total_omset_perusahaan = df_global_period['Jumlah'].sum()
 
-    # --- LOGIKA FILTER SALES ---
+    # --- LOGIKA FILTER SALES & VIEW DATA ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
+    target_sales_filter = "SEMUA" # Default
 
-    # Filter dari Dataframe Global yang sudah difilter tanggal
     if role == 'manager':
         sales_list = ["SEMUA"] + sorted(list(df_global_period['Penjualan'].dropna().unique()))
-        selected_sales = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
+        target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         
-        if selected_sales == "SEMUA":
+        if target_sales_filter == "SEMUA":
             df_view = df_global_period
         else:
-            df_view = df_global_period[df_global_period['Penjualan'] == selected_sales]
+            df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
     else:
-        # Sales dipaksa hanya lihat datanya sendiri
+        # Sales hanya melihat datanya sendiri
+        target_sales_filter = my_name
         df_view = df_global_period[df_global_period['Penjualan'] == my_name]
 
-    # --- FILTER LANJUTAN (B, C, D) ---
+    # --- FILTER LANJUTAN ---
     st.sidebar.subheader("Filter Lanjutan")
 
     # Filter Kota
@@ -211,6 +209,37 @@ def main_dashboard():
         if pilih_merk:
             df_view = df_view[df_view['Merk'].isin(pilih_merk)]
 
+    # --- LOGIKA HITUNG PERTUMBUHAN (GROWTH COMPARISON) ---
+    # Membandingkan omset periode terpilih vs periode sebelumnya dengan durasi yang sama
+    prev_omset = 0
+    growth_html = "" # String HTML untuk indikator panah
+
+    if len(date_range) == 2:
+        start_date, end_date = date_range
+        days_diff = (end_date - start_date).days + 1
+        
+        # Hitung tanggal periode lalu
+        prev_start = start_date - datetime.timedelta(days=days_diff)
+        prev_end = end_date - datetime.timedelta(days=days_diff)
+        
+        # Filter Data Periode Lalu (Filter Tanggal Saja Dulu)
+        df_prev = df[
+            (df['Tanggal'].dt.date >= prev_start) & 
+            (df['Tanggal'].dt.date <= prev_end)
+        ]
+        
+        # Terapkan Filter Sales yang sama dengan View saat ini
+        if role == 'manager':
+            if target_sales_filter != "SEMUA":
+                df_prev = df_prev[df_prev['Penjualan'] == target_sales_filter]
+        else:
+            df_prev = df_prev[df_prev['Penjualan'] == my_name]
+            
+        # (Opsional) Jika ingin filter Kota/Outlet/Merk juga ikut mempengaruhi growth, tambahkan di sini.
+        # Agar fair, biasanya growth dihitung gross per sales tanpa filter detail kota.
+        
+        prev_omset = df_prev['Jumlah'].sum()
+
     # --- TAMPILAN DASHBOARD ---
     st.title("🚀 Dashboard Performa Sales")
     
@@ -221,34 +250,44 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # Kartu Skor (Scorecard)
-        col1, col2, col3 = st.columns(3) # Ubah jadi 3 kolom untuk Chart
-        col1.metric("Total Omset", f"Rp {total_omset:,.0f}".replace(",", "."))
-        col2.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
+        # Siapkan HTML Indikator Pertumbuhan
+        if prev_omset > 0:
+            diff = total_omset - prev_omset
+            pct_change = (diff / prev_omset) * 100
+            
+            if diff >= 0:
+                # Warna Hijau, Panah Atas
+                growth_html = f"<div style='color: #27ae60; font-size: 14px; margin-top: 5px;'>▲ <b>{pct_change:.1f}%</b> vs periode lalu</div>"
+            else:
+                # Warna Merah, Panah Bawah
+                growth_html = f"<div style='color: #c0392b; font-size: 14px; margin-top: 5px;'>▼ <b>{pct_change:.1f}%</b> vs periode lalu</div>"
+        else:
+            growth_html = "<div style='color: #95a5a6; font-size: 12px; margin-top: 5px;'>- Data pembanding N/A -</div>"
+
+        # --- LAYOUT KARTU KPI (SCORECARD) ---
+        col1, col2, col3 = st.columns(3)
         
-        # --- FITUR 2: CHART PIE DINAMIS (Manager: Rincian, Sales: Market Share) ---
+        # KARTU 1: Total Omset + Growth Indicator
+        with col1:
+            st.metric("Total Omset", f"Rp {total_omset:,.0f}".replace(",", "."))
+            st.markdown(growth_html, unsafe_allow_html=True) # Menampilkan panah di bawah angka
+
+        # KARTU 2: Jumlah Toko
+        with col2:
+            st.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
+        
+        # KARTU 3: CHART PIE DINAMIS
         with col3:
             if not df_global_period.empty:
                 st.caption("Market Share / Kontribusi")
                 
-                # --- LOGIKA BERCABANG (IF-ELSE) UNTUK PIE CHART ---
                 if role == 'manager':
                     # MANAGER: Melihat Rincian Semua Orang
-                    # Breakdown per sales dari data global
                     sales_breakdown = df_global_period.groupby('Penjualan')['Jumlah'].sum().reset_index()
-                    
-                    fig_share = px.pie(
-                        sales_breakdown,
-                        names='Penjualan',
-                        values='Jumlah',
-                        hole=0.5
-                    )
+                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
                     fig_share.update_traces(textposition='inside', textinfo='percent')
-                    
                 else:
-                    # SALES: Hanya melihat "Omset Saya" vs "Sales Lain"
-                    # Omset Saya = total_omset (dari filter view user ini)
-                    # Sales Lain = Total Perusahaan - Omset Saya
+                    # SALES: Omset Saya vs Sales Lain
                     omset_lainnya = total_omset_perusahaan - total_omset
                     if omset_lainnya < 0: omset_lainnya = 0
                     
@@ -256,16 +295,11 @@ def main_dashboard():
                         names=['Omset Saya', 'Sales Lain'],
                         values=[total_omset, omset_lainnya],
                         hole=0.5,
-                        color_discrete_sequence=['#3498db', '#ecf0f1'] # Biru vs Abu-abu
+                        color_discrete_sequence=['#3498db', '#ecf0f1']
                     )
                     fig_share.update_traces(textposition='inside', textinfo='percent')
 
-                # Setting Tampilan Umum Chart
-                fig_share.update_layout(
-                    showlegend=False, 
-                    margin=dict(t=0, b=0, l=0, r=0), 
-                    height=120
-                )
+                fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120)
                 st.plotly_chart(fig_share, use_container_width=True)
 
         st.divider()
@@ -284,6 +318,7 @@ def main_dashboard():
         target_cols = ['Tanggal', 'Nama Outlet', 'Merk', 'Jumlah']
         final_cols = [c for c in target_cols if c in df_view.columns]
         
+        # Tampilkan Tabel
         st.dataframe(
             df_view[final_cols].sort_values('Tanggal', ascending=False), 
             use_container_width=True, 
@@ -292,6 +327,18 @@ def main_dashboard():
                 "Tanggal": st.column_config.DateColumn("Tanggal", format="DD/MM/YYYY"),
                 "Jumlah": st.column_config.NumberColumn("Omset (Rp)", format="Rp %d")
             }
+        )
+
+        # --- FITUR TAMBAHAN: TOMBOL DOWNLOAD EXCEL ---
+        # Mengubah dataframe jadi CSV untuk didownload
+        csv_data = df_view[final_cols].sort_values('Tanggal', ascending=False).to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label="📥 Download Data Excel",
+            data=csv_data,
+            file_name="laporan_penjualan_harian.csv",
+            mime="text/csv",
+            help="Klik untuk mengunduh tabel di atas ke format Excel/CSV"
         )
 
 # --- 5. ALUR UTAMA ---
