@@ -34,7 +34,7 @@ TARGET_DATABASE = {
     }
 }
 
-# --- KAMUS "BELAJAR" OTOMATIS (KEYWORD MATCHING) ---
+# --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
 BRAND_ALIASES = {
     # AKBAR
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
@@ -48,7 +48,7 @@ BRAND_ALIASES = {
     # MADONG
     "Ren & R & L": ["REN", "R & L", "R&L"], 
     "Sekawan": ["SEKAWAN", "AINIE"],
-    "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU"], 
+    "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], 
     "Avione": ["AVIONE"], "SYB": ["SYB"], "Satto": ["SATTO"],
     "Liora": ["LIORA"], "Mykonos": ["MYKONOS"], "Somethinc": ["SOMETHINC"],
 
@@ -217,10 +217,9 @@ def main_dashboard():
     my_name_key = my_name.strip().upper()
     target_sales_filter = "SEMUA" 
     
-    # Cek apakah user punya Target (berarti Supervisor)
     is_supervisor_account = my_name_key in TARGET_DATABASE
 
-    # 1. LOGIKA MANAGER/DIREKTUR (Bisa Cari Semua)
+    # 1. LOGIKA MANAGER/DIREKTUR
     if role == 'manager':
         sales_list = ["SEMUA"] + sorted(list(df_global_period['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
@@ -229,19 +228,12 @@ def main_dashboard():
         else:
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
 
-    # 2. LOGIKA SUPERVISOR (FILTER BERDASARKAN BRAND MILIKNYA)
+    # 2. LOGIKA SUPERVISOR
     elif is_supervisor_account:
-        # Ambil daftar Brand milik Supervisor ini
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        
-        # Buat Dataframe Scope Supervisor (Hanya transaksi dengan Brand milik dia)
-        # Gunakan 'isin' karena nama Brand sudah dinormalisasi di load_data
         df_supervisor_scope = df_global_period[df_global_period['Merk'].isin(my_brands)]
-        
-        # Cari siapa saja sales yang menjual brand tersebut
         team_list = sorted(list(df_supervisor_scope['Penjualan'].dropna().unique()))
         
-        # Tampilkan Dropdown Filter
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Berdasarkan Brand Anda):", ["SEMUA"] + team_list)
         
         if target_sales_filter == "SEMUA":
@@ -287,12 +279,10 @@ def main_dashboard():
             with st.expander("Klik untuk melihat Detail Target", expanded=True):
                 summary_data = []
                 
-                # Jika Manager: Loop semua Supervisor. Jika Supervisor: Loop diri sendiri saja.
                 target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
 
                 for spv, brands_dict in target_loop:
                     for brand, target in brands_dict.items():
-                        # Hitung Realisasi Global per Brand (Exact Match karena sudah dinormalisasi)
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
@@ -303,10 +293,10 @@ def main_dashboard():
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Ach (%)": f"{pct_val:.0f}%", # Kolom Angka Persen
-                            "Pencapaian": pct_val / 100, # Kolom Bar
+                            "Ach (%)": f"{pct_val:.0f}%", 
+                            "Pencapaian": pct_val / 100, 
                             "Status": status_text,
-                            "_pct_raw": pct_val # Helper
+                            "_pct_raw": pct_val 
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
@@ -322,7 +312,7 @@ def main_dashboard():
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
                             "Bar",
-                            format=" ", # Kosongkan teks di dalam bar agar bersih
+                            format=" ", # KOSONGKAN TEKS DI DALAM BAR
                             min_value=0,
                             max_value=1,
                         ),
@@ -342,14 +332,12 @@ def main_dashboard():
             
             df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
             
-            # Logic Filter Growth
             if role == 'manager':
                 if target_sales_filter == "SEMUA":
                     df_prev = df_prev_global
                 else:
                     df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor_account:
-                # Supervisor lihat growth brand dia
                 my_brands_prev = TARGET_DATABASE[my_name_key].keys()
                 df_prev_scope = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
                 if target_sales_filter == "SEMUA":
@@ -379,13 +367,10 @@ def main_dashboard():
         with col3:
             if not df_global_period.empty:
                 st.caption("Market Share / Kontribusi")
-                # Pie Chart Logic
                 if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
-                    # Breakdown by Brand
-                    sales_breakdown = df_view.groupby('Merk')['Jumlah'].sum().reset_index()
-                    fig_share = px.pie(sales_breakdown, names='Merk', values='Jumlah', hole=0.5)
+                    sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
                 else:
-                    # Individual View
                     omset_lainnya = total_omset_perusahaan - total_omset
                     fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
                 
@@ -400,23 +385,13 @@ def main_dashboard():
                              (not is_supervisor_account or target_sales_filter != "SEMUA")
         
         if is_individual_view:
-            # Mencari target berdasarkan nama sales yang dipilih
-            # Kita perlu mencari Supervisor dari Sales ini untuk tahu targetnya
-            # Karena Supervisor dinamis berdasarkan brand, kita cari brand apa yang dijual sales ini di data transaksi
-            # Lalu cocokkan dengan TARGET_DATABASE
-            
-            # Ambil data Sales ini
             sales_brands = df_view['Merk'].unique()
-            
-            # Siapkan wadah data
             brand_data = []
             
-            # Cari target untuk setiap brand yang dijual sales ini
             for brand in sales_brands:
                 target_found = 0
                 spv_name = "-"
                 
-                # Cari brand ini milik siapa di TARGET_DATABASE
                 for spv, brands_dict in TARGET_DATABASE.items():
                     if brand in brands_dict:
                         target_found = brands_dict[brand]
@@ -432,7 +407,7 @@ def main_dashboard():
                         "Supervisor": spv_name,
                         "Target Tim": format_idr(target_found),
                         "Kontribusi Dia": format_idr(realisasi_sales),
-                        "Ach (%)": f"{pct:.1f}%",
+                        "Ach (%)": f"{pct:.1f}%", 
                         "Pencapaian": pct / 100, 
                         "_pct_val": pct
                     })
@@ -447,7 +422,7 @@ def main_dashboard():
                         column_config={
                             "Pencapaian": st.column_config.ProgressColumn(
                                 "Bar",
-                                format=" ", 
+                                format=" ", # KOSONGKAN TEKS
                                 min_value=0,
                                 max_value=1,
                             ),
