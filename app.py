@@ -247,9 +247,6 @@ def main_dashboard():
         if target_sales_filter == "SEMUA":
             df_view = df_supervisor_scope
         else:
-            # Filter Sales Tertentu TAPI hanya brand milik Supervisor
-            # Contoh: Erni menjual Satto (Punya Madong) dan Bonavie (Punya Lisman). 
-            # Jika Madong pilih Erni, dia cuma liat omset Satto-nya Erni.
             df_view = df_supervisor_scope[df_supervisor_scope['Penjualan'] == target_sales_filter]
 
     # 3. LOGIKA SALES BIASA
@@ -295,7 +292,6 @@ def main_dashboard():
 
                 for spv, brands_dict in target_loop:
                     for brand, target in brands_dict.items():
-                        # Hitung Realisasi Global per Brand (Exact Match karena sudah dinormalisasi)
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
@@ -306,9 +302,10 @@ def main_dashboard():
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Ach (%)": f"{pct_val:.0f}%", # Kolom Angka Persen
-                            "Pencapaian": pct_val / 100, # Kolom Bar
+                            "Ach (%)": f"{pct_val:.0f}%", 
+                            "Pencapaian": pct_val / 100, 
                             "Status": status_text,
+                            "_pct_raw": pct_val 
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
@@ -317,6 +314,7 @@ def main_dashboard():
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
+                # FITUR PERBAIKAN: DROP KOLOM '_pct_raw' SEBELUM DITAMPILKAN
                 st.dataframe(
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
@@ -344,14 +342,12 @@ def main_dashboard():
             
             df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
             
-            # Logic Filter Growth
             if role == 'manager':
                 if target_sales_filter == "SEMUA":
                     df_prev = df_prev_global
                 else:
                     df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor_account:
-                # Supervisor lihat growth brand dia
                 my_brands_prev = TARGET_DATABASE[my_name_key].keys()
                 df_prev_scope = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
                 if target_sales_filter == "SEMUA":
@@ -381,13 +377,10 @@ def main_dashboard():
         with col3:
             if not df_global_period.empty:
                 st.caption("Market Share / Kontribusi")
-                # Pie Chart Logic
                 if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
-                    # Breakdown by Brand (Lebih relevan utk Supervisor/Manager All View)
-                    sales_breakdown = df_view.groupby('Merk')['Jumlah'].sum().reset_index()
-                    fig_share = px.pie(sales_breakdown, names='Merk', values='Jumlah', hole=0.5)
+                    sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
                 else:
-                    # Individual View
                     omset_lainnya = total_omset_perusahaan - total_omset
                     fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
                 
