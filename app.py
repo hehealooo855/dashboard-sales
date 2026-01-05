@@ -34,36 +34,41 @@ TARGET_DATABASE = {
     }
 }
 
-# --- KAMUS "BELAJAR" OTOMATIS (KEYWORD MATCHING) ---
-# Sistem akan mencari kata kunci ini di kolom Merk Excel.
-# Jika ketemu, otomatis dimasukkan ke Brand Target yang sesuai.
+# --- KONFIGURASI TIM SUPERVISOR (BARU) ---
+# Masukkan nama Sales (sesuai hasil Mapping) ke bawah nama Supervisornya.
+SUPERVISOR_TEAMS = {
+    "LISMAN": ["ADE", "FANDI", "SANTI", "FITRI", "SINTA", "LISMAN"],
+    "AKBAR": ["GANI", "FERI", "WILLIAM", "DEWY", "FAUZIAH", "AKBAR"],
+    "WILLIAM": ["YOGI", "BASTIAN", "DEVI", "BAYU", "WIRA", "MITHA"],
+    "MADONG": ["RISKA", "HAMZAH", "NOVI", "ROZY", "SRI", "MADONG"]
+}
+
+# --- KAMUS "BELAJAR" OTOMATIS (BRAND) ---
 BRAND_ALIASES = {
-    # FORMAT: "Target Database Key": ["List", "Kata", "Kunci", "Di Excel"]
-    
-    # --- AKBAR ---
-    "Diosys": ["DIOSYS", "DYOSIS", "DIO"], # Menangkap Dyosis (Typo)
-    "Y2000": ["Y2000", "Y 2000", "Y-2000"], # Menangkap Y2000
+    # AKBAR
+    "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
+    "Y2000": ["Y2000", "Y 2000", "Y-2000"], 
     "Masami": ["MASAMI", "JAYA"],
     "Cassandra": ["CASSANDRA", "CASANDRA"],
     "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"],
     "Oimio": ["OIMIO"], "Clinelle": ["CLINELLE"],
 
-    # --- MADONG ---
-    "Ren & R & L": ["REN", "R & L", "R&L"], # Otomatis kenal "Ren" atau "R&L"
+    # MADONG
+    "Ren & R & L": ["REN", "R & L", "R&L"], 
     "Sekawan": ["SEKAWAN", "AINIE"],
-    "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU"], # Menangkap "Maju"
+    "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU"], 
     "Avione": ["AVIONE"], "SYB": ["SYB"], "Satto": ["SATTO"],
     "Liora": ["LIORA"], "Mykonos": ["MYKONOS"], "Somethinc": ["SOMETHINC"],
 
-    # --- LISMAN ---
+    # LISMAN
     "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW"],
     "Artist Inc": ["ARTIST", "ARTIS"],
     "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"], "Goute": ["GOUTE"],
     "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"],
 
-    # --- WILLIAM ---
+    # WILLIAM
     "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"],
     "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
@@ -130,34 +135,25 @@ def load_data():
     except Exception as e:
         return None
 
-    # Normalisasi Nama Sales
     if 'Penjualan' in df.columns:
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
         df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
-    # --- FITUR BARU: NORMALISASI MERK OTOMATIS (BELAJAR) ---
-    # Logika: Mencari Keyword di kolom 'Merk', lalu mengubahnya menjadi Nama Standar Target
     if 'Merk' in df.columns:
-        # Fungsi kecil untuk normalisasi
         def normalize_brand(raw_brand):
             raw_upper = str(raw_brand).upper()
-            # Cek satu per satu keyword di kamus BRAND_ALIASES
             for target_brand, keywords in BRAND_ALIASES.items():
                 for keyword in keywords:
                     if keyword in raw_upper:
-                        return target_brand # Jika ketemu "DIOSYS" di "DYOSIS CREAM", return "Diosys"
-            return raw_brand # Jika tidak ada yang cocok, biarkan apa adanya
-
-        # Terapkan ke seluruh kolom Merk
+                        return target_brand
+            return raw_brand
         df['Merk'] = df['Merk'].apply(normalize_brand)
 
-    # Cleaning Angka
     if 'Jumlah' in df.columns:
         df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
         df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
         df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # Cleaning Tanggal
     if 'Tanggal' in df.columns:
         df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
 
@@ -224,26 +220,45 @@ def main_dashboard():
 
     total_omset_perusahaan = df_global_period['Jumlah'].sum()
 
-    # --- LOGIKA FILTER SALES ---
+    # --- LOGIKA FILTER SALES (BARU) ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
+    
     target_sales_filter = "SEMUA" 
-    is_supervisor = my_name_key in TARGET_DATABASE
+    # Cek apakah user adalah supervisor berdasarkan kamus tim
+    is_supervisor_role = my_name_key in SUPERVISOR_TEAMS 
 
+    # --- 1. FILTER UNTUK MANAGER/DIREKTUR ---
     if role == 'manager':
+        # Bisa cari SIAPA SAJA
         sales_list = ["SEMUA"] + sorted(list(df_global_period['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
+        
         if target_sales_filter == "SEMUA":
             df_view = df_global_period
         else:
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
-    elif is_supervisor:
-        my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Data sudah dinormalisasi di load_data, jadi kita bisa langsung filter dengan exact match/isin
-        # Ini menghindari Y2000 ketarik Diosys atau sebaliknya
-        df_view = df_global_period[df_global_period['Merk'].isin(my_brands)]
-        target_sales_filter = my_name 
+
+    # --- 2. FILTER UNTUK SUPERVISOR ---
+    elif is_supervisor_role:
+        # Ambil daftar anak buah dari kamus
+        my_team = SUPERVISOR_TEAMS[my_name_key]
+        # Dropdown hanya isi anak buah
+        team_options = ["SEMUA TIM SAYA"] + sorted(my_team)
+        target_sales_filter = st.sidebar.selectbox("Pantau Tim Anda:", team_options)
+        
+        if target_sales_filter == "SEMUA TIM SAYA":
+            # Tampilkan data yang Namanya ada di daftar tim
+            df_view = df_global_period[df_global_period['Penjualan'].isin(my_team)]
+            # Override nama filter untuk keperluan chart (agar labelnya 'Tim Saya')
+            chart_label = my_name 
+        else:
+            # Tampilkan data sales spesifik (anak buah)
+            df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
+            chart_label = target_sales_filter
+
+    # --- 3. FILTER UNTUK SALES BIASA ---
     else:
         target_sales_filter = my_name
         df_view = df_global_period[df_global_period['Penjualan'] == my_name]
@@ -269,15 +284,20 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- RAPOR TARGET MANAGER (TABEL WARNA FIX) ---
-        if role == 'manager' and target_sales_filter == "SEMUA":
-            st.markdown("### 🏢 Rapor Target Supervisor (All Brand)")
-            with st.expander("Klik untuk melihat Detail Target Semua Supervisor", expanded=True):
+        # --- RAPOR TARGET MANAGER & SUPERVISOR (TABEL WARNA) ---
+        # Manager lihat semua, Supervisor lihat target timnya saja
+        if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_role and target_sales_filter == "SEMUA TIM SAYA"):
+            st.markdown("### 🏢 Rapor Target (Brand Focus)")
+            with st.expander("Klik untuk melihat Detail Target", expanded=True):
                 summary_data = []
-                for spv, brands_dict in TARGET_DATABASE.items():
+                
+                # Tentukan scope loop: Semua SPV (Manager) atau Hanya Diri Sendiri (Supervisor)
+                spv_loop = TARGET_DATABASE.items() if role == 'manager' else {k:v for k,v in TARGET_DATABASE.items() if k == my_name_key}.items()
+
+                for spv, brands_dict in spv_loop:
                     for brand, target in brands_dict.items():
-                        # Pencarian Realisasi MENGGUNAKAN MERK YANG SUDAH DINORMALISASI
-                        # Cukup Exact Match (==) karena load_data sudah merapikan namanya
+                        # Hitung Realisasi (Global Data, karena target berbasis Brand bukan Salesman)
+                        # Kita filter df_global_period berdasarkan Brand yang dipegang SPV ini
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
@@ -288,7 +308,7 @@ def main_dashboard():
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Pencapaian": pct_val / 100, # Float untuk progress bar
+                            "Pencapaian": pct_val / 100, 
                             "Status": status_text,
                             "_pct_raw": pct_val 
                         })
@@ -305,10 +325,11 @@ def main_dashboard():
                     hide_index=True,
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
-                            format="%.0f%%", # Angka Bulat
+                            format="%.0f%%",
                             min_value=0,
                             max_value=1,
-                        )
+                        ),
+                        "Status": st.column_config.TextColumn("Ket")
                     }
                 )
             st.divider()
@@ -324,15 +345,20 @@ def main_dashboard():
             
             df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
             
-            if role == 'manager' and target_sales_filter == "SEMUA":
-                df_prev = df_prev_global
-            elif role == 'manager':
-                df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
-            elif is_supervisor:
-                 my_brands_prev = TARGET_DATABASE[my_name_key].keys()
-                 df_prev = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
+            # Logic Filter Growth harus sama dengan Logic Filter Utama
+            if role == 'manager':
+                if target_sales_filter == "SEMUA":
+                    df_prev = df_prev_global
+                else:
+                    df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
+            elif is_supervisor_role:
+                if target_sales_filter == "SEMUA TIM SAYA":
+                    df_prev = df_prev_global[df_prev_global['Penjualan'].isin(SUPERVISOR_TEAMS[my_name_key])]
+                else:
+                    df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             else:
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == my_name]
+            
             prev_omset = df_prev['Jumlah'].sum()
 
         if prev_omset > 0:
@@ -353,63 +379,73 @@ def main_dashboard():
         with col3:
             if not df_global_period.empty:
                 st.caption("Market Share / Kontribusi")
-                if role == 'manager' or is_supervisor:
-                    sales_breakdown = df_view.groupby('Merk')['Jumlah'].sum().reset_index()
-                    fig_share = px.pie(sales_breakdown, names='Merk', values='Jumlah', hole=0.5)
+                # Jika Manager lihat SEMUA atau SPV lihat SEMUA TIM -> Tampilkan Pie Rincian
+                if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_role and target_sales_filter == "SEMUA TIM SAYA"):
+                    # Tampilkan kontribusi per SALES di tim tersebut
+                    sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
                 else:
+                    # Individual View (Manager liat 1 org, SPV liat 1 anak buah, atau Sales liat diri sendiri)
                     omset_lainnya = total_omset_perusahaan - total_omset
-                    fig_share = px.pie(names=['Omset Saya', 'Sales Lain'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
+                    fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
+                
                 fig_share.update_traces(textposition='inside', textinfo='percent')
                 fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120)
                 st.plotly_chart(fig_share, use_container_width=True)
 
         st.divider()
 
-        # --- DETAIL TARGET PER BRAND (UNTUK SPV & SALES) ---
-        active_target_data = {}
-        target_key_check = target_sales_filter.strip().upper()
+        # --- DETAIL TARGET PER BRAND (JIKA SALES DIPILIH) ---
+        # Fitur ini muncul jika kita melihat Sales Spesifik (bukan View ALL Manager/SPV)
+        # Tujuannya agar Manager bisa lihat detail target per sales jika diperlukan, 
+        # ATAU (Simplifikasi): Kita tampilkan target brand berdasarkan Supervisor dari sales tersebut.
         
-        if target_key_check in TARGET_DATABASE:
-            active_target_data = TARGET_DATABASE[target_key_check]
-            total_target_val = sum(active_target_data.values())
+        # Cek apakah view saat ini adalah view individual (Sales, atau Manager/SPV klik satu nama)
+        is_individual_view = (role != 'manager' or target_sales_filter != "SEMUA") and \
+                             (not is_supervisor_role or target_sales_filter != "SEMUA TIM SAYA")
+        
+        if is_individual_view:
+            # Kita perlu tahu siapa Supervisor dari Sales yang sedang dilihat ini untuk menarik targetnya
+            # Cari di dictionary SUPERVISOR_TEAMS
+            current_sales_name = target_sales_filter
+            found_spv = None
+            for spv, members in SUPERVISOR_TEAMS.items():
+                if current_sales_name in members:
+                    found_spv = spv
+                    break
             
-            st.subheader(f"🎯 Target {target_sales_filter}: {format_idr(total_target_val)}")
-            
-            if total_target_val > 0:
-                achievement = (total_omset / total_target_val)
-                st.progress(min(achievement, 1.0))
-                st.caption(f"Pencapaian: **{achievement*100:.0f}%** dari Target")
-
-                with st.expander("Lihat Rincian Target per Brand", expanded=True):
+            # Jika sales ini punya supervisor yang ada di database target
+            if found_spv and found_spv in TARGET_DATABASE:
+                active_target_data = TARGET_DATABASE[found_spv]
+                # Hitung total target (ini target tim sebenarnya, tapi kita tampilkan sebagai referensi)
+                # Atau kita bisa breakdown per brand saja
+                
+                with st.expander(f"Rincian Kontribusi {current_sales_name} terhadap Target {found_spv}", expanded=True):
                     brand_data = []
                     for brand, target_brand in active_target_data.items():
-                        # Hitung Realisasi
-                        realisasi_brand = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
-                        pct = (realisasi_brand / target_brand) * 100 if target_brand > 0 else 0
-                        status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process"
+                        # Hitung Omset SALES INI SAJA untuk brand tersebut
+                        # Gunakan Exact Match karena sudah dinormalisasi
+                        realisasi_sales = df_view[df_view['Merk'] == brand]['Jumlah'].sum()
+                        
+                        # Persentase kontribusi dia terhadap target tim
+                        pct = (realisasi_sales / target_brand) * 100 if target_brand > 0 else 0
                         
                         brand_data.append({
                             "Brand": brand,
-                            "Target": format_idr(target_brand),
-                            "Realisasi": format_idr(realisasi_brand),
+                            "Target Tim": format_idr(target_brand),
+                            "Kontribusi Dia": format_idr(realisasi_sales),
                             "Pencapaian": pct / 100, 
-                            "Status": status_label,
                             "_pct_val": pct
                         })
                     
                     df_target_breakdown = pd.DataFrame(brand_data)
-                    
-                    def highlight_row(row):
-                        color = '#d4edda' if row['_pct_val'] >= 80 else '#f8d7da'
-                        return [f'background-color: {color}; color: black'] * len(row)
-
                     st.dataframe(
-                        df_target_breakdown.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['_pct_val']),
+                        df_target_breakdown.drop(columns=['_pct_val']),
                         use_container_width=True, 
                         hide_index=True,
                         column_config={
                             "Pencapaian": st.column_config.ProgressColumn(
-                                format="%.0f%%",
+                                format="%.1f%%", # Disini pakai desimal biar kelihatan kalau kecil
                                 min_value=0,
                                 max_value=1,
                             ),
