@@ -168,6 +168,8 @@ def main_dashboard():
     else:
         df_global_period = df
 
+    total_omset_perusahaan = df_global_period['Jumlah'].sum()
+
     # --- LOGIKA FILTER SALES ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
@@ -224,25 +226,41 @@ def main_dashboard():
         col1.metric("Total Omset", f"Rp {total_omset:,.0f}".replace(",", "."))
         col2.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
         
-        # --- FITUR 2: CHART PIE RINCIAN SALES (TOTAL SALES BREAKDOWN) ---
+        # --- FITUR 2: CHART PIE DINAMIS (Manager: Rincian, Sales: Market Share) ---
         with col3:
             if not df_global_period.empty:
-                # Mengelompokkan data global berdasarkan Sales untuk Pie Chart
-                # Ini akan menampilkan persentase tiap sales (contoh: Lisman 0.4%, Fauziah 1%)
-                sales_breakdown = df_global_period.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                st.caption("Market Share / Kontribusi")
                 
-                st.caption("Kontribusi Sales (Market Share)")
-                
-                # Buat Pie Chart
-                fig_share = px.pie(
-                    sales_breakdown,
-                    names='Penjualan',
-                    values='Jumlah',
-                    hole=0.5
-                )
-                
-                # Menampilkan persentase di dalam chart, nama muncul saat di-hover (agar tidak berantakan)
-                fig_share.update_traces(textposition='inside', textinfo='percent')
+                # --- LOGIKA BERCABANG (IF-ELSE) UNTUK PIE CHART ---
+                if role == 'manager':
+                    # MANAGER: Melihat Rincian Semua Orang
+                    # Breakdown per sales dari data global
+                    sales_breakdown = df_global_period.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                    
+                    fig_share = px.pie(
+                        sales_breakdown,
+                        names='Penjualan',
+                        values='Jumlah',
+                        hole=0.5
+                    )
+                    fig_share.update_traces(textposition='inside', textinfo='percent')
+                    
+                else:
+                    # SALES: Hanya melihat "Omset Saya" vs "Sales Lain"
+                    # Omset Saya = total_omset (dari filter view user ini)
+                    # Sales Lain = Total Perusahaan - Omset Saya
+                    omset_lainnya = total_omset_perusahaan - total_omset
+                    if omset_lainnya < 0: omset_lainnya = 0
+                    
+                    fig_share = px.pie(
+                        names=['Omset Saya', 'Sales Lain'],
+                        values=[total_omset, omset_lainnya],
+                        hole=0.5,
+                        color_discrete_sequence=['#3498db', '#ecf0f1'] # Biru vs Abu-abu
+                    )
+                    fig_share.update_traces(textposition='inside', textinfo='percent')
+
+                # Setting Tampilan Umum Chart
                 fig_share.update_layout(
                     showlegend=False, 
                     margin=dict(t=0, b=0, l=0, r=0), 
