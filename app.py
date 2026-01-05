@@ -7,7 +7,7 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
-# --- DATABASE TARGET ---
+# --- DATABASE TARGET (HARDCODED SESUAI REQUEST) ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -17,8 +17,7 @@ TARGET_DATABASE = {
     },
     "AKBAR": {
         "Thai": 300_000_000, "Inesia": 100_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000,
-        "Y2000": 180_000_000, 
-        "Diosys": 520_000_000, 
+        "Y2000": 180_000_000, "Diosys": 520_000_000,
         "Sociolla": 600_000_000, "Skin1004": 400_000_000,
         "Masami": 40_000_000, "Oimio": 0, "Cassandra": 30_000_000, "Clinelle": 80_000_000
     },
@@ -30,56 +29,39 @@ TARGET_DATABASE = {
     },
     "MADONG": {
         "Ren & R & L": 20_000_000, "Sekawan": 350_000_000, "Avione": 250_000_000,
-        "SYB": 100_000_000, "Mad For Makeup": 50_000_000, "Satto": 500_000_000,
+        "SYB": 100_000_000, "Mad For Make Up": 50_000_000, "Satto": 500_000_000,
         "Liora": 0, "Mykonos": 20_000_000, "Somethinc": 1_100_000_000
     }
 }
 
 # --- KAMUS PERBAIKAN NAMA SALES ---
 SALES_MAPPING = {
-    # GRUP MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG",
-    # GRUP ROZY
     "ROZY AINIE": "ROZY",
-    # GRUP NOVI
     "NOVI AINIE": "NOVI", "NOVI AV": "NOVI",
-    # GRUP HAMZAH
-    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH",
-    "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
-    # GRUP RISKA
-    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA",
-    "RISKA  E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA",
-    "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA",
-    "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
-    "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA",
-    "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA",
-    "SKIN - RIZKA": "RISKA", 
-    # GRUP ADE
-    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE",
-    "ADE JAVINCI": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE",
-    "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
-    # GRUP FANDI
-    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI",
-    "FANDI AFDILLAH": "FANDI", "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI",
-    "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", "FANDI - NEWLAB": "FANDI",
-    "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI",
-    # GRUP GANI
-    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI",
-    "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI",
-    "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI",
-    "GANI INESIA": "GANI", "GANI - KSM": "GANI",
-    # GRUP BASTIAN
-    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN",
-    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN",
-    "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN",
-    "BASTIAN-DIO 45": "BASTIAN",
-    # GRUP YOGI
-    "YOGI REMAR": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI",
-    "MILANO - YOGI": "YOGI",
-    # LAINNYA
+    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
+    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA  E-WL": "RISKA", 
+    "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
+    "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
+    "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
+    "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
+    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", 
+    "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
+    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
+    "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", 
+    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI",
+    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
+    "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
+    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI",
+    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
+    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
+    "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
+    "YOGI REMAR": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "MILANO - YOGI": "YOGI",
     "FERI - HONOR": "FERI", "FERI - VG": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
-    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI", "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
-    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", "BAYU SHMP": "BAYU", "BAYU YL": "BAYU",
+    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI", "DEVI YL": "DEVI", 
+    "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
+    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
+    "BAYU SHMP": "BAYU", "BAYU YL": "BAYU",
     "PMT-WIRA": "WIRA", "WIRA SOMETHINC": "WIRA", "WIRA SYB": "WIRA",
     "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI",
@@ -95,10 +77,12 @@ SALES_MAPPING = {
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
-# --- KAMUS PERBAIKAN BRAND (NORMALISASI) ---
+# --- KAMUS PERBAIKAN BRAND (NORMALISASI AGAR DATA TIDAK TERTUKAR) ---
 BRAND_MAPPING_NORMALIZATION = {
+    # Format: "NAMA DI CSV" : "NAMA BAKU (SESUAI TARGET DATABASE)"
     "JAYA": "Masami",
     "MAJU": "Mad For Make Up",
+    "MAD FOR MAKEUP": "Mad For Make Up", # Variasi spasi
     "GLOOWBI": "Gloow & Be",
     "GLOOW BI": "Gloow & Be",
     "CASANDRA": "Cassandra",
@@ -109,9 +93,12 @@ BRAND_MAPPING_NORMALIZATION = {
     "ARTIS": "Artist Inc",
     "REN": "Ren & R & L",
     "AINIE": "Sekawan",
+    # PERBAIKAN Y2000 & DIOSYS (MAPPING PASTI)
     "DYOSIS": "Diosys",
     "DIOSYS": "Diosys",
-    "Y2000": "Y2000"
+    "Y2000": "Y2000",
+    "Y 2000": "Y2000",
+    "Y-2000": "Y2000"
 }
 
 # --- HELPER FUNCTION: FORMAT RUPIAH ---
@@ -127,23 +114,36 @@ def load_data():
     except Exception as e:
         return None
 
+    # Normalisasi Nama Sales
     if 'Penjualan' in df.columns:
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
         df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
+    # Normalisasi Nama Brand (KUNCI PERBAIKAN DATA Y2000/DIOSYS)
     if 'Merk' in df.columns:
+        # Ubah ke uppercase dulu biar match
         df['Merk'] = df['Merk'].astype(str).str.strip().str.upper() 
+        # Buat dictionary map juga jadi uppercase key-nya
         brand_map_upper = {k.upper(): v for k, v in BRAND_MAPPING_NORMALIZATION.items()}
+        # Replace
         df['Merk'] = df['Merk'].replace(brand_map_upper)
+        # Kembalikan ke Title Case agar rapi di tabel (Opsional, tapi bagus utk display)
+        # Tapi karena Target Database kuncinya Case Sensitive (huruf besar kecil ngaruh),
+        # Kita harus pastikan data di df['Merk'] SAMA PERSIS dengan key di TARGET_DATABASE.
+        # Strategi: Kita biarkan saja apa adanya hasil replace, karena values di BRAND_MAPPING_NORMALIZATION
+        # sudah kita set sama persis dengan Key di TARGET_DATABASE.
 
+    # Cleaning Angka
     if 'Jumlah' in df.columns:
         df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
         df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
         df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
+    # Cleaning Tanggal
     if 'Tanggal' in df.columns:
         df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
 
+    # Pastikan kolom lain string
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -223,8 +223,9 @@ def main_dashboard():
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
     elif is_supervisor:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        brands_pattern = '|'.join([re.escape(b) for b in my_brands]).replace("Diosys", "D[iy]osis") 
-        df_view = df_global_period[df_global_period['Merk'].str.contains(brands_pattern, case=False, na=False)]
+        # Filter data global hanya yang Merk-nya ada di list brand supervisor ini
+        # Gunakan isin() untuk pencocokan pasti (Exact Match) agar Diosys tidak kecampur Y2000
+        df_view = df_global_period[df_global_period['Merk'].isin(my_brands)]
         target_sales_filter = my_name 
     else:
         target_sales_filter = my_name
@@ -251,48 +252,48 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- RAPOR TARGET MANAGER (TABEL WARNA) ---
+        # --- RAPOR TARGET MANAGER (TABEL WARNA FIX) ---
         if role == 'manager' and target_sales_filter == "SEMUA":
             st.markdown("### 🏢 Rapor Target Supervisor (All Brand)")
             with st.expander("Klik untuk melihat Detail Target Semua Supervisor", expanded=True):
                 summary_data = []
                 for spv, brands_dict in TARGET_DATABASE.items():
                     for brand, target in brands_dict.items():
-                        search_term = brand
-                        if "Diosys" in brand: search_term = "D[iy]osis"
+                        # Hitung Realisasi dengan EXACT MATCH (isin) agar akurat
+                        # Data 'Merk' di df_global_period sudah dinormalisasi di load_data
+                        realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
-                        realisasi = df_global_period[df_global_period['Merk'].str.contains(search_term, case=False, na=False)]['Jumlah'].sum()
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
+                        status_text = "✅" if pct_val >= 80 else "⚠️"
                         
                         summary_data.append({
                             "Supervisor": spv,
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Persentase": pct_val / 100, 
-                            "Status": "✅" if pct_val >= 80 else "🔻",
-                            "_pct_raw": pct_val 
+                            "Pencapaian": pct_val / 100, # Float 0.0 - 1.0 untuk progress bar
+                            "Status": status_text,
+                            "_pct_raw": pct_val # Kolom rahasia untuk logic warna
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
                 
+                # Logic Warna Baris (Hijau jika >= 80)
                 def highlight_row_manager(row):
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
-                # PERBAIKAN: Style dulu, baru hide kolom helper
+                # Tampilkan Tabel (Hide _pct_raw)
                 st.dataframe(
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Persentase": st.column_config.ProgressColumn(
-                            "Pencapaian",
-                            format="%.0f%%",
+                        "Pencapaian": st.column_config.ProgressColumn(
+                            format="%.0f%%", # Tampil sebagai 80%
                             min_value=0,
                             max_value=1,
-                        ),
-                        "Status": st.column_config.TextColumn("Ket")
+                        )
                     }
                 )
             st.divider()
@@ -314,8 +315,8 @@ def main_dashboard():
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor:
                  my_brands_prev = TARGET_DATABASE[my_name_key].keys()
-                 pat_prev = '|'.join([re.escape(b) for b in my_brands_prev]).replace("Diosys", "D[iy]osis")
-                 df_prev = df_prev_global[df_prev_global['Merk'].str.contains(pat_prev, case=False, na=False)]
+                 # Exact match untuk supervisor juga
+                 df_prev = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
             else:
                 df_prev = df_prev_global[df_prev_global['Penjualan'] == my_name]
             prev_omset = df_prev['Jumlah'].sum()
@@ -368,12 +369,10 @@ def main_dashboard():
                 with st.expander("Lihat Rincian Target per Brand", expanded=True):
                     brand_data = []
                     for brand, target_brand in active_target_data.items():
-                        search_term = brand
-                        if "Diosys" in brand: search_term = "D[iy]osis" 
-
-                        realisasi_brand = df_global_period[df_global_period['Merk'].str.contains(search_term, case=False, na=False)]['Jumlah'].sum()
+                        # Exact Match
+                        realisasi_brand = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         pct = (realisasi_brand / target_brand) * 100 if target_brand > 0 else 0
-                        status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process" 
+                        status_label = "✅ Achieved" if pct >= 80 else "⚠️ On Process"
                         
                         brand_data.append({
                             "Brand": brand,
@@ -390,7 +389,6 @@ def main_dashboard():
                         color = '#d4edda' if row['_pct_val'] >= 80 else '#f8d7da'
                         return [f'background-color: {color}; color: black'] * len(row)
 
-                    # PERBAIKAN: Style dulu baru hide
                     st.dataframe(
                         df_target_breakdown.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['_pct_val']),
                         use_container_width=True, 
