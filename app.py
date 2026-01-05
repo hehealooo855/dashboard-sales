@@ -7,7 +7,7 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
-# --- DATABASE TARGET ---
+# --- DATABASE TARGET (HARDCODED SESUAI REQUEST) ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -34,7 +34,7 @@ TARGET_DATABASE = {
     }
 }
 
-# --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
+# --- KAMUS "BELAJAR" OTOMATIS (KEYWORD MATCHING) ---
 BRAND_ALIASES = {
     # AKBAR
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
@@ -312,7 +312,7 @@ def main_dashboard():
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
                             "Bar",
-                            format=" ", # KOSONGKAN TEKS DI DALAM BAR
+                            format=" ", 
                             min_value=0,
                             max_value=1,
                         ),
@@ -422,7 +422,7 @@ def main_dashboard():
                         column_config={
                             "Pencapaian": st.column_config.ProgressColumn(
                                 "Bar",
-                                format=" ", # KOSONGKAN TEKS
+                                format=" ", 
                                 min_value=0,
                                 max_value=1,
                             ),
