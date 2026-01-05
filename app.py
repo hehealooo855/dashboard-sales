@@ -7,7 +7,7 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
-# --- DATABASE TARGET (HARDCODED SESUAI REQUEST) ---
+# --- DATABASE TARGET ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -312,7 +312,7 @@ def main_dashboard():
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
                             "Bar",
-                            format=" ", 
+                            format=" ", # KOSONGKAN TEKS
                             min_value=0,
                             max_value=1,
                         ),
