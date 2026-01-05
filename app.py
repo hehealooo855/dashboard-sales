@@ -292,6 +292,7 @@ def main_dashboard():
 
                 for spv, brands_dict in target_loop:
                     for brand, target in brands_dict.items():
+                        # Hitung Realisasi Global per Brand (Exact Match karena sudah dinormalisasi)
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
                         pct_val = (realisasi / target) * 100 if target > 0 else 0
@@ -302,10 +303,10 @@ def main_dashboard():
                             "Brand": brand,
                             "Target": format_idr(target),
                             "Realisasi": format_idr(realisasi),
-                            "Ach (%)": f"{pct_val:.0f}%", 
-                            "Pencapaian": pct_val / 100, 
+                            "Ach (%)": f"{pct_val:.0f}%", # Kolom Angka Persen
+                            "Pencapaian": pct_val / 100, # Kolom Bar
                             "Status": status_text,
-                            "_pct_raw": pct_val 
+                            "_pct_raw": pct_val # Helper
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
@@ -314,7 +315,6 @@ def main_dashboard():
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
-                # FITUR PERBAIKAN: DROP KOLOM '_pct_raw' SEBELUM DITAMPILKAN
                 st.dataframe(
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
@@ -342,12 +342,14 @@ def main_dashboard():
             
             df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
             
+            # Logic Filter Growth
             if role == 'manager':
                 if target_sales_filter == "SEMUA":
                     df_prev = df_prev_global
                 else:
                     df_prev = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter]
             elif is_supervisor_account:
+                # Supervisor lihat growth brand dia
                 my_brands_prev = TARGET_DATABASE[my_name_key].keys()
                 df_prev_scope = df_prev_global[df_prev_global['Merk'].isin(my_brands_prev)]
                 if target_sales_filter == "SEMUA":
@@ -377,16 +379,80 @@ def main_dashboard():
         with col3:
             if not df_global_period.empty:
                 st.caption("Market Share / Kontribusi")
+                # Pie Chart Logic
                 if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
-                    sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
-                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
+                    # Breakdown by Brand
+                    sales_breakdown = df_view.groupby('Merk')['Jumlah'].sum().reset_index()
+                    fig_share = px.pie(sales_breakdown, names='Merk', values='Jumlah', hole=0.5)
                 else:
+                    # Individual View
                     omset_lainnya = total_omset_perusahaan - total_omset
                     fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
                 
                 fig_share.update_traces(textposition='inside', textinfo='percent')
                 fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120)
                 st.plotly_chart(fig_share, use_container_width=True)
+
+        st.divider()
+
+        # --- DETAIL TARGET PER BRAND (JIKA SALES DIPILIH) ---
+        is_individual_view = (role != 'manager' or target_sales_filter != "SEMUA") and \
+                             (not is_supervisor_account or target_sales_filter != "SEMUA")
+        
+        if is_individual_view:
+            # Mencari target berdasarkan nama sales yang dipilih
+            # Kita perlu mencari Supervisor dari Sales ini untuk tahu targetnya
+            # Karena Supervisor dinamis berdasarkan brand, kita cari brand apa yang dijual sales ini di data transaksi
+            # Lalu cocokkan dengan TARGET_DATABASE
+            
+            # Ambil data Sales ini
+            sales_brands = df_view['Merk'].unique()
+            
+            # Siapkan wadah data
+            brand_data = []
+            
+            # Cari target untuk setiap brand yang dijual sales ini
+            for brand in sales_brands:
+                target_found = 0
+                spv_name = "-"
+                
+                # Cari brand ini milik siapa di TARGET_DATABASE
+                for spv, brands_dict in TARGET_DATABASE.items():
+                    if brand in brands_dict:
+                        target_found = brands_dict[brand]
+                        spv_name = spv
+                        break
+                
+                if target_found > 0:
+                    realisasi_sales = df_view[df_view['Merk'] == brand]['Jumlah'].sum()
+                    pct = (realisasi_sales / target_found) * 100
+                    
+                    brand_data.append({
+                        "Brand": brand,
+                        "Supervisor": spv_name,
+                        "Target Tim": format_idr(target_found),
+                        "Kontribusi Dia": format_idr(realisasi_sales),
+                        "Ach (%)": f"{pct:.1f}%",
+                        "Pencapaian": pct / 100, 
+                        "_pct_val": pct
+                    })
+            
+            if brand_data:
+                with st.expander(f"Rincian Kontribusi {target_sales_filter} terhadap Target Tim", expanded=True):
+                    df_target_breakdown = pd.DataFrame(brand_data)
+                    st.dataframe(
+                        df_target_breakdown.style.hide(axis="columns", subset=['_pct_val']),
+                        use_container_width=True, 
+                        hide_index=True,
+                        column_config={
+                            "Pencapaian": st.column_config.ProgressColumn(
+                                "Bar",
+                                format=" ", 
+                                min_value=0,
+                                max_value=1,
+                            ),
+                        }
+                    )
 
         st.divider()
 
