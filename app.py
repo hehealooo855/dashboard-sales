@@ -34,7 +34,7 @@ TARGET_DATABASE = {
     }
 }
 
-# --- KAMUS "BELAJAR" OTOMATIS (KEYWORD MATCHING) ---
+# --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
 BRAND_ALIASES = {
     # AKBAR
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
@@ -115,9 +115,12 @@ SALES_MAPPING = {
 
 # --- HELPER FUNCTION: FORMAT RUPIAH ---
 def format_idr(value):
-    return f"Rp {value:,.0f}".replace(",", ".")
+    try:
+        return f"Rp {value:,.0f}".replace(",", ".")
+    except:
+        return "Rp 0"
 
-# --- 1. FUNGSI LOAD DATA ---
+# --- 1. FUNGSI LOAD DATA (ROBUST) ---
 @st.cache_data(ttl=3600) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
@@ -126,28 +129,34 @@ def load_data():
     except Exception as e:
         return None
 
-    if 'Penjualan' in df.columns:
-        df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
-        df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
+    # VALIDASI KOLOM PENTING (Mencegah Crash jika format excel berubah)
+    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
+    if not all(col in df.columns for col in required_cols):
+        return None
 
-    if 'Merk' in df.columns:
-        def normalize_brand(raw_brand):
-            raw_upper = str(raw_brand).upper()
-            for target_brand, keywords in BRAND_ALIASES.items():
-                for keyword in keywords:
-                    if keyword in raw_upper:
-                        return target_brand
-            return raw_brand
-        df['Merk'] = df['Merk'].apply(normalize_brand)
+    # 1. Normalisasi Nama Sales
+    df['Penjualan'] = df['Penjualan'].astype(str).str.strip()
+    df['Penjualan'] = df['Penjualan'].replace(SALES_MAPPING)
 
-    if 'Jumlah' in df.columns:
-        df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
-        df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
-        df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+    # 2. Normalisasi Nama Brand
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items():
+            for keyword in keywords:
+                if keyword in raw_upper:
+                    return target_brand
+        return raw_brand
+    df['Merk'] = df['Merk'].apply(normalize_brand)
+
+    # 3. Cleaning Angka (Handle error conversion)
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
+    df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
+    df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    if 'Tanggal' in df.columns:
-        df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
+    # 4. Cleaning Tanggal
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
 
+    # 5. Cleaning Kolom Teks Lain
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -193,8 +202,10 @@ def main_dashboard():
             st.rerun()
 
     df = load_data()
-    if df is None:
-        st.error("⚠️ Gagal memuat data! Pastikan Link Google Sheet benar.")
+    
+    # ERROR HANDLING: Jika data gagal dimuat atau kosong
+    if df is None or df.empty:
+        st.error("⚠️ Gagal memuat data! Periksa Link Google Sheet atau Format Kolom.")
         return
 
     # --- FILTER TANGGAL ---
@@ -211,7 +222,7 @@ def main_dashboard():
 
     total_omset_perusahaan = df_global_period['Jumlah'].sum()
 
-    # --- LOGIKA FILTER SALES & SUPERVISOR (DINAMIS BERDASARKAN BRAND) ---
+    # --- LOGIKA FILTER SALES & SUPERVISOR ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
@@ -219,7 +230,7 @@ def main_dashboard():
     
     is_supervisor_account = my_name_key in TARGET_DATABASE
 
-    # 1. LOGIKA MANAGER/DIREKTUR
+    # 1. MANAGER
     if role == 'manager':
         sales_list = ["SEMUA"] + sorted(list(df_global_period['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
@@ -228,7 +239,7 @@ def main_dashboard():
         else:
             df_view = df_global_period[df_global_period['Penjualan'] == target_sales_filter]
 
-    # 2. LOGIKA SUPERVISOR
+    # 2. SUPERVISOR
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_supervisor_scope = df_global_period[df_global_period['Merk'].isin(my_brands)]
@@ -241,7 +252,7 @@ def main_dashboard():
         else:
             df_view = df_supervisor_scope[df_supervisor_scope['Penjualan'] == target_sales_filter]
 
-    # 3. LOGIKA SALES BIASA
+    # 3. SALES
     else:
         target_sales_filter = my_name
         df_view = df_global_period[df_global_period['Penjualan'] == my_name]
@@ -267,7 +278,7 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- RAPOR TARGET MANAGER & SUPERVISOR (TABEL) ---
+        # --- TABEL RAPOR TARGET MANAGER & SUPERVISOR ---
         show_rapor = False
         if role == 'manager' and target_sales_filter == "SEMUA":
             show_rapor = True
@@ -278,14 +289,18 @@ def main_dashboard():
             st.markdown("### 🏢 Rapor Target (Brand Focus)")
             with st.expander("Klik untuk melihat Detail Target", expanded=True):
                 summary_data = []
-                
                 target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
 
                 for spv, brands_dict in target_loop:
                     for brand, target in brands_dict.items():
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
-                        pct_val = (realisasi / target) * 100 if target > 0 else 0
+                        # SAFE DIVISION (Anti-Zero Error)
+                        if target > 0:
+                            pct_val = (realisasi / target) * 100
+                        else:
+                            pct_val = 0
+                        
                         status_text = "✅" if pct_val >= 80 else "⚠️"
                         
                         summary_data.append({
@@ -306,13 +321,14 @@ def main_dashboard():
                     return [f'background-color: {color}; color: black'] * len(row)
 
                 st.dataframe(
+                    # HIDE HELPER COLUMN
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
                             "Bar",
-                            format=" ", # KOSONGKAN TEKS
+                            format=" ", 
                             min_value=0,
                             max_value=1,
                         ),
@@ -416,6 +432,7 @@ def main_dashboard():
                 with st.expander(f"Rincian Kontribusi {target_sales_filter} terhadap Target Tim", expanded=True):
                     df_target_breakdown = pd.DataFrame(brand_data)
                     st.dataframe(
+                        # HIDE HELPER COLUMN
                         df_target_breakdown.style.hide(axis="columns", subset=['_pct_val']),
                         use_container_width=True, 
                         hide_index=True,
