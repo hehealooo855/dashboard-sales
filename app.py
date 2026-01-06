@@ -120,7 +120,7 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- 1. FUNGSI LOAD DATA (ROBUST) ---
+# --- 1. FUNGSI LOAD DATA ---
 @st.cache_data(ttl=3600) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
@@ -129,7 +129,7 @@ def load_data():
     except Exception as e:
         return None
 
-    # VALIDASI KOLOM PENTING (Mencegah Crash jika format excel berubah)
+    # VALIDASI KOLOM (Mencegah Crash)
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
         return None
@@ -148,7 +148,7 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand)
 
-    # 3. Cleaning Angka (Handle error conversion)
+    # 3. Cleaning Angka
     df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False)
     df['Jumlah'] = df['Jumlah'].str.split(',').str[0]
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
@@ -156,7 +156,6 @@ def load_data():
     # 4. Cleaning Tanggal
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
 
-    # 5. Cleaning Kolom Teks Lain
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -203,7 +202,6 @@ def main_dashboard():
 
     df = load_data()
     
-    # ERROR HANDLING: Jika data gagal dimuat atau kosong
     if df is None or df.empty:
         st.error("⚠️ Gagal memuat data! Periksa Link Google Sheet atau Format Kolom.")
         return
@@ -295,7 +293,6 @@ def main_dashboard():
                     for brand, target in brands_dict.items():
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
                         
-                        # SAFE DIVISION (Anti-Zero Error)
                         if target > 0:
                             pct_val = (realisasi / target) * 100
                         else:
@@ -320,8 +317,8 @@ def main_dashboard():
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
+                # APPLY STYLE LALU HIDE KOLOM HELPER (_pct_raw)
                 st.dataframe(
-                    # HIDE HELPER COLUMN
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
                     use_container_width=True,
                     hide_index=True,
@@ -431,9 +428,14 @@ def main_dashboard():
             if brand_data:
                 with st.expander(f"Rincian Kontribusi {target_sales_filter} terhadap Target Tim", expanded=True):
                     df_target_breakdown = pd.DataFrame(brand_data)
+                    
+                    def highlight_row(row):
+                        color = '#d4edda' if row['_pct_val'] >= 80 else '#f8d7da'
+                        return [f'background-color: {color}; color: black'] * len(row)
+
+                    # APPLY STYLE LALU HIDE KOLOM HELPER (_pct_val)
                     st.dataframe(
-                        # HIDE HELPER COLUMN
-                        df_target_breakdown.style.hide(axis="columns", subset=['_pct_val']),
+                        df_target_breakdown.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['_pct_val']),
                         use_container_width=True, 
                         hide_index=True,
                         column_config={
