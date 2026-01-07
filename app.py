@@ -14,27 +14,27 @@ st.set_page_config(page_title="Executive Sales Dashboard", layout="wide", page_i
 # Target per Brand (Untuk Rapor Manager & SPV)
 TARGET_DATABASE = {
     "LISMAN": {
-        "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
-        "Dorskin": 50_000_000, "Gloow & Be": 100_000_000,
-        "Javinci": 1_300_000_000, "Madam G": 100_000_000, "Careso": 400_000_000,
-        "Artist Inc": 130_000_000, "Newlab": 150_000_000, "Mlen": 0
+        "Bonavie": 50_000_000, "Whitelab": 150_000_000, "Goute": 50_000_000,
+        "Dorskin": 20_000_000, "Gloow & Be": 130_000_000,
+        "Javinci": 1_300_000_000, "Careso": 400_000_000,
+        "Artist Inc": 130_000_000, "Newlab": 150_000_000, "Mlen": 100_000_000
     },
     "AKBAR": {
-        "Thai": 300_000_000, "Inesia": 100_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000,
+        "Thai": 300_000_000, "Inesia": 100_000_000,
         "Y2000": 180_000_000, "Diosys": 520_000_000, 
-        "Sociolla": 600_000_000, "Skin1004": 400_000_000,
-        "Masami": 40_000_000, "Oimio": 0, "Cassandra": 30_000_000, "Clinelle": 80_000_000
+        "Sociolla": 600_000_000, "Skin1004": 300_000_000,
+        "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000
     },
     "WILLIAM": {
         "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0,
-        "Beautica": 100_000_000, "Walnutt": 50_000_000, "Elizabeth Rose": 50_000_000,
-        "Maskit": 100_000_000, "Claresta": 350_000_000, "Birth Beyond": 120_000_000,
+        "Beautica": 100_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000,
+        "Maskit": 30_000_000, "Claresta": 300_000_000, "Birth Beyond": 120_000_000,
         "OtwooO": 200_000_000, "Saviosa": 0, "Rose All Day": 50_000_000
     },
     "MADONG": {
         "Ren & R & L": 20_000_000, "Sekawan": 350_000_000, "Avione": 250_000_000,
-        "SYB": 100_000_000, "Mad For Make Up": 50_000_000, "Satto": 500_000_000,
-        "Liora": 0, "Mykonos": 20_000_000, "Somethinc": 1_100_000_000
+        "SYB": 150_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000,
+        "Mykonos": 20_000_000, "Somethinc": 1_200_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000
     }
 }
 
@@ -383,15 +383,16 @@ def main_dashboard():
                         "Supervisor": spv, "Brand": brand,
                         "Target": format_idr(target), "Realisasi": format_idr(realisasi),
                         "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100,
-                        "Status": status_text, "_pct_raw": pct_val
+                        "Status": status_text, 
+                        "Ach (Detail %)": pct_val
                     })
             
             df_summary = pd.DataFrame(summary_data)
             def color_row(row):
-                return [f'background-color: {"#d4edda" if row["_pct_raw"] >= 80 else "#f8d7da"}; color: black'] * len(row)
+                return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: black'] * len(row)
 
             st.dataframe(
-                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['_pct_raw']),
+                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']),
                 use_container_width=True, hide_index=True,
                 column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
             )
