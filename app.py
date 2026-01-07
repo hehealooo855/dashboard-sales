@@ -16,12 +16,10 @@ st.set_page_config(
 # --- CUSTOM CSS UNTUK TAMPILAN PREMIUM & MOBILE FRIENDLY ---
 st.markdown("""
 <style>
-    /* Mengatur padding atas agar tidak terlalu kosong */
     .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1rem;
         padding-bottom: 3rem;
     }
-    /* Mempercantik Metrics */
     div[data-testid="stMetric"] {
         background-color: #f8f9fa;
         padding: 15px;
@@ -29,17 +27,15 @@ st.markdown("""
         border: 1px solid #dee2e6;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    /* Hide default menu */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Mobile Optimization */
+    /* Optimasi Mobile: Mengurangi padding di layar kecil */
     @media (max-width: 768px) {
         .block-container {
             padding-left: 1rem;
             padding-right: 1rem;
         }
     }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -146,7 +142,7 @@ SALES_MAPPING = {
 }
 
 # ==========================================
-# 2. CORE FUNCTIONS (OPTIMIZED)
+# 2. CORE FUNCTIONS
 # ==========================================
 
 def format_idr(value):
@@ -187,16 +183,20 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
+# --- FUNGSI LOAD DATA TERBARU (OPTIMIZED FOR PERFORMANCE) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
         url_with_ts = f"{url}&t={datetime.datetime.now().timestamp()}"
+        # Optimization: dtype=str to read fast, then process
         df = pd.read_csv(url_with_ts, dtype=str)
     except Exception as e:
         return None
 
+    # Cleaning Column Names
     df.columns = df.columns.str.strip()
+
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
         return None
@@ -210,8 +210,8 @@ def load_data():
         df = df[~df['Nama Barang'].astype(str).str.contains('Total|Jumlah', case=False, na=False)]
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
-    # --- NORMALIZATION & OPTIMIZATION (Memory Efficiency) ---
-    # Convert ke category untuk hemat memori
+    # --- NORMALIZATION & OPTIMIZATION ---
+    # Convert 'Merk' and 'Penjualan' to categorical to save memory on large datasets
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING).astype('category')
     
     def normalize_brand(raw_brand):
@@ -221,7 +221,8 @@ def load_data():
                 if keyword in raw_upper: return target_brand
         return raw_brand
     
-    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category') # Convert to category
+    # Apply normalization then convert to category
+    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
     # --- NUMERIC CLEANING (FORCE MODE) ---
     df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
@@ -233,9 +234,8 @@ def load_data():
         return val
     df['Jumlah'] = df['Jumlah'].apply(auto_fix_thousands)
 
-    # --- DATE CLEANING (SWAP FIX & Mixed Format Handling) ---
-    # format='mixed' helps pandas guess dayfirst correctly in ambiguous situations
-    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
+    # --- DATE CLEANING (SWAP FIX) ---
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     
     def fix_swapped_date(d):
         if pd.isnull(d): return d
@@ -249,7 +249,7 @@ def load_data():
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
 
-    # Final Type Casting
+    # Final Type Casting for other columns
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -342,8 +342,7 @@ def main_dashboard():
     target_sales_filter = "SEMUA"
 
     if role == 'manager':
-        # Optimize unique list retrieval for large dataset
-        sales_list = ["SEMUA"] + sorted(list(df_view_global['Penjualan'].unique()))
+        sales_list = ["SEMUA"] + sorted(list(df_view_global['Penjualan'].unique())) # Dropna removed as it is categorical
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         if target_sales_filter == "SEMUA":
             df_active = df_view_global
@@ -421,7 +420,7 @@ def main_dashboard():
 
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
-                    # Optimization: Filter per brand from global data
+                    # Calculate per brand from global view
                     realisasi = df_view_global[df_view_global['Merk'] == brand]['Jumlah'].sum()
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
                     status_text = "✅" if pct_val >= 80 else "⚠️"
@@ -475,7 +474,7 @@ def main_dashboard():
         st.subheader("Grafik Tren Penjualan Harian")
         if not df_active.empty:
             daily_trend = df_active.groupby('Tanggal')['Jumlah'].sum().reset_index()
-            # Optimization: use_container_width for Mobile Responsiveness
+            # Optimization: use_container_width for Mobile
             fig = px.line(daily_trend, x='Tanggal', y='Jumlah', markers=True, title="Pergerakan Omset Harian")
             fig.update_layout(xaxis_title="", yaxis_title="Omset (Rp)", hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True)
