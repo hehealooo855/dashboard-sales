@@ -4,7 +4,7 @@ import plotly.express as px
 import datetime
 import time
 import re
-import pytz # Library untuk Zona Waktu
+import pytz 
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
@@ -53,9 +53,50 @@ TARGET_DATABASE = {
         "OtwooO": 200_000_000, "Saviosa": 0, "Rose All Day": 50_000_000
     },
     "MADONG": {
-        "Ren & R & L": 20_000_000, "Sekawan": 350_000_000, "Avione": 250_000_000,
-        "SYB": 150_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000,
-        "Mykonos": 20_000_000, "Somethinc": 1_200_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000
+        "Ren & R & L": 20_000_000, 
+        "Sekawan": 600_000_000, # Brand Ainie (Total Tim)
+        "Avione": 300_000_000, # Brand Avione (Total Tim)
+        "SYB": 150_000_000, 
+        "Mad For Make Up": 25_000_000, 
+        "Satto": 500_000_000,
+        "Mykonos": 20_000_000, 
+        "Somethinc": 1_200_000_000, 
+        "Honor": 125_000_000, 
+        "Vlagio": 75_000_000
+    }
+}
+
+# --- DATABASE TARGET INDIVIDU (FITUR BARU) ---
+INDIVIDUAL_TARGETS = {
+    "WIRA": {
+        "Somethinc": 660_000_000, 
+        "SYB": 75_000_000, 
+        "Honor": 37_500_000, 
+        "Vlagio": 22_500_000
+    },
+    "HAMZAH": {
+        "Somethinc": 540_000_000, 
+        "SYB": 75_000_000,
+        "Sekawan": 60_000_000, # Ainie
+        "Avione": 60_000_000,
+        "Honor": 37_500_000,
+        "Vlagio": 22_500_000
+    },
+    "ROZY": {
+        "Sekawan": 100_000_000, # Ainie
+        "Avione": 100_000_000
+    },
+    "NOVI": {
+        "Sekawan": 90_000_000, # Ainie (Novi & Raffi)
+        "Avione": 90_000_000
+    },
+    "DANI": {
+        "Sekawan": 50_000_000, # Ainie
+        "Avione": 50_000_000
+    },
+    "FERI": {
+        "Honor": 50_000_000,
+        "Vlagio": 30_000_000
     }
 }
 
@@ -114,7 +155,7 @@ SALES_MAPPING = {
     "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", "RINI JV": "RINI",
     "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "DWI CRS": "DWI",
     "DWI NLAB": "DWI", "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA"
+    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI" # Mapped Dani
 }
 
 # ==========================================
@@ -365,19 +406,32 @@ def main_dashboard():
     if role == 'manager' or is_supervisor_account:
         st.markdown("### 🎯 Target Monitor")
         
-        # Realisasi Nasional (Always Global)
-        realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
-        
-        render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
-        
-        if is_supervisor_account:
-            target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
-            my_brands_list = TARGET_DATABASE[my_name_key].keys()
-            df_spv_only = df[df['Merk'].isin(my_brands_list)]
-            if len(date_range)==2:
-                df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
+        # 1. Target Nasional (Muncul untuk SEMUA)
+        if target_sales_filter == "SEMUA":
+            realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
+            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
             
-            render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
+            if is_supervisor_account:
+                target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
+                my_brands_list = TARGET_DATABASE[my_name_key].keys()
+                df_spv_only = df[df['Merk'].isin(my_brands_list)]
+                if len(date_range)==2:
+                    df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
+                
+                render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
+        
+        # 2. Target Individu Spesifik (Jika Filter != SEMUA)
+        elif target_sales_filter in INDIVIDUAL_TARGETS:
+            st.info(f"📋 Target Spesifik Individu: **{target_sales_filter}**")
+            targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
+            
+            for brand, target_val in targets_map.items():
+                # Hitung realisasi sales ini khusus untuk brand ini
+                realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
+                render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target_val)
+                
+        else:
+            st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik yang terdaftar.")
         
         st.markdown("---")
 
@@ -413,8 +467,10 @@ def main_dashboard():
                 use_container_width=True, hide_index=True,
                 column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
             )
+        elif target_sales_filter in INDIVIDUAL_TARGETS:
+             st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Individual Sales View
+            # Individual Sales View (Fallback / Non-Specific Target)
             st.info(f"Menampilkan kontribusi: **{target_sales_filter}**")
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
