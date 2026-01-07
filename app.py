@@ -43,9 +43,8 @@ SUPERVISOR_TOTAL_TARGETS = {
 }
 TARGET_NASIONAL_VAL = 9_390_000_000
 
-# --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
+# --- KAMUS BRAND ALIASES ---
 BRAND_ALIASES = {
-    # AKBAR
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
     "Y2000": ["Y2000", "Y 2000", "Y-2000"], 
     "Masami": ["MASAMI", "JAYA"],
@@ -53,22 +52,16 @@ BRAND_ALIASES = {
     "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"],
     "Oimio": ["OIMIO"], "Clinelle": ["CLINELLE"],
-
-    # MADONG
     "Ren & R & L": ["REN", "R & L", "R&L"], 
     "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], 
     "Avione": ["AVIONE"], "SYB": ["SYB"], "Satto": ["SATTO"],
     "Liora": ["LIORA"], "Mykonos": ["MYKONOS"], "Somethinc": ["SOMETHINC"],
-
-    # LISMAN
     "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW"],
     "Artist Inc": ["ARTIST", "ARTIS"],
     "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"], "Goute": ["GOUTE"],
     "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"],
-
-    # WILLIAM
     "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"],
     "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
@@ -128,35 +121,35 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- HELPER: CUSTOM PROGRESS BAR (LOGIKA WARNA & CENTER TEXT) ---
+# --- HELPER: CUSTOM PROGRESS BAR (VERSI FINAL) ---
 def render_custom_progress(title, current, target):
     if target == 0: target = 1
     pct = (current / target) * 100
-    visual_pct = min(pct, 100) # Cap bar visual at 100%
+    visual_pct = min(pct, 100)
     
-    # --- LOGIKA WARNA TRAFFIC LIGHT ---
+    # --- LOGIKA WARNA (Traffic Light) ---
     if pct < 50:
-        # Merah (Red)
-        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)"
+        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" # Merah
     elif 50 <= pct < 80:
-        # Kuning (Yellow/Orange)
-        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)"
+        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" # Kuning
     else:
-        # Hijau (Green)
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" # Hijau
 
     text_label = f"{pct:.1f}%"
     
     st.markdown(f"""
-    <div style="margin-bottom: 15px; background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;">
+    <div style="margin-bottom: 20px; background-color: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-weight: 700; font-size: 15px; color: #2c3e50;">{title}</span>
-            <span style="font-weight: 600; color: #555; font-size: 14px;">{format_idr(current)} <span style="color:#aaa; font-weight:normal;">/ {format_idr(target)}</span></span>
+            <span style="font-weight: 600; color: #555; font-size: 14px;">{format_idr(current)} <span style="color:#999; font-weight:normal;">/ {format_idr(target)}</span></span>
         </div>
-        <div style="width: 100%; background-color: #ecf0f1; border-radius: 20px; height: 24px; position: relative; overflow: hidden;">
-            <div style="width: {visual_pct}%; background: {bar_color}; height: 100%; border-radius: 20px; transition: width 1s ease-in-out;"></div>
+        <div style="width: 100%; background-color: #ecf0f1; border-radius: 20px; height: 26px; position: relative; overflow: hidden;">
+            <div style="width: {visual_pct}%; background: {bar_color}; height: 100%; border-radius: 20px; transition: width 0.8s ease;"></div>
             
-            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #333; text-shadow: 0 0 4px #fff, 0 0 4px #fff;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+                        display: flex; align-items: center; justify-content: center; 
+                        z-index: 10; font-weight: 800; font-size: 13px; color: #222; 
+                        text-shadow: 0px 0px 4px #ffffff, 0px 0px 4px #ffffff;">
                 {text_label}
             </div>
         </div>
