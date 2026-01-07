@@ -39,7 +39,6 @@ TARGET_DATABASE = {
 }
 
 # --- FITUR TAMBAHAN: HITUNG OTOMATIS TARGET SPV ---
-# Agar tidak perlu hitung kalkulator manual jika target brand berubah
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
 TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 
@@ -180,15 +179,17 @@ def load_data():
         return raw_brand
     
     df['Merk'] = df['Merk'].apply(normalize_brand)
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False).str.split(',').str[0]
+    
+    # --- FIX 1: FORMAT ANGKA ANTI-ERROR (Hapus Semua Kecuali Angka) ---
+    df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # --- FITUR TAMBAHAN: AUTO FIX TANGGAL TERBALIK (Excel US vs Indo) ---
+    # --- FIX 2: TANGGAL TERBALIK (US vs INDO) ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     
     def fix_swapped_date(d):
         if pd.isnull(d): return d
-        # Jika hari <= 12 dan hari != bulan, kemungkinan tertukar (Contoh 5/1 terbaca 1 Mei, harusnya 5 Jan)
+        # Jika hari <= 12 dan hari != bulan, kemungkinan tertukar
         try:
             if d.day <= 12 and d.day != d.month:
                 return d.replace(day=d.month, month=d.day)
@@ -196,7 +197,6 @@ def load_data():
             pass
         return d
 
-    # Terapkan perbaikan tanggal
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
 
@@ -346,7 +346,6 @@ def main_dashboard():
         render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
 
         if is_supervisor_account:
-            # Menggunakan target total yang dihitung otomatis dari TARGET_DATABASE
             target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
             my_brands_list = TARGET_DATABASE[my_name_key].keys()
             realisasi_pribadi = df_view_global[df_view_global['Merk'].isin(my_brands_list)]['Jumlah'].sum()
