@@ -2,11 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import datetime
-import calendar
 import re 
 
 # --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Sales Dashboard Pro", layout="wide")
+st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # --- DATABASE TARGET ---
 TARGET_DATABASE = {
@@ -37,6 +36,7 @@ TARGET_DATABASE = {
 
 # --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
 BRAND_ALIASES = {
+    # AKBAR
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], 
     "Y2000": ["Y2000", "Y 2000", "Y-2000"], 
     "Masami": ["MASAMI", "JAYA"],
@@ -44,16 +44,22 @@ BRAND_ALIASES = {
     "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"],
     "Oimio": ["OIMIO"], "Clinelle": ["CLINELLE"],
+
+    # MADONG
     "Ren & R & L": ["REN", "R & L", "R&L"], 
     "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], 
     "Avione": ["AVIONE"], "SYB": ["SYB"], "Satto": ["SATTO"],
     "Liora": ["LIORA"], "Mykonos": ["MYKONOS"], "Somethinc": ["SOMETHINC"],
+
+    # LISMAN
     "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW"],
     "Artist Inc": ["ARTIST", "ARTIS"],
     "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"], "Goute": ["GOUTE"],
     "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"],
+
+    # WILLIAM
     "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"],
     "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
@@ -113,8 +119,8 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- 1. FUNGSI LOAD DATA ---
-@st.cache_data(ttl=60) # Set 60 detik agar update lebih cepat
+# --- 1. FUNGSI LOAD DATA (ROBUST) ---
+@st.cache_data(ttl=60) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
@@ -124,7 +130,7 @@ def load_data():
     except Exception as e:
         return None
 
-    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal', 'Nama Barang', 'Nama Outlet']
+    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
         return None
 
@@ -163,7 +169,7 @@ def load_users():
 
 # --- 3. HALAMAN LOGIN ---
 def login_page():
-    st.markdown("<h1 style='text-align: center;'>🔒 Login Sales Dashboard Pro</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🔒 Login Sales Dashboard</h1>", unsafe_allow_html=True)
     users = load_users()
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
@@ -268,37 +274,37 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- HITUNG PROYEKSI (FORECAST) ---
-        # Hanya hitung jika periode mencakup hari ini atau bulan berjalan
-        today = datetime.date.today()
-        forecast_msg = ""
+        # --- HITUNG PROGRESS TOTAL (REPLACEMENT FOR FORECAST) ---
+        # Target Total Nasional sesuai request: Rp 9.390.000.000
+        TARGET_NASIONAL = 9_390_000_000
         
-        if len(date_range) == 2:
-            start_date, end_date = date_range
-            # Cek apakah kita melihat bulan ini
-            if start_date.month == today.month and start_date.year == today.year:
-                days_passed = today.day
-                last_day_of_month = calendar.monthrange(today.year, today.month)[1]
-                remaining_days = last_day_of_month - days_passed
-                
-                if days_passed > 0:
-                    daily_avg = total_omset / days_passed
-                    projected_total = total_omset + (daily_avg * remaining_days)
-                    forecast_msg = f"🔮 Proyeksi Akhir Bulan: **{format_idr(projected_total)}** (Avg: {format_idr(daily_avg)}/hari)"
+        progress_pct = (total_omset / TARGET_NASIONAL) * 100
+        progress_msg = f"🎯 Progress Nasional: **{progress_pct:.1f}%** dari Target Rp 9,39 M"
 
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Omset", format_idr(total_omset))
-            if forecast_msg:
-                st.markdown(f"<div style='font-size:12px; color:#2980b9;'>{forecast_msg}</div>", unsafe_allow_html=True)
+            # Menampilkan Progress di bawah Total Omset
+            st.markdown(f"<div style='font-size:14px; color:#27ae60;'>{progress_msg}</div>", unsafe_allow_html=True)
         with col2:
             st.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
         with col3:
-            st.metric("Transaksi", f"{len(df_view)} Invoice")
+            if not df_global_period.empty:
+                st.caption("Market Share / Kontribusi")
+                if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
+                    sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
+                    fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
+                else:
+                    omset_lainnya = total_omset_perusahaan - total_omset
+                    fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
+                
+                fig_share.update_traces(textposition='inside', textinfo='percent')
+                fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120)
+                st.plotly_chart(fig_share, use_container_width=True)
 
         st.divider()
 
-        # --- TABS ANALISIS (VALUE ADDED FEATURES) ---
+        # --- TABS ANALISIS ---
         tab1, tab2, tab3 = st.tabs(["📊 Rapor Target", "🏆 Top Performance", "📉 Rincian Data"])
 
         with tab1:
@@ -348,19 +354,24 @@ def main_dashboard():
                     hide_index=True,
                     column_config={
                         "Pencapaian": st.column_config.ProgressColumn(
-                            "Bar", format=" ", min_value=0, max_value=1,
+                            "Bar",
+                            format=" ", 
+                            min_value=0,
+                            max_value=1,
                         ),
                         "Status": st.column_config.TextColumn("Ket")
                     }
                 )
             
-            # --- DETAIL TARGET JIKA SALES DIPILIH ---
+            # --- DETAIL TARGET PER BRAND (JIKA SALES DIPILIH) ---
             else:
                 sales_brands = df_view['Merk'].unique()
                 brand_data = []
+                
                 for brand in sales_brands:
                     target_found = 0
                     spv_name = "-"
+                    
                     for spv, brands_dict in TARGET_DATABASE.items():
                         if brand in brands_dict:
                             target_found = brands_dict[brand]
@@ -370,6 +381,7 @@ def main_dashboard():
                     if target_found > 0:
                         realisasi_sales = df_view[df_view['Merk'] == brand]['Jumlah'].sum()
                         pct = (realisasi_sales / target_found) * 100
+                        
                         brand_data.append({
                             "Brand": brand,
                             "Supervisor": spv_name,
@@ -384,56 +396,38 @@ def main_dashboard():
                     df_target_breakdown = pd.DataFrame(brand_data)
                     st.dataframe(
                         df_target_breakdown.style.hide(axis="columns", subset=['_pct_val']),
-                        use_container_width=True, hide_index=True,
-                        column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
+                        use_container_width=True, 
+                        hide_index=True,
+                        column_config={
+                            "Pencapaian": st.column_config.ProgressColumn(
+                                "Bar",
+                                format=" ", 
+                                min_value=0,
+                                max_value=1,
+                            ),
+                        }
                     )
                 else:
-                    st.info("Pilih 'SEMUA' (Manager/SPV) untuk melihat Rapor Lengkap, atau data sales ini tidak memiliki target Brand spesifik.")
+                    st.info("Pilih 'SEMUA' untuk melihat Rapor Lengkap Supervisor.")
 
         with tab2:
-            # --- FITUR ANALISIS BARU: TOP PRODUCT & OUTLET ---
             c1, c2 = st.columns(2)
             with c1:
-                st.subheader("📦 Top 10 Produk Terlaris")
+                st.subheader("📦 Top 10 Produk")
                 top_products = df_view.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
                 fig_prod = px.bar(top_products, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s')
                 fig_prod.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_prod, use_container_width=True)
             
             with c2:
-                st.subheader("🏪 Top 10 Toko (Omset)")
+                st.subheader("🏪 Top 10 Toko")
                 top_outlets = df_view.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
                 fig_outlet = px.bar(top_outlets, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#2ecc71'])
                 fig_outlet.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_outlet, use_container_width=True)
 
-            # --- FITUR ANALISIS BARU: OUTLET PASIF ---
-            if role == 'manager' or is_supervisor_account:
-                st.divider()
-                st.subheader("⚠️ Outlet Pasif (Belum Belanja Periode Ini)")
-                # Asumsi: Kita bandingkan dengan semua outlet yang PERNAH belanja di database ini (historical)
-                # Ambil semua outlet unik dari df global (sepanjang masa) yang relevan dengan filter user
-                # Note: Ini basic logic. Idealnya ada database master outlet.
-                
-                # Scope filter brand
-                if is_supervisor_account:
-                     my_brands_list = TARGET_DATABASE[my_name_key].keys()
-                     all_time_outlets = df[df['Merk'].isin(my_brands_list)]['Nama Outlet'].unique()
-                else:
-                     all_time_outlets = df['Nama Outlet'].unique()
-
-                active_outlets_now = df_view['Nama Outlet'].unique()
-                inactive = set(all_time_outlets) - set(active_outlets_now)
-                
-                if inactive:
-                    st.warning(f"Ada {len(inactive)} Outlet langganan yang belum order di periode ini.")
-                    with st.expander("Lihat Daftar Outlet Pasif"):
-                        st.dataframe(pd.DataFrame(list(inactive), columns=["Nama Outlet"]), use_container_width=True)
-                else:
-                    st.success("Luar biasa! Semua outlet langganan sudah belanja periode ini.")
-
         with tab3:
-            # --- TABEL RINCIAN DATA (YANG LAMA) ---
+            # --- TABEL RINCIAN DATA ---
             st.subheader("📋 Rincian Transaksi")
             target_cols = ['Tanggal', 'Nama Outlet', 'Merk', 'Jumlah', 'Penjualan']
             final_cols = [c for c in target_cols if c in df_view.columns]
@@ -447,6 +441,7 @@ def main_dashboard():
                     "Jumlah": st.column_config.NumberColumn("Omset (Rp)", format="Rp %d")
                 }
             )
+
             csv_data = df_view[final_cols].sort_values('Tanggal', ascending=False).to_csv(index=False).encode('utf-8')
             st.download_button(label="📥 Download Data Excel", data=csv_data, file_name="laporan_penjualan.csv", mime="text/csv")
 
