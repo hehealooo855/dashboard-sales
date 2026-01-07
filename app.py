@@ -155,31 +155,29 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# --- FUNGSI LOAD DATA TERBARU (DENGAN AUTO-FIX DARURAT) ---
+# --- FUNGSI LOAD DATA TERBARU (FIXED NUMBER & DATE & TOTAL ROWS) ---
 @st.cache_data(ttl=60) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
         url_with_ts = f"{url}&t={datetime.datetime.now().timestamp()}"
-        # PENTING: Baca semua sebagai string (dtype=str) untuk mencegah konversi angka otomatis yang salah
-        df = pd.read_csv(url_with_ts, dtype=str)
+        df = pd.read_csv(url_with_ts)
     except Exception as e:
         return None
-
-    # Normalisasi Nama Kolom (Jaga-jaga ada spasi)
-    df.columns = df.columns.str.strip()
 
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
         return None
 
-    # --- TAHAP 1: HAPUS BARIS SAMPAH (TOTAL/SUBTOTAL) ---
+    # --- FIX 3: HAPUS BARIS SAMPAH (TOTAL/SUBTOTAL) ---
+    # Membuang baris yang mengandung kata Total, Jumlah, Subtotal, Grand
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.contains('Total|Jumlah|Subtotal|Grand', case=False, na=False)]
+    
     if 'Nama Barang' in df.columns:
         df = df[~df['Nama Barang'].astype(str).str.contains('Total|Jumlah', case=False, na=False)]
 
-    # --- TAHAP 2: CLEANING ---
+    # Cleaning Ops
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     
     def normalize_brand(raw_brand):
@@ -191,21 +189,18 @@ def load_data():
     
     df['Merk'] = df['Merk'].apply(normalize_brand)
     
-    # --- TAHAP 3: FIX ANGKA (SISTEM DARURAT) ---
-    # Langkah A: Hapus semua karakter aneh, sisakan angka saja
+    # --- FIX 1: FORMAT ANGKA ANTI-ERROR (Hapus Semua Kecuali Angka) ---
     df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # Langkah B: KOREKSI OTOMATIS JIKA < 1000
-    # Asumsi: Tidak ada penjualan di bawah Rp 1.000. Jika ada, berarti itu ribuan yang terpotong.
+    # --- FIX 1.5: LOGIKA DARURAT (Jika angka < 1000, kali 1000) ---
     def auto_fix_thousands(val):
         if 0 < val < 1000:
             return val * 1000
         return val
-    
     df['Jumlah'] = df['Jumlah'].apply(auto_fix_thousands)
-    
-    # --- TAHAP 4: FIX TANGGAL TERBALIK ---
+
+    # --- FIX 2: TANGGAL TERBALIK (US vs INDO) ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     
     def fix_swapped_date(d):
@@ -220,7 +215,6 @@ def load_data():
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
 
-    # Pastikan string
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
