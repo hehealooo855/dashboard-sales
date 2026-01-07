@@ -155,7 +155,8 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# --- FUNGSI LOAD DATA TERBARU (FIXED NUMBER & DATE) ---
+
+
 @st.cache_data(ttl=60) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
@@ -169,6 +170,15 @@ def load_data():
     if not all(col in df.columns for col in required_cols):
         return None
 
+    # --- FIX 3: HAPUS BARIS SAMPAH (TOTAL/SUBTOTAL) ---
+    # Ini langkah krusial untuk mencegah selisih angka 450jt vs 401jt
+    # Kita buang baris yang nama outletnya mengandung kata "Total", "Jumlah", dll.
+    if 'Nama Outlet' in df.columns:
+        df = df[~df['Nama Outlet'].astype(str).str.contains('Total|Jumlah|Subtotal|Grand', case=False, na=False)]
+    
+    if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.contains('Total|Jumlah', case=False, na=False)]
+
     # Cleaning Ops
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     
@@ -181,17 +191,15 @@ def load_data():
     
     df['Merk'] = df['Merk'].apply(normalize_brand)
     
-    # --- FIX 1: FORMAT ANGKA ANTI-ERROR (Hapus Semua Kecuali Angka) ---
-    # Ini memperbaiki masalah 400,000,000 menjadi 400
+    # --- FIX 1: FORMAT ANGKA ANTI-ERROR ---
     df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # --- FIX 2: TANGGAL TERBALIK (US vs INDO) ---
+    # --- FIX 2: TANGGAL TERBALIK ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     
     def fix_swapped_date(d):
         if pd.isnull(d): return d
-        # Jika hari <= 12 dan hari != bulan, kemungkinan tertukar (Contoh: 5/1 terbaca 1 Mei, harusnya 5 Jan)
         try:
             if d.day <= 12 and d.day != d.month:
                 return d.replace(day=d.month, month=d.day)
