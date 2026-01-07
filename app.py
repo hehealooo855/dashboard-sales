@@ -13,15 +13,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS untuk tampilan lebih bersih
+# Custom CSS
 st.markdown("""
 <style>
     .metric-card {
-        border: 1px solid #e6e6e6;
-        padding: 20px;
-        border-radius: 10px;
-        background-color: #ffffff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px;
+        background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
@@ -32,7 +29,6 @@ st.markdown("""
 # ==========================================
 # 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
-# Target per Brand
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 150_000_000, "Goute": 50_000_000,
@@ -54,8 +50,8 @@ TARGET_DATABASE = {
     },
     "MADONG": {
         "Ren & R & L": 20_000_000, 
-        "Sekawan": 600_000_000, # Brand Ainie (Total Tim)
-        "Avione": 300_000_000, # Brand Avione (Total Tim)
+        "Sekawan": 600_000_000, # Brand Ainie
+        "Avione": 300_000_000, 
         "SYB": 150_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
@@ -66,44 +62,19 @@ TARGET_DATABASE = {
     }
 }
 
-# --- DATABASE TARGET INDIVIDU (FITUR BARU) ---
+# --- DATABASE TARGET INDIVIDU ---
 INDIVIDUAL_TARGETS = {
-    "WIRA": {
-        "Somethinc": 660_000_000, 
-        "SYB": 75_000_000, 
-        "Honor": 37_500_000, 
-        "Vlagio": 22_500_000
-    },
-    "HAMZAH": {
-        "Somethinc": 540_000_000, 
-        "SYB": 75_000_000,
-        "Sekawan": 60_000_000, # Ainie
-        "Avione": 60_000_000,
-        "Honor": 37_500_000,
-        "Vlagio": 22_500_000
-    },
-    "ROZY": {
-        "Sekawan": 100_000_000, # Ainie
-        "Avione": 100_000_000
-    },
-    "NOVI": {
-        "Sekawan": 90_000_000, # Ainie (Novi & Raffi)
-        "Avione": 90_000_000
-    },
-    "DANI": {
-        "Sekawan": 50_000_000, # Ainie
-        "Avione": 50_000_000
-    },
-    "FERI": {
-        "Honor": 50_000_000,
-        "Vlagio": 30_000_000
-    }
+    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
+    "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
+    "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
+    "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
+    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
+    "FERI": { "Honor": 50_000_000, "Vlagio": 30_000_000 }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
 TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 
-# Dictionary Mapping (Database Knowledge)
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], "Y2000": ["Y2000", "Y 2000", "Y-2000"],
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
@@ -124,28 +95,29 @@ BRAND_ALIASES = {
 
 SALES_MAPPING = {
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "ROZY AINIE": "ROZY", 
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH",
-    "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH", "RISKA AV": "RISKA", "RISKA BN": "RISKA",
-    "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA",
-    "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA",
-    "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA",
-    "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA",
-    "SKIN - RIZKA": "RISKA", "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE",
-    "ADE JAVINCI": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE",
-    "ADE NEWLAB": "ADE", "DORS - ADE": "ADE", "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI",
-    "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI",
-    "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI",
-    "FANDY YLA": "FANDI", "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI",
-    "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI",
-    "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI",
-    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN",
-    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN",
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", # Mapping Baru
+    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
+    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
+    "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
+    "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
+    "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
+    "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
+    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", 
+    "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
+    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
+    "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", 
+    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI",
+    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
+    "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
+    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI",
+    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
+    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
     "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN",
     "BASTIAN-DIO 45": "BASTIAN", "YOGI REMAR": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI",
     "MILANO - YOGI": "YOGI", "FERI - HONOR": "FERI", "FERI - VG": "FERI", "FERI THAI": "FERI",
     "FERI - INESIA": "FERI", "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI",
     "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
-    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU",
+    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
     "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", "PMT-WIRA": "WIRA", "WIRA SOMETHINC": "WIRA",
     "WIRA SYB": "WIRA", "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", "MAS - MITHA": "MITHA",
@@ -155,15 +127,14 @@ SALES_MAPPING = {
     "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", "RINI JV": "RINI",
     "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "DWI CRS": "DWI",
     "DWI NLAB": "DWI", "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI" # Mapped Dani
+    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI"
 }
 
 # ==========================================
-# 3. CORE LOGIC & ENGINE
+# 3. CORE LOGIC
 # ==========================================
 
 def get_current_time_wib():
-    """Mengambil waktu server yang dipaksa ke WIB"""
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
 def format_idr(value):
@@ -178,11 +149,11 @@ def render_custom_progress(title, current, target):
     visual_pct = min(pct, 100)
     
     if pct < 50:
-        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" # Merah
+        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
     elif 50 <= pct < 80:
-        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" # Kuning
+        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else:
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" # Hijau
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -206,56 +177,57 @@ def render_custom_progress(title, current, target):
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
-        # Menambahkan parameter waktu agar cache Google Sheet tertipu dan memberikan data fresh
         url_with_ts = f"{url}&t={int(time.time())}"
-        df = pd.read_csv(url_with_ts)
+        df = pd.read_csv(url_with_ts, dtype=str)
     except Exception as e:
         return None
     
+    df.columns = df.columns.str.strip()
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
         return None
     
-    # --- PERFORMANCE FIX: Vectorized Filtering (50x Faster than .apply) ---
-    # Mengubah semua kolom jadi string, gabungkan, lalu cari kata kunci sampah
-    df_str = df.astype(str).agg(' '.join, axis=1)
-    # Hapus baris yang mengandung Total, Jumlah, atau Subtotal
-    df = df[~df_str.str.contains(r'Total|Jumlah|Subtotal|Grand', case=False, regex=True)]
+    # Cleaning Sampah
+    if 'Nama Outlet' in df.columns:
+        df = df[~df['Nama Outlet'].astype(str).str.contains('Total|Jumlah|Subtotal|Grand|Rekap', case=False, na=False)]
+        df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
+    if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.contains('Total|Jumlah', case=False, na=False)]
+        df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
+
+    # Normalisasi Sales & Brand
+    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING).astype('category')
     
-    # Cleaning Ops
-    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-    
-    # Pre-compile mapping untuk efisiensi
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
         for target_brand, keywords in BRAND_ALIASES.items():
             for keyword in keywords:
-                if keyword in raw_upper:
-                    return target_brand
+                if keyword in raw_upper: return target_brand
         return raw_brand
-    
-    df['Merk'] = df['Merk'].apply(normalize_brand)
+    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
     # Numeric Cleaning
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+    df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # Date Parsing (Handle Mixed Format & Swapped Dates)
+    def auto_fix_thousands(val):
+        if 0 < val < 1000: return val * 1000
+        return val
+    df['Jumlah'] = df['Jumlah'].apply(auto_fix_thousands)
+
+    # Date Cleaning
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
-    
-    # Fix Swapped Date (US vs ID Format Logic)
-    mask_swap = (df['Tanggal'].dt.day <= 12) & (df['Tanggal'].dt.day != df['Tanggal'].dt.month)
-    # Create corrected dates
-    swapped_dates = pd.to_datetime({
-        'year': df.loc[mask_swap, 'Tanggal'].dt.year,
-        'month': df.loc[mask_swap, 'Tanggal'].dt.day,
-        'day': df.loc[mask_swap, 'Tanggal'].dt.month
-    })
-    df.loc[mask_swap, 'Tanggal'] = swapped_dates
-    
+    def fix_swapped_date(d):
+        if pd.isnull(d): return d
+        try:
+            if d.day <= 12 and d.day != d.month:
+                return d.replace(day=d.month, month=d.day)
+        except:
+            pass
+        return d
+    df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
     
-    # Ensure other columns are string
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -269,13 +241,11 @@ def load_users():
         return pd.DataFrame()
 
 # ==========================================
-# 4. UI PAGES
+# 4. MAIN DASHBOARD LOGIC
 # ==========================================
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>Sistem Monitoring Penjualan Real-time</p>", unsafe_allow_html=True)
-    
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
@@ -301,16 +271,12 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
-    # --- Sidebar ---
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
-        
-        # Logout
         if st.button("🚪 Logout", use_container_width=True):
             st.session_state['logged_in'] = False
             st.rerun()
-            
         st.markdown("---")
         st.caption(f"Last Updated: {get_current_time_wib().strftime('%H:%M:%S')} WIB")
             
@@ -319,18 +285,19 @@ def main_dashboard():
         st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
         return
 
-    # --- FILTER SECTION ---
+    # --- FILTER ---
     st.sidebar.subheader("📅 Filter Periode")
+    col_p1, col_p2 = st.sidebar.columns(2)
+    if col_p1.button("Bulan Ini", use_container_width=True):
+        today = datetime.date.today()
+        st.session_state['start_date'] = today.replace(day=1)
+        st.session_state['end_date'] = today
+    
+    if 'start_date' not in st.session_state:
+        st.session_state['start_date'] = df['Tanggal'].max().date().replace(day=1)
+        st.session_state['end_date'] = df['Tanggal'].max().date()
 
-    # Timezone Aware Date
-    today_wib = get_current_time_wib().date()
-    max_date_data = df['Tanggal'].max().date()
-    
-    # Logic: Jika data hari ini belum masuk, pakai max date data. Jika sudah, pakai today.
-    default_end = max_date_data
-    default_start = default_end.replace(day=1) # Awal bulan dari data terakhir
-    
-    date_range = st.sidebar.date_input("Rentang Waktu", [default_start, default_end])
+    date_range = st.sidebar.date_input("Rentang Waktu", [st.session_state['start_date'], st.session_state['end_date']])
 
     # --- SCOPE LOGIC ---
     role = st.session_state['role']
@@ -339,7 +306,6 @@ def main_dashboard():
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
-    # -- 1. Tentukan Universe Data (df_scope_all) --
     if role == 'manager':
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
@@ -352,20 +318,20 @@ def main_dashboard():
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: # Sales Biasa
+    else: # Sales Biasa (ROZY, NOVI, dll masuk sini)
+        # PERBAIKAN LOGIKA: Set target_sales_filter ke nama sales login agar logic INDIVIDUAL_TARGETS jalan
+        target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
-    # -- 2. Filter Lanjutan --
+    # --- APPLY FILTER ---
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
         unique_brands = sorted(df_scope_all['Merk'].unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
         if pilih_merk: df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
-            
         unique_outlets = sorted(df_scope_all['Nama Outlet'].unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
 
-    # -- 3. Apply Time Filter --
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -374,39 +340,26 @@ def main_dashboard():
         df_active = df_scope_all
         ref_date = df['Tanggal'].max().date()
 
-    # --- MAIN DASHBOARD ---
+    # --- KPI METRICS ---
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
     
-    # --- KPI METRICS ---
     current_omset_total = df_active['Jumlah'].sum()
-    
-    # Logika Delta H vs H-1
     omset_hari_ini = df_scope_all[df_scope_all['Tanggal'].dt.date == ref_date]['Jumlah'].sum()
     prev_date = ref_date - datetime.timedelta(days=1)
     omset_kemarin = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-    
     delta_val = omset_hari_ini - omset_kemarin
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(
-            label="💰 Total Omset (Periode)", 
-            value=format_idr(current_omset_total), 
-            delta=f"{format_idr(delta_val)} (vs {prev_date.strftime('%d %b')})"
-        )
-        st.caption(f"📅 Omset Tgl {ref_date.strftime('%d %b')}: **{format_idr(omset_hari_ini)}**")
-        
-    with col2:
-        st.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
-    with col3:
-        st.metric("🧾 Transaksi", f"{len(df_active)}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{format_idr(delta_val)} (vs {prev_date.strftime('%d %b')})")
+    c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
+    c3.metric("🧾 Transaksi", f"{len(df_active)}")
 
-    # --- TARGET MONITOR ---
-    if role == 'manager' or is_supervisor_account:
+    # --- TARGET MONITOR (UPDATED FOR INDIVIDUAL) ---
+    if role == 'manager' or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
         st.markdown("### 🎯 Target Monitor")
         
-        # 1. Target Nasional (Muncul untuk SEMUA)
+        # 1. Target Nasional / Tim
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
@@ -415,91 +368,59 @@ def main_dashboard():
                 target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
                 df_spv_only = df[df['Merk'].isin(my_brands_list)]
-                if len(date_range)==2:
-                    df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
-                
+                if len(date_range)==2: df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
                 render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         
-        # 2. Target Individu Spesifik (Jika Filter != SEMUA)
+        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, dll)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
-            st.info(f"📋 Target Spesifik Individu: **{target_sales_filter}**")
+            st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
             
             for brand, target_val in targets_map.items():
-                # Hitung realisasi sales ini khusus untuk brand ini
                 realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                 render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target_val)
-                
+        
         else:
-            st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik yang terdaftar.")
+            st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         
         st.markdown("---")
 
-    # --- ANALYTICS TABS (NO HIERARCHY) ---
+    # --- ANALYTICS TABS ---
     t1, t2, t3, t4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
     
     with t1:
-        show_rapor = (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA")
-        
-        if show_rapor:
+        if target_sales_filter == "SEMUA":
             st.subheader("Rapor Target per Brand")
             summary_data = []
             target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-            
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
                     realisasi = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
-                    
                     summary_data.append({
-                        "Supervisor": spv, "Brand": brand,
-                        "Target": format_idr(target), "Realisasi": format_idr(realisasi),
-                        "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100,
-                        "Ach (Detail %)": pct_val
+                        "Supervisor": spv, "Brand": brand, "Target": format_idr(target), 
+                        "Realisasi": format_idr(realisasi), "Ach (%)": f"{pct_val:.0f}%", 
+                        "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val
                     })
-            
             df_summ = pd.DataFrame(summary_data)
-            def highlight_row(row):
-                return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: #333'] * len(row)
-            
-            st.dataframe(
-                df_summ.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']),
-                use_container_width=True, hide_index=True,
-                column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
-            )
+            def highlight_row(row): return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: #333'] * len(row)
+            st.dataframe(df_summ.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Individual Sales View (Fallback / Non-Specific Target)
-            st.info(f"Menampilkan kontribusi: **{target_sales_filter}**")
+            # Fallback Table for non-specific sales
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
-            
             for brand in sales_brands:
-                # Find owner
                 owner, target = "-", 0
                 for spv, b_dict in TARGET_DATABASE.items():
-                    if brand in b_dict:
-                        owner, target = spv, b_dict[brand]
-                        break
-                
+                    if brand in b_dict: owner, target = spv, b_dict[brand]; break
                 if target > 0:
                     real = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct = (real/target)*100
-                    indiv_data.append({
-                        "Brand": brand, "Owner": owner, "Target Tim": format_idr(target),
-                        "Kontribusi Sales": format_idr(real), "Ach (%)": f"{pct:.1f}%",
-                        "Pencapaian": pct/100
-                    })
-            
-            if indiv_data:
-                st.dataframe(
-                    pd.DataFrame(indiv_data), 
-                    use_container_width=True, hide_index=True,
-                    column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
-                )
-            else:
-                st.warning("Tidak ada data target brand untuk sales ini.")
+                    indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
+            if indiv_data: st.dataframe(pd.DataFrame(indiv_data), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
+            else: st.warning("Tidak ada data target brand.")
 
     with t2:
         st.subheader("📈 Tren Harian")
@@ -528,31 +449,10 @@ def main_dashboard():
         st.subheader("📋 Data Rincian")
         cols = ['Tanggal', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
         final_cols = [c for c in cols if c in df_active.columns]
-        
-        st.dataframe(
-            df_active[final_cols].sort_values('Tanggal', ascending=False),
-            use_container_width=True, hide_index=True,
-            column_config={
-                "Tanggal": st.column_config.DateColumn("Tanggal", format="DD/MM/YYYY"),
-                "Jumlah": st.column_config.NumberColumn("Omset", format="Rp %d")
-            }
-        )
-        
-        # Download Button
+        st.dataframe(df_active[final_cols].sort_values('Tanggal', ascending=False), use_container_width=True, hide_index=True, column_config={"Tanggal": st.column_config.DateColumn("Tanggal", format="DD/MM/YYYY"), "Jumlah": st.column_config.NumberColumn("Omset", format="Rp %d")})
         csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Laporan (CSV)",
-            data=csv,
-            file_name=f"Laporan_Sales_{datetime.date.today()}.csv",
-            mime="text/csv",
-            type="primary"
-        )
+        st.download_button(label="📥 Download Laporan (CSV)", data=csv, file_name=f"Laporan_Sales_{datetime.date.today()}.csv", mime="text/csv", type="primary")
 
-# --- 5. ENTRY POINT ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-
-if st.session_state['logged_in']:
-    main_dashboard()
-else:
-    login_page()
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
+if st.session_state['logged_in']: main_dashboard()
+else: login_page()
