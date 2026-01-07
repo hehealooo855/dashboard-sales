@@ -7,7 +7,7 @@ import re
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Sales Dashboard Pro", layout="wide")
 
-# --- DATABASE TARGET (BRAND) ---
+# --- DATABASE TARGET ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -34,7 +34,7 @@ TARGET_DATABASE = {
     }
 }
 
-# --- DATABASE TARGET TOTAL SUPERVISOR (REQ TERBARU) ---
+# --- DATABASE TARGET TOTAL SUPERVISOR ---
 SUPERVISOR_TOTAL_TARGETS = {
     "LISMAN": 2_430_000_000,
     "AKBAR": 2_450_000_000,
@@ -128,28 +128,36 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- HELPER: CUSTOM PROGRESS BAR (UI MENARIK) ---
+# --- HELPER: CUSTOM PROGRESS BAR (UI MENARIK DENGAN TEXT INSIDE) ---
 def render_custom_progress(title, current, target, color_theme="blue"):
     if target == 0: target = 1
     pct = (current / target) * 100
-    pct = min(pct, 100) # Cap at 100 for bar visual
+    visual_pct = min(pct, 100) # Cap bar visual at 100%
     
     # Color Logic
     if color_theme == "blue":
         bar_color = "linear-gradient(90deg, #3498db, #2980b9)"
     else:
-        # Green to Red gradient if logic needed, or just solid
+        # Green if >= 80%, else Red
         bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" if pct >= 80 else "linear-gradient(90deg, #e74c3c, #c0392b)"
 
+    text_label = f"{pct:.1f}%"
+    
+    # CSS & HTML Trick:
+    # 1. Bar warna di layer bawah.
+    # 2. Text di layer atas (absolute position) di tengah-tengah parent div.
+    # 3. Text diberi shadow putih agar terbaca di atas bar gelap maupun background terang.
     st.markdown(f"""
-    <div style="margin-bottom: 15px; background-color: #f0f2f6; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span style="font-weight: bold; font-size: 16px; color: #333;">{title}</span>
-            <span style="font-weight: bold; color: #555;">{format_idr(current)} / {format_idr(target)}</span>
+    <div style="margin-bottom: 15px; background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 15px; color: #2c3e50;">{title}</span>
+            <span style="font-weight: 600; color: #555; font-size: 14px;">{format_idr(current)} <span style="color:#aaa; font-weight:normal;">/ {format_idr(target)}</span></span>
         </div>
-        <div style="width: 100%; background-color: #dcdcdc; border-radius: 20px; height: 20px;">
-            <div style="width: {pct}%; background: {bar_color}; height: 20px; border-radius: 20px; text-align: center; color: white; font-size: 12px; line-height: 20px; transition: width 1s;">
-                {pct:.1f}%
+        <div style="width: 100%; background-color: #ecf0f1; border-radius: 20px; height: 24px; position: relative; overflow: hidden;">
+            <div style="width: {visual_pct}%; background: {bar_color}; height: 100%; border-radius: 20px; transition: width 1s ease-in-out;"></div>
+            
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #333; text-shadow: 0 0 4px #fff, 0 0 4px #fff;">
+                {text_label}
             </div>
         </div>
     </div>
@@ -252,7 +260,7 @@ def main_dashboard():
 
     total_omset_perusahaan = df_global_period['Jumlah'].sum()
 
-    # --- LOGIKA FILTER ---
+    # --- LOGIKA FILTER SALES & SUPERVISOR ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
@@ -274,6 +282,7 @@ def main_dashboard():
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_supervisor_scope = df_global_period[df_global_period['Merk'].isin(my_brands)]
         team_list = sorted(list(df_supervisor_scope['Penjualan'].dropna().unique()))
+        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Berdasarkan Brand Anda):", ["SEMUA"] + team_list)
         
         if target_sales_filter == "SEMUA":
@@ -315,7 +324,7 @@ def main_dashboard():
             st.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
         with col3:
             if not df_global_period.empty:
-                st.caption("Market Share")
+                st.caption("Market Share / Kontribusi")
                 if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
                     sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
                     fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
@@ -329,24 +338,18 @@ def main_dashboard():
         st.divider()
 
         # --- SECTION TARGET VISUAL (UI MENARIK) ---
-        # Logic: Muncul hanya untuk Direktur, Manager, dan Supervisor
         if role == 'manager' or is_supervisor_account:
             st.subheader("🎯 Monitoring Target (Real-Time)")
             
-            # 1. TARGET NASIONAL (Untuk Manager & Supervisor)
-            # Hitung Realisasi Nasional (Ambil dari df_global_period tanpa filter sales)
+            # 1. TARGET NASIONAL
             realisasi_nasional = df_global_period['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL, "blue")
 
-            # 2. TARGET SUPERVISOR PRIBADI (Hanya untuk Supervisor yang sedang login)
+            # 2. TARGET SUPERVISOR PRIBADI
             if is_supervisor_account:
-                # Ambil Target Total Supervisor dari Dictionary
                 target_pribadi_spv = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
-                
-                # Hitung Realisasi Supervisor (Total semua brand milik dia)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
                 realisasi_pribadi_spv = df_global_period[df_global_period['Merk'].isin(my_brands_list)]['Jumlah'].sum()
-                
                 render_custom_progress(f"👤 Target Tim {my_name}", realisasi_pribadi_spv, target_pribadi_spv, "green")
 
             st.divider()
@@ -395,7 +398,7 @@ def main_dashboard():
                 )
             
             else:
-                # View Individual Sales (Kontribusi dia terhadap target Tim)
+                # View Individual Sales
                 sales_brands = df_view['Merk'].unique()
                 brand_data = []
                 for brand in sales_brands:
@@ -425,6 +428,8 @@ def main_dashboard():
                         use_container_width=True, hide_index=True,
                         column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
                     )
+                else:
+                    st.info("Pilih 'SEMUA' untuk melihat Rapor Lengkap Supervisor.")
 
         with tab2:
             c1, c2 = st.columns(2)
