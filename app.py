@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import datetime
 import time
 import re
@@ -383,8 +382,8 @@ def main_dashboard():
         
         st.markdown("---")
 
-    # --- ANALYTICS TABS ---
-    t1, t2, t3, t4, t5 = st.tabs(["📊 Target Detail", "☀️ Brand Hierarchy", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
+    # --- ANALYTICS TABS (NO HIERARCHY) ---
+    t1, t2, t3, t4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
     
     with t1:
         show_rapor = (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA")
@@ -448,26 +447,6 @@ def main_dashboard():
                 st.warning("Tidak ada data target brand untuk sales ini.")
 
     with t2:
-        st.subheader("☀️ Kontribusi Brand (Hierarki)")
-        if not df_active.empty:
-            # Siapkan data untuk Sunburst
-            df_sun = df_active.groupby(['Merk', 'Nama Barang'])['Jumlah'].sum().reset_index()
-            # Mapping Supervisor manual karena tidak ada di kolom
-            def get_spv(m):
-                for s, b in TARGET_DATABASE.items():
-                    if m in b: return s
-                return "Lainnya"
-            df_sun['Supervisor'] = df_sun['Merk'].apply(get_spv)
-            
-            fig_sun = px.sunburst(
-                df_sun, path=['Supervisor', 'Merk', 'Nama Barang'], values='Jumlah',
-                color='Jumlah', color_continuous_scale='RdBu'
-            )
-            st.plotly_chart(fig_sun, use_container_width=True)
-        else:
-            st.info("Data tidak cukup untuk visualisasi.")
-
-    with t3:
         st.subheader("📈 Tren Harian")
         if not df_active.empty:
             daily = df_active.groupby('Tanggal')['Jumlah'].sum().reset_index()
@@ -475,7 +454,7 @@ def main_dashboard():
             fig_line.update_traces(line_color='#2980b9', line_width=3)
             st.plotly_chart(fig_line, use_container_width=True)
 
-    with t4:
+    with t3:
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("📦 Top 10 Produk")
@@ -490,7 +469,7 @@ def main_dashboard():
             fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_out, use_container_width=True)
 
-    with t5:
+    with t4:
         st.subheader("📋 Data Rincian")
         cols = ['Tanggal', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
         final_cols = [c for c in cols if c in df_active.columns]
