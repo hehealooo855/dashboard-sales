@@ -8,9 +8,8 @@ import pytz # Library untuk Zona Waktu
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
-    page_title="Executive Sales Command Center", 
+    page_title="Dashboard Sales", 
     layout="wide", 
-    page_icon="🦅",
     initial_sidebar_state="expanded"
 )
 
@@ -402,15 +401,15 @@ def main_dashboard():
                         "Supervisor": spv, "Brand": brand,
                         "Target": format_idr(target), "Realisasi": format_idr(realisasi),
                         "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100,
-                        "_pct": pct_val
+                        "Ach (Detail %)": pct_val
                     })
             
             df_summ = pd.DataFrame(summary_data)
             def highlight_row(row):
-                return [f'background-color: {"#d4edda" if row["_pct"] >= 80 else "#f8d7da"}; color: #333'] * len(row)
+                return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: #333'] * len(row)
             
             st.dataframe(
-                df_summ.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['_pct']),
+                df_summ.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']),
                 use_container_width=True, hide_index=True,
                 column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
             )
