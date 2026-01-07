@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import datetime
 import time
-import re  # Untuk perkuat filter sampah
+import re  # Untuk filter baris sampah
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Executive Sales Dashboard", layout="wide", page_icon="📈")
@@ -37,9 +37,11 @@ TARGET_DATABASE = {
         "Mykonos": 20_000_000, "Somethinc": 1_200_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000
     }
 }
+
 # --- FITUR TAMBAHAN: HITUNG OTOMATIS TARGET SPV ---
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
 TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
+
 # Mapping Typo Brand
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"],
@@ -68,6 +70,7 @@ BRAND_ALIASES = {
     "Maskit": ["MASKIT"], "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"],
     "Rose All Day": ["ROSE ALL DAY"]
 }
+
 # Mapping Nama Sales
 SALES_MAPPING = {
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG",
@@ -123,7 +126,7 @@ def render_custom_progress(title, current, target):
     if target == 0: target = 1
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
-   
+    
     if pct < 50:
         bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" # Merah
     elif 50 <= pct < 80:
@@ -131,7 +134,7 @@ def render_custom_progress(title, current, target):
     else:
         bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" # Hijau
     text_label = f"{pct:.1f}%"
-   
+    
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -150,29 +153,25 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# --- FUNGSI LOAD DATA TERBARU (FIXED NUMBER & DATE & TOTAL ROWS) ---
+# --- FUNGSI LOAD DATA TERBARU ---
 @st.cache_data(ttl=60)
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
         url_with_ts = f"{url}&t={datetime.datetime.now().timestamp()}"
         df = pd.read_csv(url_with_ts)
-        print(f"[DEBUG] Loaded raw data: {len(df)} rows")  # Debug: jumlah row raw
     except Exception as e:
-        print(f"[ERROR] Failed to load data: {e}")
         return None
     
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols):
-        print("[ERROR] Missing required columns")
         return None
     
-    # --- FIX 3: HAPUS BARIS SAMPAH (TOTAL/SUBTOTAL) - SEKARANG CEK SEMUA KOLOM ---
+    # Hapus Baris Sampah (Total/Subtotal)
     def is_sampah_row(row):
         return any(re.search(r'Total|Jumlah|Subtotal|Grand', str(val), re.IGNORECASE) for val in row)
     
     df = df[~df.apply(is_sampah_row, axis=1)]
-    print(f"[DEBUG] After removing sampah rows: {len(df)} rows")  # Debug: setelah filter
     
     # Cleaning Ops
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
@@ -183,27 +182,16 @@ def load_data():
             for keyword in keywords:
                 if keyword in raw_upper:
                     return target_brand
-        print(f"[DEBUG] Unmatched brand: {raw_brand}")  # Debug: brand tidak match
         return raw_brand
     
     df['Merk'] = df['Merk'].apply(normalize_brand)
     
-    # --- FIX 1: FORMAT ANGKA ANTI-ERROR (Hapus non-digit, handle desimal jika ada) ---
-    # Asumsi: Jika ada koma sebagai desimal (e.g., 1500,50), replace koma ke titik dulu
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(',', '.', regex=False)  # Handle desimal Indo
-    df['Jumlah'] = df['Jumlah'].str.replace(r'[^\d\.-]', '', regex=True)  # Hapus non-digit kecuali minus/desimal
+    # Format Angka
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(',', '.', regex=False)
+    df['Jumlah'] = df['Jumlah'].str.replace(r'[^\d\.-]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # Debug: Cek nilai kecil setelah cleaning
-    small_values = df[(df['Jumlah'] > 0) & (df['Jumlah'] < 1000)]
-    if not small_values.empty:
-        print(f"[DEBUG] Found {len(small_values)} small values (<1000):")
-        print(small_values[['Tanggal', 'Penjualan', 'Merk', 'Nama Barang', 'Jumlah']].to_string(index=False))
-    
-    sum_cleaned = df['Jumlah'].sum()
-    print(f"[DEBUG] Total omset after cleaning: {sum_cleaned}")
-    
-    # --- FIX 2: TANGGAL TERBALIK (US vs INDO) ---
+    # Format Tanggal
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
     
     def fix_swapped_date(d):
@@ -216,7 +204,7 @@ def load_data():
         return d
     
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
-    df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])  # Drop jika key cols NaN
+    df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
     
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
@@ -236,7 +224,7 @@ def load_users():
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🔒 Sales Command Center</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Masuk untuk melihat performa real-time</p>", unsafe_allow_html=True)
-   
+    
     users = load_users()
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
@@ -265,127 +253,165 @@ def main_dashboard():
         if st.button("Logout", type="primary"):
             st.session_state['logged_in'] = False
             st.rerun()
+            
     df = load_data()
     if df is None or df.empty:
         st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
         return
-    # --- MAIN FILTER ---
+
+    # --- 1. SCOPE LOGIC & DATE FILTER ---
     st.sidebar.markdown("---")
     st.sidebar.subheader("📅 Filter Periode")
-   
+
     default_start = df['Tanggal'].max().date().replace(day=1)
     default_end = df['Tanggal'].max().date()
-   
+    
     date_range = st.sidebar.date_input("Rentang Waktu", [default_start, default_end])
-   
-    if len(date_range) == 2:
-        start_date, end_date = date_range
-        df_view_global = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]
-       
-        duration = (end_date - start_date).days
-        prev_start = start_date - datetime.timedelta(days=duration)
-        prev_end = start_date - datetime.timedelta(days=1)
-        df_prev_global = df[(df['Tanggal'].dt.date >= prev_start) & (df['Tanggal'].dt.date <= prev_end)]
-    else:
-        df_view_global = df
-        df_prev_global = pd.DataFrame()
-    # --- SCOPE LOGIC ---
+
+    # LOGIK SCOPE AWAL (Sebelum filter tanggal)
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
+
+    # -- Tentukan df_scope_all (Data milik sales/spv tsb sepanjang masa) --
     if role == 'manager':
-        sales_list = ["SEMUA"] + sorted(list(df_view_global['Penjualan'].dropna().unique()))
+        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         if target_sales_filter == "SEMUA":
-            df_active = df_view_global
-            df_prev_active = df_prev_global
+            df_scope_all = df
         else:
-            df_active = df_view_global[df_view_global['Penjualan'] == target_sales_filter]
-            df_prev_active = df_prev_global[df_prev_global['Penjualan'] == target_sales_filter] if not df_prev_global.empty else pd.DataFrame()
+            df_scope_all = df[df['Penjualan'] == target_sales_filter]
+            
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        df_spv_scope = df_view_global[df_view_global['Merk'].isin(my_brands)]
-        df_prev_spv_scope = df_prev_global[df_prev_global['Merk'].isin(my_brands)] if not df_prev_global.empty else pd.DataFrame()
-       
-        team_list = sorted(list(df_spv_scope['Penjualan'].dropna().unique()))
+        df_spv_raw = df[df['Merk'].isin(my_brands)]
+        team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
-       
+        
         if target_sales_filter == "SEMUA":
-            df_active = df_spv_scope
-            df_prev_active = df_prev_spv_scope
+            df_scope_all = df_spv_raw
         else:
-            df_active = df_spv_scope[df_spv_scope['Penjualan'] == target_sales_filter]
-            df_prev_active = df_prev_spv_scope[df_prev_spv_scope['Penjualan'] == target_sales_filter] if not df_prev_spv_scope.empty else pd.DataFrame()
+            df_scope_all = df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
     else:
-        df_active = df_view_global[df_view_global['Penjualan'] == my_name]
-        df_prev_active = df_prev_global[df_prev_global['Penjualan'] == my_name] if not df_prev_global.empty else pd.DataFrame()
-    # --- ADVANCED FILTER ---
+        df_scope_all = df[df['Penjualan'] == my_name]
+
+    # -- Filter Lanjutan (Diterapkan ke df_scope_all) --
     st.sidebar.subheader("🔍 Filter Lanjutan")
-    if not df_active.empty:
-        pilih_merk = st.sidebar.multiselect("Pilih Merk", sorted(df_active['Merk'].unique()))
-        if pilih_merk: df_active = df_active[df_active['Merk'].isin(pilih_merk)]
-       
-        pilih_outlet = st.sidebar.multiselect("Pilih Outlet", sorted(df_active['Nama Outlet'].unique()))
-        if pilih_outlet: df_active = df_active[df_active['Nama Outlet'].isin(pilih_outlet)]
+    unique_brands = sorted(df_scope_all['Merk'].unique())
+    pilih_merk = st.sidebar.multiselect("Pilih Merk", unique_brands)
+    if pilih_merk: 
+        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
+        
+    unique_outlets = sorted(df_scope_all['Nama Outlet'].unique())
+    pilih_outlet = st.sidebar.multiselect("Pilih Outlet", unique_outlets)
+    if pilih_outlet: 
+        df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+
+    # -- Apply Filter Tanggal (Menjadi df_active) --
+    if len(date_range) == 2:
+        start_date, end_date = date_range
+        # Filter untuk View Utama
+        df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
+        # Reference Date untuk Hitungan Delta (H vs H-1)
+        ref_date = end_date
+    else:
+        df_active = df_scope_all
+        ref_date = df['Tanggal'].max().date()
+
     # --- HEADER ---
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
-    # --- KPI METRICS ---
-    current_omset = df_active['Jumlah'].sum()
-    prev_omset = df_prev_active['Jumlah'].sum() if not df_prev_active.empty else 0
-    delta_val = current_omset - prev_omset
-   
+    
+    # --- 2. KPI METRICS (LOGIKA DELTA HARIAN) ---
+    
+    # A. Hitung Total Omset (Sesuai Range Tanggal yang dipilih)
+    current_omset_total = df_active['Jumlah'].sum()
+    
+    # B. Hitung Delta (H vs H-1)
+    # 1. Omset tepat pada tanggal terakhir pilihan user (ref_date)
+    omset_hari_ini = df_scope_all[df_scope_all['Tanggal'].dt.date == ref_date]['Jumlah'].sum()
+    
+    # 2. Omset tepat satu hari sebelumnya (ref_date - 1)
+    prev_date = ref_date - datetime.timedelta(days=1)
+    omset_kemarin = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+    
+    # 3. Selisih
+    delta_val = omset_hari_ini - omset_kemarin
+    delta_label = f"vs {prev_date.strftime('%d %b')}"
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("💰 Total Omset", format_idr(current_omset), delta=format_idr(delta_val))
+        # Menampilkan Total Omset Range, tapi Deltanya adalah Harian (Hari ini vs Kemarin)
+        st.metric(
+            label="💰 Total Omset (Terpilih)", 
+            value=format_idr(current_omset_total), 
+            delta=f"{format_idr(delta_val)} ({delta_label})"
+        )
+        # Caption untuk memperjelas omset hari terakhir
+        st.caption(f"📅 Omset Tgl {ref_date.strftime('%d %b')}: **{format_idr(omset_hari_ini)}**")
+        
     with col2:
         st.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     with col3:
         st.metric("🧾 Transaksi", f"{len(df_active)}")
+
     # --- PROGRESS BARS ---
     if role == 'manager' or is_supervisor_account:
         st.markdown("### 🎯 Target Monitor")
-       
-        realisasi_nasional = df_view_global['Jumlah'].sum()
+        
+        # Note: Realisasi Nasional tetap mengambil dari Global Dataset yang di-filter tanggal saja
+        # agar Manager tetap tau posisi perusahaan meski sedang filter sales tertentu
+        realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
+        
         render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
+        
         if is_supervisor_account:
             target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
             my_brands_list = TARGET_DATABASE[my_name_key].keys()
-            realisasi_pribadi = df_view_global[df_view_global['Merk'].isin(my_brands_list)]['Jumlah'].sum()
-           
+            # Realisasi Tim SPV (mengikuti filter tanggal)
+            df_spv_only = df[df['Merk'].isin(my_brands_list)]
+            if len(date_range)==2:
+                df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
+            
+            realisasi_pribadi = df_spv_only['Jumlah'].sum()
             render_custom_progress(f"👤 Target Tim {my_name}", realisasi_pribadi, target_pribadi)
-       
+        
         st.markdown("---")
+
     # --- TABS ANALYTICS ---
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
+    
     with tab1:
         show_rapor_lengkap = (role == 'manager' and target_sales_filter == "SEMUA") or \
                              (is_supervisor_account and target_sales_filter == "SEMUA")
-       
+        
         if show_rapor_lengkap:
             st.subheader("Rapor Target per Brand")
             summary_data = []
             target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
+            
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
-                    realisasi = df_view_global[df_view_global['Merk'] == brand]['Jumlah'].sum()
+                    # Realisasi per brand mengikuti df_active (sesuai filter tanggal & outlet)
+                    realisasi = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
                     status_text = "✅" if pct_val >= 80 else "⚠️"
-                   
+                    
                     summary_data.append({
                         "Supervisor": spv, "Brand": brand,
                         "Target": format_idr(target), "Realisasi": format_idr(realisasi),
                         "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100,
-                        "Status": status_text, "_pct_raw": pct_val
+                        "Status": status_text, "Ach (Detail %)": pct_val
                     })
-           
+            
             df_summary = pd.DataFrame(summary_data)
             def color_row(row):
-                return [f'background-color: {"#d4edda" if row["_pct_raw"] >= 80 else "#f8d7da"}; color: black'] * len(row)
+                return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: black'] * len(row)
+            
             st.dataframe(
-                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['_pct_raw']),
+                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']),
                 use_container_width=True, hide_index=True,
                 column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
             )
@@ -401,7 +427,7 @@ def main_dashboard():
                         target_found = brands_dict[brand]
                         spv_name = spv
                         break
-               
+                
                 if target_found > 0:
                     realisasi = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct = (realisasi / target_found) * 100
@@ -410,7 +436,7 @@ def main_dashboard():
                         "Target Tim": format_idr(target_found), "Kontribusi Dia": format_idr(realisasi),
                         "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct / 100, "_pct_val": pct
                     })
-           
+            
             if brand_data:
                 df_indiv = pd.DataFrame(brand_data)
                 st.dataframe(
@@ -420,6 +446,7 @@ def main_dashboard():
                 )
             else:
                 st.warning("Tidak ada data penjualan brand yang memiliki target untuk sales ini.")
+
     with tab2:
         st.subheader("Grafik Tren Penjualan Harian")
         if not df_active.empty:
@@ -429,6 +456,7 @@ def main_dashboard():
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Tidak ada data untuk ditampilkan.")
+
     with tab3:
         c1, c2 = st.columns(2)
         with c1:
@@ -445,11 +473,12 @@ def main_dashboard():
                 fig_outlet = px.bar(top_outlet, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#2ecc71'])
                 fig_outlet.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_outlet, use_container_width=True)
+
     with tab4:
         st.subheader("📋 Rincian Transaksi Lengkap")
         cols_to_show = ['Tanggal', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
         final_cols = [c for c in cols_to_show if c in df_active.columns]
-       
+        
         st.dataframe(
             df_active[final_cols].sort_values('Tanggal', ascending=False),
             use_container_width=True, hide_index=True,
@@ -458,7 +487,7 @@ def main_dashboard():
                 "Jumlah": st.column_config.NumberColumn("Omset", format="Rp %d")
             }
         )
-       
+        
         csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
         file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
         st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
