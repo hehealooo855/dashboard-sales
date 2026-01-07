@@ -5,9 +5,9 @@ import datetime
 import re 
 
 # --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Sales Dashboard", layout="wide")
+st.set_page_config(page_title="Sales Dashboard Pro", layout="wide")
 
-# --- DATABASE TARGET ---
+# --- DATABASE TARGET (BRAND) ---
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 100_000_000, "Goute": 50_000_000,
@@ -33,6 +33,15 @@ TARGET_DATABASE = {
         "Liora": 0, "Mykonos": 20_000_000, "Somethinc": 1_100_000_000
     }
 }
+
+# --- DATABASE TARGET TOTAL SUPERVISOR (REQ TERBARU) ---
+SUPERVISOR_TOTAL_TARGETS = {
+    "LISMAN": 2_430_000_000,
+    "AKBAR": 2_450_000_000,
+    "WILLIAM": 2_120_000_000,
+    "MADONG": 2_390_000_000
+}
+TARGET_NASIONAL_VAL = 9_390_000_000
 
 # --- KAMUS "BELAJAR" OTOMATIS (BRAND ALIASES) ---
 BRAND_ALIASES = {
@@ -119,12 +128,38 @@ def format_idr(value):
     except:
         return "Rp 0"
 
+# --- HELPER: CUSTOM PROGRESS BAR (UI MENARIK) ---
+def render_custom_progress(title, current, target, color_theme="blue"):
+    if target == 0: target = 1
+    pct = (current / target) * 100
+    pct = min(pct, 100) # Cap at 100 for bar visual
+    
+    # Color Logic
+    if color_theme == "blue":
+        bar_color = "linear-gradient(90deg, #3498db, #2980b9)"
+    else:
+        # Green to Red gradient if logic needed, or just solid
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" if pct >= 80 else "linear-gradient(90deg, #e74c3c, #c0392b)"
+
+    st.markdown(f"""
+    <div style="margin-bottom: 15px; background-color: #f0f2f6; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span style="font-weight: bold; font-size: 16px; color: #333;">{title}</span>
+            <span style="font-weight: bold; color: #555;">{format_idr(current)} / {format_idr(target)}</span>
+        </div>
+        <div style="width: 100%; background-color: #dcdcdc; border-radius: 20px; height: 20px;">
+            <div style="width: {pct}%; background: {bar_color}; height: 20px; border-radius: 20px; text-align: center; color: white; font-size: 12px; line-height: 20px; transition: width 1s;">
+                {pct:.1f}%
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 # --- 1. FUNGSI LOAD DATA (ROBUST) ---
 @st.cache_data(ttl=60) 
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
-        # Cache buster dummy param
         url_with_ts = f"{url}&t={datetime.datetime.now().timestamp()}"
         df = pd.read_csv(url_with_ts)
     except Exception as e:
@@ -153,7 +188,6 @@ def load_data():
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     df = df.dropna(subset=['Tanggal'])
 
-    # Pastikan kolom string
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
             df[col] = df[col].astype(str)
@@ -169,7 +203,7 @@ def load_users():
 
 # --- 3. HALAMAN LOGIN ---
 def login_page():
-    st.markdown("<h1 style='text-align: center;'>🔒 Login Sales Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🔒 Login Sales Dashboard Pro</h1>", unsafe_allow_html=True)
     users = load_users()
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
@@ -218,7 +252,7 @@ def main_dashboard():
 
     total_omset_perusahaan = df_global_period['Jumlah'].sum()
 
-    # --- LOGIKA FILTER SALES & SUPERVISOR ---
+    # --- LOGIKA FILTER ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
@@ -240,7 +274,6 @@ def main_dashboard():
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_supervisor_scope = df_global_period[df_global_period['Merk'].isin(my_brands)]
         team_list = sorted(list(df_supervisor_scope['Penjualan'].dropna().unique()))
-        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Berdasarkan Brand Anda):", ["SEMUA"] + team_list)
         
         if target_sales_filter == "SEMUA":
@@ -274,60 +307,68 @@ def main_dashboard():
         total_omset = df_view['Jumlah'].sum()
         total_toko = df_view['Nama Outlet'].nunique() 
 
-        # --- HITUNG PROGRESS TOTAL (REPLACEMENT FOR FORECAST) ---
-        # Target Total Nasional sesuai request: Rp 9.390.000.000
-        TARGET_NASIONAL = 9_390_000_000
-        
-        progress_pct = (total_omset / TARGET_NASIONAL) * 100
-        progress_msg = f"🎯 Progress Nasional: **{progress_pct:.1f}%** dari Target Rp 9,39 M"
-
+        # --- SECTION KPI ---
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Omset", format_idr(total_omset))
-            # Menampilkan Progress di bawah Total Omset
-            st.markdown(f"<div style='font-size:14px; color:#27ae60;'>{progress_msg}</div>", unsafe_allow_html=True)
         with col2:
             st.metric("Jumlah Toko Aktif", f"{total_toko} Outlet")
         with col3:
             if not df_global_period.empty:
-                st.caption("Market Share / Kontribusi")
+                st.caption("Market Share")
                 if (role == 'manager' and target_sales_filter == "SEMUA") or (is_supervisor_account and target_sales_filter == "SEMUA"):
                     sales_breakdown = df_view.groupby('Penjualan')['Jumlah'].sum().reset_index()
                     fig_share = px.pie(sales_breakdown, names='Penjualan', values='Jumlah', hole=0.5)
                 else:
                     omset_lainnya = total_omset_perusahaan - total_omset
                     fig_share = px.pie(names=['Omset Terpilih', 'Lainnya'], values=[total_omset, max(0, omset_lainnya)], hole=0.5, color_discrete_sequence=['#3498db', '#ecf0f1'])
-                
                 fig_share.update_traces(textposition='inside', textinfo='percent')
                 fig_share.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120)
                 st.plotly_chart(fig_share, use_container_width=True)
 
         st.divider()
 
+        # --- SECTION TARGET VISUAL (UI MENARIK) ---
+        # Logic: Muncul hanya untuk Direktur, Manager, dan Supervisor
+        if role == 'manager' or is_supervisor_account:
+            st.subheader("🎯 Monitoring Target (Real-Time)")
+            
+            # 1. TARGET NASIONAL (Untuk Manager & Supervisor)
+            # Hitung Realisasi Nasional (Ambil dari df_global_period tanpa filter sales)
+            realisasi_nasional = df_global_period['Jumlah'].sum()
+            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL, "blue")
+
+            # 2. TARGET SUPERVISOR PRIBADI (Hanya untuk Supervisor yang sedang login)
+            if is_supervisor_account:
+                # Ambil Target Total Supervisor dari Dictionary
+                target_pribadi_spv = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
+                
+                # Hitung Realisasi Supervisor (Total semua brand milik dia)
+                my_brands_list = TARGET_DATABASE[my_name_key].keys()
+                realisasi_pribadi_spv = df_global_period[df_global_period['Merk'].isin(my_brands_list)]['Jumlah'].sum()
+                
+                render_custom_progress(f"👤 Target Tim {my_name}", realisasi_pribadi_spv, target_pribadi_spv, "green")
+
+            st.divider()
+
         # --- TABS ANALISIS ---
-        tab1, tab2, tab3 = st.tabs(["📊 Rapor Target", "🏆 Top Performance", "📉 Rincian Data"])
+        tab1, tab2, tab3 = st.tabs(["📊 Rincian Target Brand", "🏆 Top Performance", "📉 Rincian Data"])
 
         with tab1:
-            # --- TABEL RAPOR TARGET MANAGER & SUPERVISOR ---
+            # --- TABEL RAPOR TARGET PER BRAND ---
             show_rapor = False
-            if role == 'manager' and target_sales_filter == "SEMUA":
-                show_rapor = True
-            elif is_supervisor_account and target_sales_filter == "SEMUA":
-                show_rapor = True
+            if role == 'manager' and target_sales_filter == "SEMUA": show_rapor = True
+            elif is_supervisor_account and target_sales_filter == "SEMUA": show_rapor = True
 
             if show_rapor:
-                st.markdown("### 🏢 Rapor Target (Brand Focus)")
                 summary_data = []
                 target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
 
                 for spv, brands_dict in target_loop:
                     for brand, target in brands_dict.items():
                         realisasi = df_global_period[df_global_period['Merk'] == brand]['Jumlah'].sum()
-                        
-                        if target > 0:
-                            pct_val = (realisasi / target) * 100
-                        else:
-                            pct_val = 0
+                        if target > 0: pct_val = (realisasi / target) * 100
+                        else: pct_val = 0
                         
                         status_text = "✅" if pct_val >= 80 else "⚠️"
                         
@@ -343,45 +384,31 @@ def main_dashboard():
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
-                
                 def highlight_row_manager(row):
                     color = '#d4edda' if row['_pct_raw'] >= 80 else '#f8d7da' 
                     return [f'background-color: {color}; color: black'] * len(row)
 
                 st.dataframe(
                     df_summary.style.apply(highlight_row_manager, axis=1).hide(axis="columns", subset=['_pct_raw']),
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Pencapaian": st.column_config.ProgressColumn(
-                            "Bar",
-                            format=" ", 
-                            min_value=0,
-                            max_value=1,
-                        ),
-                        "Status": st.column_config.TextColumn("Ket")
-                    }
+                    use_container_width=True, hide_index=True,
+                    column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
                 )
             
-            # --- DETAIL TARGET PER BRAND (JIKA SALES DIPILIH) ---
             else:
+                # View Individual Sales (Kontribusi dia terhadap target Tim)
                 sales_brands = df_view['Merk'].unique()
                 brand_data = []
-                
                 for brand in sales_brands:
                     target_found = 0
                     spv_name = "-"
-                    
                     for spv, brands_dict in TARGET_DATABASE.items():
                         if brand in brands_dict:
                             target_found = brands_dict[brand]
                             spv_name = spv
                             break
-                    
                     if target_found > 0:
                         realisasi_sales = df_view[df_view['Merk'] == brand]['Jumlah'].sum()
                         pct = (realisasi_sales / target_found) * 100
-                        
                         brand_data.append({
                             "Brand": brand,
                             "Supervisor": spv_name,
@@ -391,24 +418,13 @@ def main_dashboard():
                             "Pencapaian": pct / 100, 
                             "_pct_val": pct
                         })
-                
                 if brand_data:
                     df_target_breakdown = pd.DataFrame(brand_data)
                     st.dataframe(
                         df_target_breakdown.style.hide(axis="columns", subset=['_pct_val']),
-                        use_container_width=True, 
-                        hide_index=True,
-                        column_config={
-                            "Pencapaian": st.column_config.ProgressColumn(
-                                "Bar",
-                                format=" ", 
-                                min_value=0,
-                                max_value=1,
-                            ),
-                        }
+                        use_container_width=True, hide_index=True,
+                        column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
                     )
-                else:
-                    st.info("Pilih 'SEMUA' untuk melihat Rapor Lengkap Supervisor.")
 
         with tab2:
             c1, c2 = st.columns(2)
@@ -416,32 +432,25 @@ def main_dashboard():
                 st.subheader("📦 Top 10 Produk")
                 top_products = df_view.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
                 fig_prod = px.bar(top_products, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s')
-                fig_prod.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_prod, use_container_width=True)
-            
             with c2:
                 st.subheader("🏪 Top 10 Toko")
                 top_outlets = df_view.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
                 fig_outlet = px.bar(top_outlets, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#2ecc71'])
-                fig_outlet.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_outlet, use_container_width=True)
 
         with tab3:
-            # --- TABEL RINCIAN DATA ---
             st.subheader("📋 Rincian Transaksi")
             target_cols = ['Tanggal', 'Nama Outlet', 'Merk', 'Jumlah', 'Penjualan']
             final_cols = [c for c in target_cols if c in df_view.columns]
-            
             st.dataframe(
                 df_view[final_cols].sort_values('Tanggal', ascending=False), 
-                use_container_width=True, 
-                hide_index=True,
+                use_container_width=True, hide_index=True,
                 column_config={
                     "Tanggal": st.column_config.DateColumn("Tanggal", format="DD/MM/YYYY"),
                     "Jumlah": st.column_config.NumberColumn("Omset (Rp)", format="Rp %d")
                 }
             )
-
             csv_data = df_view[final_cols].sort_values('Tanggal', ascending=False).to_csv(index=False).encode('utf-8')
             st.download_button(label="📥 Download Data Excel", data=csv_data, file_name="laporan_penjualan.csv", mime="text/csv")
 
