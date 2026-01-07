@@ -375,7 +375,7 @@ def main_dashboard():
                             "Ach (%)": f"{pct_val:.0f}%", 
                             "Pencapaian": pct_val / 100, 
                             "Status": status_text,
-                            "_pct_raw": pct_val 
+                            "Ach (Detail Persen)": pct_val 
                         })
                 
                 df_summary = pd.DataFrame(summary_data)
