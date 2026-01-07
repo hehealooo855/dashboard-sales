@@ -345,7 +345,7 @@ def main_dashboard():
     with col1:
         # Menampilkan Total Omset Range, tapi Deltanya adalah Harian (Hari ini vs Kemarin)
         st.metric(
-            label="💰 Total Omset (Terpilih)", 
+            label="💰 Total Omset (IJL)", 
             value=format_idr(current_omset_total), 
             delta=f"{format_idr(delta_val)} ({delta_label})"
         )
