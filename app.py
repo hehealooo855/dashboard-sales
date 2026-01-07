@@ -128,25 +128,25 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- HELPER: CUSTOM PROGRESS BAR (UI MENARIK DENGAN TEXT INSIDE) ---
-def render_custom_progress(title, current, target, color_theme="blue"):
+# --- HELPER: CUSTOM PROGRESS BAR (LOGIKA WARNA & CENTER TEXT) ---
+def render_custom_progress(title, current, target):
     if target == 0: target = 1
     pct = (current / target) * 100
     visual_pct = min(pct, 100) # Cap bar visual at 100%
     
-    # Color Logic
-    if color_theme == "blue":
-        bar_color = "linear-gradient(90deg, #3498db, #2980b9)"
+    # --- LOGIKA WARNA TRAFFIC LIGHT ---
+    if pct < 50:
+        # Merah (Red)
+        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)"
+    elif 50 <= pct < 80:
+        # Kuning (Yellow/Orange)
+        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)"
     else:
-        # Green if >= 80%, else Red
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" if pct >= 80 else "linear-gradient(90deg, #e74c3c, #c0392b)"
+        # Hijau (Green)
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
 
     text_label = f"{pct:.1f}%"
     
-    # CSS & HTML Trick:
-    # 1. Bar warna di layer bawah.
-    # 2. Text di layer atas (absolute position) di tengah-tengah parent div.
-    # 3. Text diberi shadow putih agar terbaca di atas bar gelap maupun background terang.
     st.markdown(f"""
     <div style="margin-bottom: 15px; background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -282,7 +282,6 @@ def main_dashboard():
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_supervisor_scope = df_global_period[df_global_period['Merk'].isin(my_brands)]
         team_list = sorted(list(df_supervisor_scope['Penjualan'].dropna().unique()))
-        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Berdasarkan Brand Anda):", ["SEMUA"] + team_list)
         
         if target_sales_filter == "SEMUA":
@@ -343,14 +342,14 @@ def main_dashboard():
             
             # 1. TARGET NASIONAL
             realisasi_nasional = df_global_period['Jumlah'].sum()
-            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL, "blue")
+            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
 
             # 2. TARGET SUPERVISOR PRIBADI
             if is_supervisor_account:
                 target_pribadi_spv = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
                 realisasi_pribadi_spv = df_global_period[df_global_period['Merk'].isin(my_brands_list)]['Jumlah'].sum()
-                render_custom_progress(f"👤 Target Tim {my_name}", realisasi_pribadi_spv, target_pribadi_spv, "green")
+                render_custom_progress(f"👤 Target Tim {my_name}", realisasi_pribadi_spv, target_pribadi_spv)
 
             st.divider()
 
