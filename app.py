@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import datetime
-import time # Untuk penamaan file download
+import time 
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Executive Sales Dashboard", layout="wide", page_icon="📈")
@@ -11,19 +11,19 @@ st.set_page_config(page_title="Executive Sales Dashboard", layout="wide", page_i
 # 1. KONFIGURASI DATABASE & TARGET
 # ==========================================
 
-# Target per Brand (Untuk Rapor Manager & SPV)
+# Target per Brand 
 TARGET_DATABASE = {
     "LISMAN": {
         "Bonavie": 50_000_000, "Whitelab": 150_000_000, "Goute": 50_000_000,
         "Dorskin": 20_000_000, "Gloow & Be": 130_000_000,
         "Javinci": 1_300_000_000, "Careso": 400_000_000,
-        "Artist Inc": 130_000_000, "Newlab": 150_000_000, "Mlen": 100_000_000
+        "Artist Inc": 130_000_000, "Newlab": 150_000_000, "Mlen": 100_000_000, "Madame G": 0
     },
     "AKBAR": {
         "Thai": 300_000_000, "Inesia": 100_000_000,
         "Y2000": 180_000_000, "Diosys": 520_000_000, 
         "Sociolla": 600_000_000, "Skin1004": 300_000_000,
-        "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000
+        "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000, "Rosanna": 0
     },
     "WILLIAM": {
         "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0,
@@ -38,16 +38,10 @@ TARGET_DATABASE = {
     }
 }
 
-# Target Total Pribadi Supervisor
-SUPERVISOR_TOTAL_TARGETS = {
-    "LISMAN": 2_430_000_000,
-    "AKBAR": 2_450_000_000,
-    "WILLIAM": 2_120_000_000,
-    "MADONG": 2_390_000_000
-}
-
-# Target Total Nasional (KPI Utama)
-TARGET_NASIONAL_VAL = 9_390_000_000
+# --- FITUR TAMBAHAN: HITUNG OTOMATIS TARGET SPV ---
+# Agar tidak perlu hitung kalkulator manual jika target brand berubah
+SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
+TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 
 # Mapping Typo Brand
 BRAND_ALIASES = {
@@ -131,14 +125,10 @@ def format_idr(value):
         return "Rp 0"
 
 def render_custom_progress(title, current, target):
-    """
-    Menampilkan Progress Bar HTML Custom dengan UI Traffic Light & Text Overlay
-    """
     if target == 0: target = 1
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    # Logic Warna (Merah < 50 < Kuning < 80 <= Hijau)
     if pct < 50:
         bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" # Merah
     elif 50 <= pct < 80:
@@ -168,9 +158,6 @@ def render_custom_progress(title, current, target):
 
 @st.cache_data(ttl=60) 
 def load_data():
-    """
-    Load Data dengan Cache Buster & Validasi Error yang Kuat
-    """
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
         url_with_ts = f"{url}&t={datetime.datetime.now().timestamp()}"
@@ -195,7 +182,22 @@ def load_data():
     df['Merk'] = df['Merk'].apply(normalize_brand)
     df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False).str.split(',').str[0]
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+    
+    # --- FITUR TAMBAHAN: AUTO FIX TANGGAL TERBALIK (Excel US vs Indo) ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
+    
+    def fix_swapped_date(d):
+        if pd.isnull(d): return d
+        # Jika hari <= 12 dan hari != bulan, kemungkinan tertukar (Contoh 5/1 terbaca 1 Mei, harusnya 5 Jan)
+        try:
+            if d.day <= 12 and d.day != d.month:
+                return d.replace(day=d.month, month=d.day)
+        except:
+            pass
+        return d
+
+    # Terapkan perbaikan tanggal
+    df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
 
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
@@ -256,7 +258,6 @@ def main_dashboard():
     st.sidebar.markdown("---")
     st.sidebar.subheader("📅 Filter Periode")
     
-    # Default: 1 Bulan Terakhir untuk konteks yang lebih baik
     default_start = df['Tanggal'].max().date().replace(day=1)
     default_end = df['Tanggal'].max().date()
     
@@ -266,7 +267,6 @@ def main_dashboard():
         start_date, end_date = date_range
         df_view_global = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]
         
-        # Calculate Previous Period for Growth Comparison
         duration = (end_date - start_date).days
         prev_start = start_date - datetime.timedelta(days=duration)
         prev_end = start_date - datetime.timedelta(days=1)
@@ -275,7 +275,7 @@ def main_dashboard():
         df_view_global = df
         df_prev_global = pd.DataFrame()
 
-    # --- SCOPE LOGIC (Manager vs SPV vs Sales) ---
+    # --- SCOPE LOGIC ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
@@ -295,7 +295,6 @@ def main_dashboard():
 
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Filter Global Data to only show brands relevant to this Supervisor
         df_spv_scope = df_view_global[df_view_global['Merk'].isin(my_brands)]
         df_prev_spv_scope = df_prev_global[df_prev_global['Merk'].isin(my_brands)] if not df_prev_global.empty else pd.DataFrame()
         
@@ -310,7 +309,6 @@ def main_dashboard():
             df_prev_active = df_prev_spv_scope[df_prev_spv_scope['Penjualan'] == target_sales_filter] if not df_prev_spv_scope.empty else pd.DataFrame()
 
     else:
-        # Sales Biasa
         df_active = df_view_global[df_view_global['Penjualan'] == my_name]
         df_prev_active = df_prev_global[df_prev_global['Penjualan'] == my_name] if not df_prev_global.empty else pd.DataFrame()
 
@@ -327,7 +325,7 @@ def main_dashboard():
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
 
-    # --- KPI METRICS (DENGAN PERBANDINGAN) ---
+    # --- KPI METRICS ---
     current_omset = df_active['Jumlah'].sum()
     prev_omset = df_prev_active['Jumlah'].sum() if not df_prev_active.empty else 0
     delta_val = current_omset - prev_omset
@@ -340,18 +338,16 @@ def main_dashboard():
     with col3:
         st.metric("🧾 Transaksi", f"{len(df_active)}")
 
-    # --- PROGRESS BARS (LOGIKA UI BARU) ---
+    # --- PROGRESS BARS ---
     if role == 'manager' or is_supervisor_account:
         st.markdown("### 🎯 Target Monitor")
         
-        # 1. Target Nasional (Selalu muncul untuk Manager & Supervisor)
-        realisasi_nasional = df_view_global['Jumlah'].sum() # Selalu ambil global tanpa filter sales
+        realisasi_nasional = df_view_global['Jumlah'].sum() 
         render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
 
-        # 2. Target Supervisor (Khusus Supervisor login)
         if is_supervisor_account:
+            # Menggunakan target total yang dihitung otomatis dari TARGET_DATABASE
             target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
-            # Hitung realisasi semua brand milik supervisor ini (tanpa peduli filter sales individu)
             my_brands_list = TARGET_DATABASE[my_name_key].keys()
             realisasi_pribadi = df_view_global[df_view_global['Merk'].isin(my_brands_list)]['Jumlah'].sum()
             
@@ -363,7 +359,6 @@ def main_dashboard():
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
 
     with tab1:
-        # LOGIKA TABEL RAPOR
         show_rapor_lengkap = (role == 'manager' and target_sales_filter == "SEMUA") or \
                              (is_supervisor_account and target_sales_filter == "SEMUA")
         
@@ -374,7 +369,6 @@ def main_dashboard():
 
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
-                    # Ambil data global untuk target brand (agar akurat)
                     realisasi = df_view_global[df_view_global['Merk'] == brand]['Jumlah'].sum()
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
                     status_text = "✅" if pct_val >= 80 else "⚠️"
@@ -383,28 +377,25 @@ def main_dashboard():
                         "Supervisor": spv, "Brand": brand,
                         "Target": format_idr(target), "Realisasi": format_idr(realisasi),
                         "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100,
-                        "Status": status_text, 
-                        "Ach (Detail %)": pct_val
+                        "Status": status_text, "_pct_raw": pct_val
                     })
             
             df_summary = pd.DataFrame(summary_data)
             def color_row(row):
-                return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: black'] * len(row)
+                return [f'background-color: {"#d4edda" if row["_pct_raw"] >= 80 else "#f8d7da"}; color: black'] * len(row)
 
             st.dataframe(
-                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']),
+                df_summary.style.apply(color_row, axis=1).hide(axis="columns", subset=['_pct_raw']),
                 use_container_width=True, hide_index=True,
                 column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)}
             )
         else:
-            # Individual View
             st.info(f"Menampilkan kontribusi sales: **{target_sales_filter}**")
             sales_brands = df_active['Merk'].unique()
             brand_data = []
             for brand in sales_brands:
                 target_found = 0
                 spv_name = "-"
-                # Cari target brand ini milik siapa
                 for spv, brands_dict in TARGET_DATABASE.items():
                     if brand in brands_dict:
                         target_found = brands_dict[brand]
@@ -471,7 +462,6 @@ def main_dashboard():
             }
         )
         
-        # Download Button Dinamis
         csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
         file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
         st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
