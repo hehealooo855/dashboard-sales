@@ -52,7 +52,7 @@ TARGET_DATABASE = {
     "MADONG": {
         "Ren & R & L": 20_000_000, 
         "Sekawan": 600_000_000, # Brand Ainie
-        "Avione": 300_000_000, # UPDATED (Sum of Rozy, Novi, Hamzah, Dani)
+        "Avione": 300_000_000, # UPDATED: Sum of Rozy, Novi, Hamzah, Dani
         "SYB": 150_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
@@ -65,6 +65,7 @@ TARGET_DATABASE = {
 
 # --- DATABASE TARGET INDIVIDU (REQUEST BARU) ---
 # Format: "NAMA SALES": {"Brand": Target}
+# Catatan: "Sekawan" adalah nama database untuk "Ainie"
 INDIVIDUAL_TARGETS = {
     "WIRA": {
         "Somethinc": 660_000_000, 
@@ -168,7 +169,7 @@ SALES_MAPPING = {
     "DWI CRS": "DWI", "DWI NLAB": "DWI",
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH",
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA",
-    "DANI AINIE": "DANI", "DANI AV": "DANI" # Added Mapping for Dani
+    "DANI AINIE": "DANI", "DANI AV": "DANI" # Mapped Dani
 }
 
 # ==========================================
@@ -399,17 +400,14 @@ def main_dashboard():
     if role == 'manager' or is_supervisor_account:
         st.markdown("### 🎯 Target Monitor")
         
-        # 1. Target Nasional (Muncul untuk SEMUA, Manager, atau SPV)
+        # 1. Target Nasional
         if target_sales_filter == "SEMUA":
             if is_supervisor_account:
-                # Jika SPV memilih "SEMUA", dia melihat total Tim-nya
                 target_tim = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
-                # Realisasi hanya dari brand milik SPV ini
                 realisasi_tim = df_view_global[df_view_global['Merk'].isin(my_brands_list)]['Jumlah'].sum()
                 render_custom_progress(f"🏢 Total Target Tim {my_name}", realisasi_tim, target_tim)
             else:
-                # Manager melihat Nasional
                 realisasi_nasional = df_view_global['Jumlah'].sum() 
                 render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
         
@@ -419,12 +417,10 @@ def main_dashboard():
             individual_targets = INDIVIDUAL_TARGETS[target_sales_filter]
             
             for brand, target in individual_targets.items():
-                # Hitung realisasi sales ini khusus untuk brand ini
                 realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                 render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target)
         
         else:
-            # Fallback jika sales dipilih tapi tidak punya target spesifik di database
             st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik yang terdaftar.")
 
         st.markdown("---")
@@ -432,7 +428,6 @@ def main_dashboard():
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
 
     with tab1:
-        # LOGIKA TABEL (HANYA MUNCUL JIKA SEMUA DIPILIH)
         if target_sales_filter == "SEMUA":
             st.subheader("Rapor Target per Brand")
             summary_data = []
