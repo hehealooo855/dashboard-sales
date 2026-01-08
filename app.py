@@ -508,41 +508,56 @@ def main_dashboard():
         df_active = df_scope_all
         ref_date = df['Tanggal'].max().date()
 
-    # --- KPI METRICS ---
+    # --- KPI METRICS (UPDATED: AUTO COMPARE LOGIC) ---
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # --- LOGIKA KENAIKAN/PENURUNAN ---
-    if len(date_range) == 2:
-        start, end = date_range
-        delta_days = (end - start).days + 1
-        
-        # Hitung periode sebelumnya dengan durasi yang sama
-        prev_end = start - datetime.timedelta(days=1)
+    # Logika Otomatis: H vs H-1 (Single Day) OR Period vs Previous Period (Range)
+    if len(date_range) == 2 and start_date != end_date:
+        # Range Date Comparison
+        delta_days = (end_date - start_date).days + 1
+        prev_end = start_date - datetime.timedelta(days=1)
         prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
         
         omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
         delta_val = current_omset_total - omset_prev_period
         delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
     else:
-        # Jika hanya 1 hari (jarang terjadi di date_input range, tapi untuk safety)
-        prev_date = ref_date - datetime.timedelta(days=1)
-        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
+        # Single Day Comparison (H vs H-1)
+        # Jika user pilih 1 tanggal sama (start==end) atau default view
+        target_date = start_date if len(date_range) == 2 else ref_date
+        prev_date = target_date - datetime.timedelta(days=1)
+        
+        # Hitung omset H-1
+        omset_prev_day = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+        
+        # Jika filter range 1 hari, current_omset_total sudah benar
+        # Jika default view (tanpa filter), current_omset_total adalah total semua, 
+        # TAPI KPI biasanya minta "Hari Ini vs Kemarin" jika default.
+        # Mari kita konsistenkan: KPI angka besar = Total Sesuai Filter. Delta = Sesuai durasi filter.
+        
+        delta_val = current_omset_total - omset_prev_day
         delta_label = f"vs {prev_date.strftime('%d %b')}"
 
     c1, c2, c3 = st.columns(3)
     
-    # --- LOGIKA INDIKATOR WARNA ---
-    delta_str = format_idr(delta_val)
+    # --- INDIKATOR WARNA & FORMAT ---
+    delta_str = format_idr(abs(delta_val))
     if delta_val < 0:
-        delta_str = delta_str.replace("Rp -", "- Rp ")
-    elif delta_val > 0:
+        delta_str = f"- {delta_str}"
+        delta_color = "normal" # Merah (default behavior st.metric untuk negatif)
+    else:
         delta_str = f"+ {delta_str}"
+        delta_color = "normal" # Hijau (default behavior st.metric untuk positif)
 
-    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
+    c1.metric(
+        label="💰 Total Omset", 
+        value=format_idr(current_omset_total), 
+        delta=f"{delta_str} ({delta_label})",
+        delta_color=delta_color
+    )
     
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
