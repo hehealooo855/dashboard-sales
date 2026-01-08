@@ -51,7 +51,7 @@ TARGET_DATABASE = {
     "MADONG": {
         "Ren & R & L": 20_000_000, 
         "Sekawan": 600_000_000, # Brand Ainie
-        "Avione": 300_000_000, 
+        "Avione": 300_000_000, # Total Tim (Rozy+Novi+Hamzah+Dani)
         "SYB": 150_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
@@ -68,7 +68,7 @@ INDIVIDUAL_TARGETS = {
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
+    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 }, # Sales Baru: Dani (Update Request)
     "FERI": { "Honor": 50_000_000, "Vlagio": 30_000_000 }
 }
 
@@ -95,7 +95,7 @@ BRAND_ALIASES = {
 
 SALES_MAPPING = {
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "ROZY AINIE": "ROZY", 
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", # Mapping Baru
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI",
     "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
     "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
@@ -127,7 +127,8 @@ SALES_MAPPING = {
     "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", "RINI JV": "RINI",
     "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "DWI CRS": "DWI",
     "DWI NLAB": "DWI", "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI"
+    "JAYA - MARIANA": "MARIANA", 
+    "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI" # Mapped Dani
 }
 
 # ==========================================
@@ -177,6 +178,7 @@ def render_custom_progress(title, current, target):
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     try:
+        # Menambahkan parameter waktu agar cache Google Sheet tertipu dan memberikan data fresh
         url_with_ts = f"{url}&t={int(time.time())}"
         df = pd.read_csv(url_with_ts, dtype=str)
     except Exception as e:
@@ -227,6 +229,10 @@ def load_data():
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
+    
+    # Filter Tahun Logis (Hanya ambil data 2024-2025 untuk mencegah salah input tahun 2029)
+    current_year = datetime.datetime.now().year
+    df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
         if col in df.columns:
@@ -318,8 +324,8 @@ def main_dashboard():
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: # Sales Biasa (ROZY, NOVI, dll masuk sini)
-        # PERBAIKAN LOGIKA: Set target_sales_filter ke nama sales login agar logic INDIVIDUAL_TARGETS jalan
+    else: # Sales Biasa (ROZY, NOVI, DANI dll masuk sini)
+        # LOGIC FIX: Set target_sales_filter ke nama sales login
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
@@ -371,7 +377,7 @@ def main_dashboard():
                 if len(date_range)==2: df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
                 render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         
-        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, dll)
+        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, DANI, dll)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
