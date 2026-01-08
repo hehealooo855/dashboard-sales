@@ -27,42 +27,60 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET
+# 2. KONFIGURASI DATABASE & TARGET (UPDATED SUPERVISOR HOLDINGS)
 # ==========================================
 TARGET_DATABASE = {
-    "LISMAN": {
-        "Bonavie": 50_000_000, "Whitelab": 150_000_000, "Goute": 50_000_000,
-        "Dorskin": 20_000_000, "Gloow & Be": 130_000_000,
-        "Javinci": 1_300_000_000, "Careso": 400_000_000,
-        "Artist Inc": 130_000_000, "Newlab": 150_000_000, "Mlen": 100_000_000, "Madame G": 0
-    },
-    "AKBAR": {
-        "Thai": 300_000_000, "Inesia": 100_000_000,
-        "Y2000": 180_000_000, "Diosys": 520_000_000,
-        "Sociolla": 600_000_000, "Skin1004": 300_000_000,
-        "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000, "Rosanna": 0
-    },
-    "WILLIAM": {
-        "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0,
-        "Beautica": 100_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000,
-        "Maskit": 30_000_000, "Claresta": 300_000_000, "Birth Beyond": 120_000_000,
-        "OtwooO": 200_000_000, "Saviosa": 0, "Rose All Day": 50_000_000
-    },
     "MADONG": {
-        "Ren & R & L": 20_000_000, 
-        "Sekawan": 600_000_000, 
-        "Avione": 300_000_000, 
+        "Somethinc": 1_200_000_000, 
         "SYB": 150_000_000, 
+        "Sekawan": 600_000_000, # AINIE
+        "Avione": 300_000_000, 
+        "Honor": 125_000_000, 
+        "Vlagio": 75_000_000,
+        "Ren & R & L": 20_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
-        "Mykonos": 20_000_000, 
-        "Somethinc": 1_200_000_000, 
-        "Honor": 125_000_000, 
-        "Vlagio": 75_000_000
+        "Mykonos": 20_000_000
+    },
+    "LISMAN": {
+        "Javinci": 1_300_000_000, 
+        "Careso": 400_000_000, 
+        "Newlab": 150_000_000, 
+        "Gloow & Be": 130_000_000, # Glowbe
+        "Dorskin": 20_000_000, 
+        "Whitelab": 150_000_000, 
+        "Bonavie": 50_000_000, 
+        "Goute": 50_000_000, 
+        "Mlen": 100_000_000, 
+        "Artist Inc": 130_000_000
+    },
+    "AKBAR": {
+        "Sociolla": 600_000_000, 
+        "Thai": 300_000_000, 
+        "Inesia": 100_000_000, 
+        "Y2000": 180_000_000, 
+        "Diosys": 520_000_000,
+        "Masami": 40_000_000, 
+        "Cassandra": 50_000_000, 
+        "Clinelle": 80_000_000
+    },
+    "WILLIAM": {
+        "The Face": 600_000_000, 
+        "Yu Chun Mei": 450_000_000, 
+        "Milano": 50_000_000, 
+        "Remar": 0,
+        "Beautica": 100_000_000, 
+        "Walnutt": 30_000_000, 
+        "Elizabeth Rose": 50_000_000, 
+        "Maskit": 30_000_000, 
+        "Claresta": 300_000_000, 
+        "Birth Beyond": 120_000_000, 
+        "OtwooO": 200_000_000, 
+        "Rose All Day": 50_000_000
     }
 }
 
-# --- DATABASE TARGET INDIVIDU (SESUAI PERMINTAAN) ---
+# --- DATABASE TARGET INDIVIDU (STRICT MAPPING) ---
 INDIVIDUAL_TARGETS = {
     # 1. WIRA (Somethinc, SYB, Honor, Vlagio, Elizabeth Rose, Walnutt)
     "WIRA": { 
@@ -156,10 +174,10 @@ BRAND_ALIASES = {
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
     "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"], "Oimio": ["OIMIO"],
-    "Clinelle": ["CLINELLE"], "Ren & R & L": ["REN", "R & L", "R&L"], "Sekawan": ["SEKAWAN", "AINIE"],
+    "Clinelle": ["CLINELLE", "CLIN"], "Ren & R & L": ["REN", "R & L", "R&L"], "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], "Avione": ["AVIONE"],
     "SYB": ["SYB"], "Satto": ["SATTO"], "Liora": ["LIORA"], "Mykonos": ["MYKONOS"],
-    "Somethinc": ["SOMETHINC"], "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW"],
+    "Somethinc": ["SOMETHINC"], "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW", "GLOWBE"],
     "Artist Inc": ["ARTIST", "ARTIS"], "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"],
     "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"], "Walnutt": ["WALNUT", "WALNUTT"],
@@ -337,11 +355,12 @@ def load_data():
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     
     # --- LOGIKA NON-SALES ---
-    # Jika nama sales tidak ada di daftar target individu, ubah jadi "Non-Sales"
+    # Hanya sales yang ada di target individu yang dianggap "Active Sales"
     valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-    # Tambahkan nama Supervisor jika mereka melakukan penjualan langsung tapi tidak ada di INDIVIDUAL_TARGETS
-    valid_sales_names.extend(["MADONG"]) 
+    # Tambahkan nama Supervisor jika mereka melakukan penjualan langsung
+    valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
     
+    # Ganti nama sales yang tidak terdaftar menjadi "Non-Sales"
     df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
     df['Penjualan'] = df['Penjualan'].astype('category')
 
@@ -461,8 +480,13 @@ def main_dashboard():
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
+        # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
+        
+        # Filter 2: Hanya Sales yang relevan (opsional, tapi bagus untuk kebersihan)
+        # Kita ambil sales yang pernah menjual brand ini
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
