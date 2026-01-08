@@ -355,12 +355,9 @@ def load_data():
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     
     # --- LOGIKA NON-SALES ---
-    # Hanya sales yang ada di target individu yang dianggap "Active Sales"
     valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-    # Tambahkan nama Supervisor jika mereka melakukan penjualan langsung
     valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
     
-    # Ganti nama sales yang tidak terdaftar menjadi "Non-Sales"
     df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
     df['Penjualan'] = df['Penjualan'].astype('category')
 
@@ -516,11 +513,26 @@ def main_dashboard():
     st.markdown("---")
     
     current_omset_total = df_active['Jumlah'].sum()
-    omset_hari_ini = df_scope_all[df_scope_all['Tanggal'].dt.date == ref_date]['Jumlah'].sum()
-    prev_date = ref_date - datetime.timedelta(days=1)
-    omset_kemarin = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-    delta_val = omset_hari_ini - omset_kemarin
     
+    # --- LOGIKA KENAIKAN/PENURUNAN ---
+    if len(date_range) == 2:
+        start, end = date_range
+        delta_days = (end - start).days + 1
+        
+        # Hitung periode sebelumnya dengan durasi yang sama
+        prev_end = start - datetime.timedelta(days=1)
+        prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
+        
+        omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
+        delta_val = current_omset_total - omset_prev_period
+        delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
+    else:
+        # Jika hanya 1 hari (jarang terjadi di date_input range, tapi untuk safety)
+        prev_date = ref_date - datetime.timedelta(days=1)
+        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+        delta_val = current_omset_total - omset_prev_period
+        delta_label = f"vs {prev_date.strftime('%d %b')}"
+
     c1, c2, c3 = st.columns(3)
     
     # --- LOGIKA INDIKATOR WARNA ---
@@ -530,7 +542,7 @@ def main_dashboard():
     elif delta_val > 0:
         delta_str = f"+ {delta_str}"
 
-    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} (vs {prev_date.strftime('%d %b')})")
+    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
     
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
