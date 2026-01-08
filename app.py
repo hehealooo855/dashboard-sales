@@ -50,8 +50,8 @@ TARGET_DATABASE = {
     },
     "MADONG": {
         "Ren & R & L": 20_000_000, 
-        "Sekawan": 600_000_000, # Brand Ainie
-        "Avione": 300_000_000, # UPDATED: Total Tim (Rozy+Novi+Hamzah+Dani)
+        "Sekawan": 600_000_000, 
+        "Avione": 300_000_000, 
         "SYB": 150_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
@@ -62,14 +62,42 @@ TARGET_DATABASE = {
     }
 }
 
-# --- DATABASE TARGET INDIVIDU ---
+# --- DATABASE TARGET INDIVIDU (UPDATED) ---
 INDIVIDUAL_TARGETS = {
+    # --- EXISTING ---
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 }, # Sales Baru: Dani
-    "FERI": { "Honor": 50_000_000, "Vlagio": 30_000_000 }
+    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
+
+    # --- UPDATED: TIM LISMAN ---
+    "NAUFAL": { "Javinci": 550_000_000 },
+    "RIZKI": { "Javinci": 450_000_000 },
+    "ADE": { 
+        "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
+        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
+    },
+    "FANDI": { 
+        "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
+        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
+        "Bonavie": 25_000_000, "Goute": 25_000_000, "Mlen": 50_000_000
+    },
+    "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
+    "RISKA": { # Riska juga ada di Tim Akbar (Cross-Brand)
+        "Javinci": 40_000_000, 
+        "Sociolla": 190_000_000, "Thai": 30_000_000 
+    },
+    "DWI": { "Careso": 350_000_000 },
+    "SANTI": { "Whitelab": 75_000_000, "Bonavie": 25_000_000, "Goute": 25_000_000 },
+    "ASWIN": { "Artist Inc": 130_000_000 },
+
+    # --- UPDATED: TIM AKBAR ---
+    "DEVI": { "Sociolla": 120_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
+    "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
+    "GANI": { "Sociolla": 80_000_000, "Thai": 85_000_000 },
+    "FERI": { "Thai": 200_000_000, "Honor": 50_000_000, "Vlagio": 30_000_000 },
+    "BAYU": { "Diosys": 170_000_000, "Y2000": 50_000_000 }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
@@ -93,41 +121,63 @@ BRAND_ALIASES = {
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"]
 }
 
+# --- MAPPING SALES UPDATE ---
 SALES_MAPPING = {
+    # EXISTING
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "ROZY AINIE": "ROZY", 
     "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI",
     "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
+    "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
+    
+    # RISKA (Mixed)
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
     "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
     "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
     "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
     "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
-    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", 
+
+    # ADE
+    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE",
     "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
+
+    # FANDI
     "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
     "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", 
-    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI",
+    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
+    
+    # GANI
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
     "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
-    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI",
+    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI",
+
+    # BASTIAN
     "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
     "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
     "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN",
-    "BASTIAN-DIO 45": "BASTIAN", "YOGI REMAR": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI",
-    "MILANO - YOGI": "YOGI", "FERI - HONOR": "FERI", "FERI - VG": "FERI", "FERI THAI": "FERI",
-    "FERI - INESIA": "FERI", "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI",
+    "BASTIAN-DIO 45": "BASTIAN",
+
+    # YOGI & FERI
+    "YOGI REMAR": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "MILANO - YOGI": "YOGI",
+    "FERI - HONOR": "FERI", "FERI - VG": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
+
+    # DEVI & BAYU
+    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI",
     "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
     "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
-    "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", "PMT-WIRA": "WIRA", "WIRA SOMETHINC": "WIRA",
-    "WIRA SYB": "WIRA", "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
+    "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
+
+    # OTHERS (Wira, Santi, Habibi, dll)
+    "PMT-WIRA": "WIRA", "WIRA SOMETHINC": "WIRA", "WIRA SYB": "WIRA", 
+    "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", "MAS - MITHA": "MITHA",
     "MITHA ": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA",
     "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", "WILLIAM BTC": "WILLIAM",
-    "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM", "NAUFAL - JAVINCI": "NAUFAL",
+    "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM", "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL",
     "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", "RINI JV": "RINI",
-    "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "DWI CRS": "DWI",
-    "DWI NLAB": "DWI", "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI" # Mapped Dani
+    "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "SAHRUL JV": "SAHRUL", "GLOOW - SAHRUL": "SAHRUL",
+    "DWI CRS": "DWI", "DWI NLAB": "DWI", 
+    "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
+    "JAYA - MARIANA": "MARIANA", "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN"
 }
 
 # ==========================================
@@ -187,20 +237,17 @@ def load_data():
     if not all(col in df.columns for col in required_cols):
         return None
     
-    # --- 1. CLEANING SAMPAH (LEBIH AGRESIF - FIX SELISIH OMSET) ---
+    # --- CLEANING SAMPAH ---
     if 'Nama Outlet' in df.columns:
-        # Hapus yang mengandung Total/Jumlah/Rekap
         df = df[~df['Nama Outlet'].astype(str).str.contains(r'Total|Jumlah|Subtotal|Grand|Rekap', case=False, regex=True, na=False)]
-        # Hapus yang kosong atau cuma spasi
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
-        # Hapus yang isinya 'nan' string
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
 
     if 'Nama Barang' in df.columns:
         df = df[~df['Nama Barang'].astype(str).str.contains(r'Total|Jumlah', case=False, regex=True, na=False)]
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
-    # --- 2. NORMALISASI ---
+    # --- NORMALISASI ---
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING).astype('category')
     
     def normalize_brand(raw_brand):
@@ -211,7 +258,7 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    # --- 3. NUMERIC CLEANING ---
+    # --- NUMERIC CLEANING ---
     df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
@@ -220,9 +267,8 @@ def load_data():
         return val
     df['Jumlah'] = df['Jumlah'].apply(auto_fix_thousands)
 
-    # --- 4. DATE CLEANING & FILTER TAHUN ---
+    # --- DATE CLEANING ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
-    
     def fix_swapped_date(d):
         if pd.isnull(d): return d
         try:
@@ -232,13 +278,9 @@ def load_data():
             pass
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
-    
-    # Hapus yang tanggalnya NaT (Not a Time)
     df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
 
-    # --- FILTER TAHUN LOGIS (Mencegah Typo Tahun) ---
     current_year = datetime.datetime.now().year
-    # Hanya terima data dari tahun lalu sampai tahun depan (buffer)
     df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
     for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
@@ -319,7 +361,8 @@ def main_dashboard():
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
-    if role == 'manager':
+    # PERUBAHAN: Direktur punya akses sama dengan Manager (Melihat Semua)
+    if role in ['manager', 'direktur']:
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
@@ -331,8 +374,7 @@ def main_dashboard():
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: # Sales Biasa (ROZY, NOVI, DANI dll masuk sini)
-        # PERBAIKAN LOGIKA: Set target_sales_filter ke nama sales login agar logic INDIVIDUAL_TARGETS jalan
+    else: # Sales Biasa
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
@@ -369,7 +411,7 @@ def main_dashboard():
     c3.metric("🧾 Transaksi", f"{len(df_active)}")
 
     # --- TARGET MONITOR (UPDATED FOR INDIVIDUAL) ---
-    if role == 'manager' or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
+    if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
         st.markdown("### 🎯 Target Monitor")
         
         # 1. Target Nasional / Tim
@@ -384,7 +426,7 @@ def main_dashboard():
                 if len(date_range)==2: df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
                 render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         
-        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, DANI, dll)
+        # 2. Target Individu Spesifik
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
@@ -405,7 +447,7 @@ def main_dashboard():
         if target_sales_filter == "SEMUA":
             st.subheader("Rapor Target per Brand")
             summary_data = []
-            target_loop = TARGET_DATABASE.items() if role == 'manager' else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
+            target_loop = TARGET_DATABASE.items() if role in ['manager', 'direktur'] else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
                     realisasi = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
@@ -461,10 +503,8 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Rincian Transaksi Lengkap")
         
-        # --- FITUR DETEKTIF DATA (Untuk Cek Selisih) ---
         with st.expander("🕵️‍♂️ DETEKTIF DATA: Cek Transaksi Terbesar (Cari Angka Aneh)"):
             st.warning("Gunakan tabel ini untuk mencari baris 'Total' yang menyusup.")
-            # Tampilkan 10 transaksi terbesar yang mungkin mencurigakan
             st.dataframe(
                 df_active.nlargest(10, 'Jumlah')[['Tanggal', 'Nama Outlet', 'Nama Barang', 'Jumlah']],
                 use_container_width=True
