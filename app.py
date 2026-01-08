@@ -51,7 +51,7 @@ TARGET_DATABASE = {
     "MADONG": {
         "Ren & R & L": 20_000_000, 
         "Sekawan": 600_000_000, # Brand Ainie
-        "Avione": 300_000_000, # Total Tim (Rozy+Novi+Hamzah+Dani)
+        "Avione": 300_000_000, 
         "SYB": 150_000_000, 
         "Mad For Make Up": 25_000_000, 
         "Satto": 500_000_000,
@@ -63,13 +63,12 @@ TARGET_DATABASE = {
 }
 
 # --- DATABASE TARGET INDIVIDU ---
-# Catatan: "Sekawan" digunakan untuk Brand "Ainie" sesuai mapping database
 INDIVIDUAL_TARGETS = {
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 }, # Sales Baru: Dani
+    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
     "FERI": { "Honor": 50_000_000, "Vlagio": 30_000_000 }
 }
 
@@ -96,7 +95,7 @@ BRAND_ALIASES = {
 
 SALES_MAPPING = {
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "ROZY AINIE": "ROZY", 
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI",
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", # Mapping Baru
     "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZAH SYB": "HAMZAH",
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
     "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
@@ -128,7 +127,7 @@ SALES_MAPPING = {
     "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", "RINI JV": "RINI",
     "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "DWI CRS": "DWI",
     "DWI NLAB": "DWI", "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI" # Mapped Dani
+    "JAYA - MARIANA": "MARIANA", "DANI AINIE": "DANI", "DANI AV": "DANI"
 }
 
 # ==========================================
@@ -372,7 +371,7 @@ def main_dashboard():
                 if len(date_range)==2: df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
                 render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         
-        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, DANI, dll)
+        # 2. Target Individu Spesifik (ROZY, NOVI, WIRA, dll)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
