@@ -411,20 +411,28 @@ def main_dashboard():
     delta_val = omset_hari_ini - omset_kemarin
     
     c1, c2, c3 = st.columns(3)
-    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{format_idr(delta_val)} (vs {prev_date.strftime('%d %b')})")
+    
+    # --- LOGIKA INDIKATOR WARNA (PERBAIKAN) ---
+    delta_str = format_idr(delta_val)
+    if delta_val < 0:
+        # Pindahkan tanda minus ke depan agar terbaca Streamlit sebagai penurunan (Merah)
+        # format_idr menghasilkan "Rp -100.000", kita ubah jadi "- Rp 100.000"
+        delta_str = delta_str.replace("Rp -", "- Rp ")
+    elif delta_val > 0:
+        # Tambahkan plus agar terbaca sebagai kenaikan (Hijau)
+        delta_str = f"+ {delta_str}"
+
+    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} (vs {prev_date.strftime('%d %b')})")
+    
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
-    # --- UPDATE: PERBAIKAN HITUNG TRANSAKSI (UNIQUE FAKTUR) ---
+    # --- HITUNG TRANSAKSI (UNIQUE FAKTUR) ---
     if 'No Faktur' in df_active.columns:
-        # Hanya hitung yang punya nilai faktur (tidak kosong, tidak strip)
         valid_faktur = df_active['No Faktur'].astype(str)
-        # Filter sampah umum yang bukan nomor faktur
         valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', 'None', '.'])]
-        # Pastikan panjang string cukup (misal minimal 3 karakter) untuk menghindari typo kosong
         valid_faktur = valid_faktur[valid_faktur.str.len() > 2]
         transaksi_count = valid_faktur.nunique()
     else:
-        # Fallback jika kolom tidak ditemukan sama sekali (seharusnya tidak terjadi dengan auto-detect)
         transaksi_count = len(df_active)
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
