@@ -64,7 +64,10 @@ TARGET_DATABASE = {
 
 INDIVIDUAL_TARGETS = {
     # --- TIM WIRA DLL ---
-    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
+    "WIRA": { 
+        "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
+        "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000  # Added from William's Brand
+    },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
@@ -94,9 +97,25 @@ INDIVIDUAL_TARGETS = {
     # --- TIM AKBAR ---
     "DEVI": { "Sociolla": 120_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
     "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
-    "GANI": { "Sociolla": 80_000_000, "Thai": 85_000_000 },
+    "GANI": { 
+        "Sociolla": 80_000_000, "Thai": 85_000_000, # Existing
+        "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000, # New from William
+        "Elizabeth Rose": 20_000_000, "Walnutt": 10_000_000
+    },
     "FERI": { "Thai": 200_000_000, "Honor": 50_000_000, "Vlagio": 30_000_000 },
-    "BAYU": { "Diosys": 170_000_000, "Y2000": 50_000_000 }
+    "BAYU": { "Diosys": 170_000_000, "Y2000": 50_000_000 },
+
+    # --- TIM WILLIAM (NEW) ---
+    "YOGI": {
+        "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000
+    },
+    "LYDIA": {
+        "Birth Beyond": 120_000_000
+    },
+    "MITHA": {
+        "Maskit": 30_000_000, "Rose All Day": 30_000_000,
+        "Claresta": 350_000_000, "OtwooO": 200_000_000
+    }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
@@ -175,7 +194,8 @@ SALES_MAPPING = {
     "RINI SYB": "RINI", "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "SAHRUL JV": "SAHRUL", "GLOOW - SAHRUL": "SAHRUL",
     "DWI CRS": "DWI", "DWI NLAB": "DWI", 
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA",
-    "JAYA - MARIANA": "MARIANA", "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN"
+    "JAYA - MARIANA": "MARIANA", "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN",
+    "LYDIA KITO": "LYDIA", "LYDIA": "LYDIA", "LYDIA K": "LYDIA" # MAPPING BARU
 }
 
 # ==========================================
@@ -236,7 +256,6 @@ def load_data():
         return None
     
     # --- AUTO DETECT KOLOM FAKTUR ---
-    # Mencari kolom yang mengandung kata 'faktur' atau 'bukti' dan mengubahnya jadi 'No Faktur'
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
@@ -412,14 +431,11 @@ def main_dashboard():
     
     c1, c2, c3 = st.columns(3)
     
-    # --- LOGIKA INDIKATOR WARNA (PERBAIKAN) ---
+    # --- LOGIKA INDIKATOR WARNA ---
     delta_str = format_idr(delta_val)
     if delta_val < 0:
-        # Pindahkan tanda minus ke depan agar terbaca Streamlit sebagai penurunan (Merah)
-        # format_idr menghasilkan "Rp -100.000", kita ubah jadi "- Rp 100.000"
         delta_str = delta_str.replace("Rp -", "- Rp ")
     elif delta_val > 0:
-        # Tambahkan plus agar terbaca sebagai kenaikan (Hijau)
         delta_str = f"+ {delta_str}"
 
     c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} (vs {prev_date.strftime('%d %b')})")
