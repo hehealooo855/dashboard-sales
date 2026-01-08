@@ -62,16 +62,15 @@ TARGET_DATABASE = {
     }
 }
 
-# --- DATABASE TARGET INDIVIDU (UPDATED) ---
 INDIVIDUAL_TARGETS = {
-    # --- EXISTING ---
+    # --- TIM WIRA DLL ---
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
 
-    # --- UPDATED: TIM LISMAN ---
+    # --- TIM LISMAN ---
     "NAUFAL": { "Javinci": 550_000_000 },
     "RIZKI": { "Javinci": 450_000_000 },
     "ADE": { 
@@ -84,7 +83,7 @@ INDIVIDUAL_TARGETS = {
         "Bonavie": 25_000_000, "Goute": 25_000_000, "Mlen": 50_000_000
     },
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
-    "RISKA": { # Riska juga ada di Tim Akbar (Cross-Brand)
+    "RISKA": { 
         "Javinci": 40_000_000, 
         "Sociolla": 190_000_000, "Thai": 30_000_000 
     },
@@ -92,7 +91,7 @@ INDIVIDUAL_TARGETS = {
     "SANTI": { "Whitelab": 75_000_000, "Bonavie": 25_000_000, "Goute": 25_000_000 },
     "ASWIN": { "Artist Inc": 130_000_000 },
 
-    # --- UPDATED: TIM AKBAR ---
+    # --- TIM AKBAR ---
     "DEVI": { "Sociolla": 120_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
     "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
     "GANI": { "Sociolla": 80_000_000, "Thai": 85_000_000 },
@@ -121,7 +120,6 @@ BRAND_ALIASES = {
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"]
 }
 
-# --- MAPPING SALES UPDATE ---
 SALES_MAPPING = {
     # EXISTING
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "ROZY AINIE": "ROZY", 
@@ -166,7 +164,7 @@ SALES_MAPPING = {
     "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
     "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
 
-    # OTHERS (Wira, Santi, Habibi, dll)
+    # OTHERS
     "PMT-WIRA": "WIRA", "WIRA SOMETHINC": "WIRA", "WIRA SYB": "WIRA", 
     "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", "MAS - MITHA": "MITHA",
@@ -237,6 +235,17 @@ def load_data():
     if not all(col in df.columns for col in required_cols):
         return None
     
+    # --- AUTO DETECT KOLOM FAKTUR ---
+    # Mencari kolom yang mengandung kata 'faktur' atau 'bukti' dan mengubahnya jadi 'No Faktur'
+    faktur_col = None
+    for col in df.columns:
+        if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
+            faktur_col = col
+            break
+    
+    if faktur_col:
+        df = df.rename(columns={faktur_col: 'No Faktur'})
+    
     # --- CLEANING SAMPAH ---
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.contains(r'Total|Jumlah|Subtotal|Grand|Rekap', case=False, regex=True, na=False)]
@@ -261,7 +270,7 @@ def load_data():
     # --- NUMERIC CLEANING ---
     df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[^-\d.]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
-
+    
     # --- DATE CLEANING ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
     def fix_swapped_date(d):
@@ -278,10 +287,11 @@ def load_data():
     current_year = datetime.datetime.now().year
     df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
-    # UPDATE: MENAMBAHKAN 'No Faktur' KE CONVERT STRING
-    for col in ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']:
+    # --- CONVERT STRING FOR METADATA ---
+    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
+    for col in cols_to_convert:
         if col in df.columns:
-            df[col] = df[col].astype(str)
+            df[col] = df[col].astype(str).str.strip()
             
     return df
 
@@ -357,7 +367,6 @@ def main_dashboard():
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
-    # PERUBAHAN: Direktur punya akses sama dengan Manager (Melihat Semua)
     if role in ['manager', 'direktur']:
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
@@ -405,18 +414,25 @@ def main_dashboard():
     c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{format_idr(delta_val)} (vs {prev_date.strftime('%d %b')})")
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
-    # UPDATE: HITUNG UNIK FAKTUR JIKA KOLOM ADA
+    # --- UPDATE: PERBAIKAN HITUNG TRANSAKSI (UNIQUE FAKTUR) ---
     if 'No Faktur' in df_active.columns:
-        transaksi_count = df_active['No Faktur'].nunique()
+        # Hanya hitung yang punya nilai faktur (tidak kosong, tidak strip)
+        valid_faktur = df_active['No Faktur'].astype(str)
+        # Filter sampah umum yang bukan nomor faktur
+        valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', 'None', '.'])]
+        # Pastikan panjang string cukup (misal minimal 3 karakter) untuk menghindari typo kosong
+        valid_faktur = valid_faktur[valid_faktur.str.len() > 2]
+        transaksi_count = valid_faktur.nunique()
     else:
+        # Fallback jika kolom tidak ditemukan sama sekali (seharusnya tidak terjadi dengan auto-detect)
         transaksi_count = len(df_active)
+        
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
-    # --- TARGET MONITOR (UPDATED FOR INDIVIDUAL) ---
+    # --- TARGET MONITOR ---
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
         st.markdown("### 🎯 Target Monitor")
         
-        # 1. Target Nasional / Tim
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
@@ -428,18 +444,14 @@ def main_dashboard():
                 if len(date_range)==2: df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
                 render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         
-        # 2. Target Individu Spesifik
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
-            
             for brand, target_val in targets_map.items():
                 realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                 render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target_val)
-        
         else:
             st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
-        
         st.markdown("---")
 
     # --- ANALYTICS TABS ---
@@ -465,7 +477,6 @@ def main_dashboard():
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Fallback Table for non-specific sales
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
             for brand in sales_brands:
@@ -512,7 +523,7 @@ def main_dashboard():
                 use_container_width=True
             )
 
-        cols_to_show = ['Tanggal', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
+        cols_to_show = ['Tanggal', 'No Faktur', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
         final_cols = [c for c in cols_to_show if c in df_active.columns]
         
         st.dataframe(
