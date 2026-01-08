@@ -259,12 +259,8 @@ def load_data():
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
     # --- NUMERIC CLEANING ---
-    df['Jumlah'] = df['Jumlah'].astype(str).replace(r'[^\d]', '', regex=True)
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[^-\d.]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
-    
-    def auto_fix_thousands(val):
-        if 0 < val < 1000: return val * 1000
-        return val
     df['Jumlah'] = df['Jumlah'].apply(auto_fix_thousands)
 
     # --- DATE CLEANING ---
