@@ -278,7 +278,8 @@ def load_data():
     current_year = datetime.datetime.now().year
     df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
-    for col in ['Kota', 'Nama Outlet', 'Nama Barang']:
+    # UPDATE: MENAMBAHKAN 'No Faktur' KE CONVERT STRING
+    for col in ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']:
         if col in df.columns:
             df[col] = df[col].astype(str)
             
@@ -403,7 +404,13 @@ def main_dashboard():
     c1, c2, c3 = st.columns(3)
     c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{format_idr(delta_val)} (vs {prev_date.strftime('%d %b')})")
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
-    c3.metric("🧾 Transaksi", f"{len(df_active)}")
+    
+    # UPDATE: HITUNG UNIK FAKTUR JIKA KOLOM ADA
+    if 'No Faktur' in df_active.columns:
+        transaksi_count = df_active['No Faktur'].nunique()
+    else:
+        transaksi_count = len(df_active)
+    c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
     # --- TARGET MONITOR (UPDATED FOR INDIVIDUAL) ---
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
