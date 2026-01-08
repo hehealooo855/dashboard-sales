@@ -62,59 +62,89 @@ TARGET_DATABASE = {
     }
 }
 
+# --- DATABASE TARGET INDIVIDU (SESUAI PERMINTAAN) ---
 INDIVIDUAL_TARGETS = {
-    # --- TIM WIRA DLL ---
+    # 1. WIRA (Somethinc, SYB, Honor, Vlagio, Elizabeth Rose, Walnutt)
     "WIRA": { 
         "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
-        "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000  # Added from William's Brand
+        "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000
     },
-    "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
+    # 2. HAMZAH (Somethinc, SYB, AINIE, AVIONE, Honor, Vlagio)
+    "HAMZAH": { 
+        "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, 
+        "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 
+    },
+    # 3. ROZY (AINIE, AVIONE)
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
+    
+    # 4. NOVI (Gabungan Novi + Rapi: AINIE, AVIONE)
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
+    
+    # 5. DANI (AINIE, AVIONE)
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
-
-    # --- TIM LISMAN ---
+    
+    # 6. FERI (Honor, Thai, Vlagio, Inesia)
+    "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
+    
+    # 7. NAUFAL (Javinci only)
     "NAUFAL": { "Javinci": 550_000_000 },
+    
+    # 8. RIZKI (Javinci only)
     "RIZKI": { "Javinci": 450_000_000 },
+    
+    # 9. ADE (Javinci, Careso, Newlab, Gloow, Dorskin, Mlen)
     "ADE": { 
         "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
     },
+    # 10. FANDI (Javinci, Careso, Newlab, Gloow, Dorskin, Whitelab, Goute, Bonavie, Mlen)
     "FANDI": { 
         "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
-        "Bonavie": 25_000_000, "Goute": 25_000_000, "Mlen": 50_000_000
+        "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000
     },
+    # 11. SYAHRUL (Javinci, Careso, Gloow)
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
+    
+    # 12. RISKA (Javinci, Sociolla, Thai, Inesia)
     "RISKA": { 
-        "Javinci": 40_000_000, 
-        "Sociolla": 190_000_000, "Thai": 30_000_000 
+        "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 
     },
+    # 13. DWI (Careso only)
     "DWI": { "Careso": 350_000_000 },
-    "SANTI": { "Whitelab": 75_000_000, "Bonavie": 25_000_000, "Goute": 25_000_000 },
+    
+    # 14. SANTI (Goute, Bonavie, Whitelab)
+    "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
+    
+    # 15. ASWIN (Artist Inc only)
     "ASWIN": { "Artist Inc": 130_000_000 },
-
-    # --- TIM AKBAR ---
-    "DEVI": { "Sociolla": 120_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
-    "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
+    
+    # 16. DEVI (Sociolla, Y2000, Diosys)
+    "DEVI": { "Sociolla": 120_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
+    
+    # 17. GANI (The Face, YCM, Milano, Sociolla, Thai, Inesia)
     "GANI": { 
-        "Sociolla": 80_000_000, "Thai": 85_000_000, # Existing
-        "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000, # New from William
-        "Elizabeth Rose": 20_000_000, "Walnutt": 10_000_000
+        "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000,
+        "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000
     },
-    "FERI": { "Thai": 200_000_000, "Honor": 50_000_000, "Vlagio": 30_000_000 },
-    "BAYU": { "Diosys": 170_000_000, "Y2000": 50_000_000 },
-
-    # --- TIM WILLIAM (NEW) ---
-    "YOGI": {
-        "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000
+    # 18. BASTIAN (Sociolla, Thai, Inesia, Y2000, Diosys)
+    "BASTIAN": { 
+        "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000,
+        "Y2000": 65_000_000, "Diosys": 175_000_000
     },
-    "LYDIA": {
-        "Birth Beyond": 120_000_000
-    },
-    "MITHA": {
-        "Maskit": 30_000_000, "Rose All Day": 30_000_000,
-        "Claresta": 350_000_000, "OtwooO": 200_000_000
+    # 19. BAYU (Y2000, Diosys)
+    "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
+    
+    # 20. YOGI (The Face, YCM, Milano)
+    "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
+    
+    # 21. LYDIA (Birth Beyond)
+    "LYDIA": { "Birth Beyond": 120_000_000 },
+    
+    # 22. MITHA (Maskit, RAD, OtwooO, Claresta)
+    "MITHA": { 
+        "Maskit": 30_000_000, "Rose All Day": 30_000_000, 
+        "OtwooO": 200_000_000, "Claresta": 350_000_000 
     }
 }
 
@@ -139,9 +169,8 @@ BRAND_ALIASES = {
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"]
 }
 
-# --- UPDATE PENTING: MAPPING SALES LENGKAP ---
 SALES_MAPPING = {
-    # 1. WIRA (Menangani Variasi Nama: Wira Vg, Wira Honor, dll)
+    # 1. WIRA 
     "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA",
     "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
     "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA",
@@ -176,22 +205,27 @@ SALES_MAPPING = {
     # 7. LYDIA
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA",
 
-    # 8. NOVI & ROZY & DANI (Sekawan/Avione)
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI",
+    # 8. NOVI (MERGE DENGAN RAFI/RAPI)
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", 
+    "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI",
+
+    # 9. ROZY
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
+
+    # 10. DANI
     "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
 
-    # 9. MADONG
+    # 11. MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
 
-    # 10. RISKA
+    # 12. RISKA
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
     "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
     "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
     "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
     "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
 
-    # 11. TIM LISMAN (ADE, FANDI, DLL)
+    # 13. TIM LISMAN (ADE, FANDI, DLL)
     "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE",
     "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
     "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
@@ -204,7 +238,7 @@ SALES_MAPPING = {
     "DWI CRS": "DWI", "DWI NLAB": "DWI", 
     "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN",
 
-    # 12. TIM AKBAR (DEVI, BASTIAN, BAYU)
+    # 14. TIM AKBAR (DEVI, BASTIAN, BAYU)
     "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
     "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
     "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
@@ -213,7 +247,7 @@ SALES_MAPPING = {
     "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
     "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
 
-    # 13. LAIN-LAIN
+    # 15. LAIN-LAIN
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", 
     "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
     "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM",
@@ -299,9 +333,19 @@ def load_data():
         df = df[~df['Nama Barang'].astype(str).str.contains(r'Total|Jumlah', case=False, regex=True, na=False)]
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
-    # --- NORMALISASI ---
-    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING).astype('category')
+    # --- NORMALISASI SALES ---
+    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     
+    # --- LOGIKA NON-SALES ---
+    # Jika nama sales tidak ada di daftar target individu, ubah jadi "Non-Sales"
+    valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+    # Tambahkan nama Supervisor jika mereka melakukan penjualan langsung tapi tidak ada di INDIVIDUAL_TARGETS
+    valid_sales_names.extend(["MADONG"]) 
+    
+    df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+    df['Penjualan'] = df['Penjualan'].astype('category')
+
+    # --- NORMALISASI BRAND ---
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
         for target_brand, keywords in BRAND_ALIASES.items():
