@@ -680,9 +680,11 @@ def main_dashboard():
             }
         )
         
-        csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
-        file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
-        st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
+        # Only managers/directors can download
+        if role in ['manager', 'direktur']:
+            csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
+            file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
+            st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
 # --- 5. ALUR UTAMA ---
 if 'logged_in' not in st.session_state:
