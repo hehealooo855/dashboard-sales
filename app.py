@@ -445,6 +445,10 @@ def login_page():
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = match.iloc[0]['role']
                             st.session_state['sales_name'] = match.iloc[0]['sales_name']
+                            
+                            # --- INISIALISASI WAKTU LOGIN ---
+                            st.session_state['last_activity'] = time.time()
+                            
                             st.success("Login Berhasil! Mengalihkan...")
                             time.sleep(1)
                             st.rerun()
@@ -452,6 +456,21 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
+    # --- AUTO LOGOUT LOGIC (10 MENIT) ---
+    if 'last_activity' not in st.session_state:
+        st.session_state['last_activity'] = time.time()
+
+    # Cek jika selisih waktu sekarang dan aktivitas terakhir > 600 detik (10 menit)
+    if time.time() - st.session_state['last_activity'] > 600:
+        st.session_state['logged_in'] = False
+        st.session_state.pop('last_activity', None)
+        st.warning("⚠️ Sesi habis karena tidak aktif selama 10 menit. Silakan login kembali.")
+        time.sleep(2)
+        st.rerun()
+    else:
+        # Update waktu aktivitas terakhir setiap kali user melakukan interaksi/rerun
+        st.session_state['last_activity'] = time.time()
+
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
