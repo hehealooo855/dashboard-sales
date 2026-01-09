@@ -27,7 +27,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET
+# 2. KONFIGURASI DATABASE & TARGET (UPDATED SUPERVISOR HOLDINGS)
 # ==========================================
 TARGET_DATABASE = {
     "MADONG": {
@@ -80,6 +80,7 @@ TARGET_DATABASE = {
     }
 }
 
+# --- DATABASE TARGET INDIVIDU (STRICT MAPPING) ---
 INDIVIDUAL_TARGETS = {
     # 1. WIRA (Somethinc, SYB, Honor, Vlagio, Elizabeth Rose, Walnutt)
     "WIRA": { 
@@ -340,14 +341,17 @@ def load_data():
     if faktur_col:
         df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    # --- CLEANING SAMPAH ---
+    # --- CLEANING SAMPAH YANG LEBIH CERDAS (FIX SELISIH 300RB) ---
+    # Hapus baris yang diawali kata "Total", "Jumlah", dll (Bukan 'contains' agar tidak salah hapus produk)
     if 'Nama Outlet' in df.columns:
-        df = df[~df['Nama Outlet'].astype(str).str.contains(r'Total|Jumlah|Subtotal|Grand|Rekap', case=False, regex=True, na=False)]
+        # Hapus hanya jika Nama Outlet diawali kata-kata ini (biasanya baris rekap bawah)
+        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
 
     if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.contains(r'Total|Jumlah', case=False, regex=True, na=False)]
+        # Hapus hanya jika Nama Barang diawali kata-kata ini
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
     # --- NORMALISASI SALES ---
@@ -369,9 +373,23 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    # --- NUMERIC CLEANING ---
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[^-\d.]', '', regex=True)
-    df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+    # --- NUMERIC CLEANING (LEBIH AMAN UNTUK FORMAT INDONESIA) ---
+    def clean_currency(x):
+        if pd.isna(x): return 0
+        s = str(x).strip()
+        if s == '': return 0
+        # Hapus titik (pemisah ribuan Indonesia)
+        s = s.replace('.', '')
+        # Ganti koma dengan titik (pemisah desimal)
+        s = s.replace(',', '.')
+        # Hapus karakter non-angka kecuali titik desimal
+        s = re.sub(r'[^\d.]', '', s)
+        try:
+            return float(s)
+        except:
+            return 0
+
+    df['Jumlah'] = df['Jumlah'].apply(clean_currency)
     
     # --- DATE CLEANING ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
@@ -384,7 +402,9 @@ def load_data():
             pass
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
-    df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
+    
+    # Hanya drop jika Tanggal invalid, jangan drop jika merk/sales kosong (masih bisa masuk omset unknown)
+    df = df.dropna(subset=['Tanggal'])
 
     current_year = datetime.datetime.now().year
     df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
@@ -476,8 +496,13 @@ def main_dashboard():
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
+        # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
+        
+        # Filter 2: Hanya Sales yang relevan (opsional, tapi bagus untuk kebersihan)
+        # Kita ambil sales yang pernah menjual brand ini
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
@@ -502,49 +527,41 @@ def main_dashboard():
         df_active = df_scope_all
         ref_date = df['Tanggal'].max().date()
 
-    # --- KPI METRICS (FIXED LOGIC H vs H-1) ---
+    # --- KPI METRICS ---
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # 1. Tentukan Tanggal Target (H) & Tanggal Pembanding (H-1 / Prev Period)
-    if len(date_range) == 2 and start_date != end_date:
-        # Jika Range Tanggal (misal 1-7 Jan), bandingkan dengan periode sebelumnya (25-31 Des)
-        delta_days = (end_date - start_date).days + 1
-        prev_end = start_date - datetime.timedelta(days=1)
+    # --- LOGIKA KENAIKAN/PENURUNAN ---
+    if len(date_range) == 2:
+        start, end = date_range
+        delta_days = (end - start).days + 1
+        
+        # Hitung periode sebelumnya dengan durasi yang sama
+        prev_end = start - datetime.timedelta(days=1)
         prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
         
-        omset_prev = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
-        delta_label = f"vs Periode {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
+        omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
+        delta_val = current_omset_total - omset_prev_period
+        delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
     else:
-        # Jika Single Date (Hari Ini) atau Default View
-        # Ambil tanggal terakhir dari filter (biasanya 'Hari Ini' atau Max Date)
-        target_date = end_date if len(date_range) == 2 else df['Tanggal'].max().date()
-        prev_date = target_date - datetime.timedelta(days=1)
-        
-        omset_prev = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-        delta_label = f"vs Kemarin ({prev_date.strftime('%d %b')})"
-
-    delta_val = current_omset_total - omset_prev
+        # Jika hanya 1 hari (jarang terjadi di date_input range, tapi untuk safety)
+        prev_date = ref_date - datetime.timedelta(days=1)
+        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+        delta_val = current_omset_total - omset_prev_period
+        delta_label = f"vs {prev_date.strftime('%d %b')}"
 
     c1, c2, c3 = st.columns(3)
     
-    # --- INDIKATOR WARNA OTOMATIS ---
-    delta_str = format_idr(abs(delta_val))
+    # --- LOGIKA INDIKATOR WARNA ---
+    delta_str = format_idr(delta_val)
     if delta_val < 0:
-        delta_str = f"- {delta_str}"
-        delta_color = "normal" # Merah
-    else:
+        delta_str = delta_str.replace("Rp -", "- Rp ")
+    elif delta_val > 0:
         delta_str = f"+ {delta_str}"
-        delta_color = "normal" # Hijau (Streamlit auto-detects + as green)
 
-    c1.metric(
-        label="💰 Total Omset", 
-        value=format_idr(current_omset_total), 
-        delta=f"{delta_str} ({delta_label})",
-        delta_color=delta_color
-    )
+    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
     
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
