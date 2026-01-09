@@ -27,7 +27,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET (UPDATED SUPERVISOR HOLDINGS)
+# 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
 TARGET_DATABASE = {
     "MADONG": {
@@ -80,86 +80,85 @@ TARGET_DATABASE = {
     }
 }
 
-# --- DATABASE TARGET INDIVIDU (STRICT MAPPING) ---
 INDIVIDUAL_TARGETS = {
-    # 1. WIRA (Somethinc, SYB, Honor, Vlagio, Elizabeth Rose, Walnutt)
+    # 1. WIRA 
     "WIRA": { 
         "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
         "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000
     },
-    # 2. HAMZAH (Somethinc, SYB, AINIE, AVIONE, Honor, Vlagio)
+    # 2. HAMZAH
     "HAMZAH": { 
         "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, 
         "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 
     },
-    # 3. ROZY (AINIE, AVIONE)
+    # 3. ROZY
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
     
-    # 4. NOVI (Gabungan Novi + Rapi: AINIE, AVIONE)
+    # 4. NOVI
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
     
-    # 5. DANI (AINIE, AVIONE)
+    # 5. DANI
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
     
-    # 6. FERI (Honor, Thai, Vlagio, Inesia)
+    # 6. FERI
     "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
     
-    # 7. NAUFAL (Javinci only)
+    # 7. NAUFAL
     "NAUFAL": { "Javinci": 550_000_000 },
     
-    # 8. RIZKI (Javinci only)
+    # 8. RIZKI
     "RIZKI": { "Javinci": 450_000_000 },
     
-    # 9. ADE (Javinci, Careso, Newlab, Gloow, Dorskin, Mlen)
+    # 9. ADE
     "ADE": { 
         "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
     },
-    # 10. FANDI (Javinci, Careso, Newlab, Gloow, Dorskin, Whitelab, Goute, Bonavie, Mlen)
+    # 10. FANDI
     "FANDI": { 
         "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
         "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000
     },
-    # 11. SYAHRUL (Javinci, Careso, Gloow)
+    # 11. SYAHRUL
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
     
-    # 12. RISKA (Javinci, Sociolla, Thai, Inesia)
+    # 12. RISKA
     "RISKA": { 
         "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 
     },
-    # 13. DWI (Careso only)
+    # 13. DWI
     "DWI": { "Careso": 350_000_000 },
     
-    # 14. SANTI (Goute, Bonavie, Whitelab)
+    # 14. SANTI
     "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
     
-    # 15. ASWIN (Artist Inc only)
+    # 15. ASWIN
     "ASWIN": { "Artist Inc": 130_000_000 },
     
-    # 16. DEVI (Sociolla, Y2000, Diosys)
+    # 16. DEVI
     "DEVI": { "Sociolla": 120_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
     
-    # 17. GANI (The Face, YCM, Milano, Sociolla, Thai, Inesia)
+    # 17. GANI
     "GANI": { 
         "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000,
         "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000
     },
-    # 18. BASTIAN (Sociolla, Thai, Inesia, Y2000, Diosys)
+    # 18. BASTIAN
     "BASTIAN": { 
         "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000,
         "Y2000": 65_000_000, "Diosys": 175_000_000
     },
-    # 19. BAYU (Y2000, Diosys)
+    # 19. BAYU
     "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
     
-    # 20. YOGI (The Face, YCM, Milano)
+    # 20. YOGI
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
     
-    # 21. LYDIA (Birth Beyond)
+    # 21. LYDIA
     "LYDIA": { "Birth Beyond": 120_000_000 },
     
-    # 22. MITHA (Maskit, RAD, OtwooO, Claresta)
+    # 22. MITHA
     "MITHA": { 
         "Maskit": 30_000_000, "Rose All Day": 30_000_000, 
         "OtwooO": 200_000_000, "Claresta": 350_000_000 
@@ -341,16 +340,13 @@ def load_data():
     if faktur_col:
         df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    # --- CLEANING SAMPAH YANG LEBIH CERDAS (FIX SELISIH 300RB) ---
-    # Hapus baris yang diawali kata "Total", "Jumlah", dll (Bukan 'contains' agar tidak salah hapus produk)
+    # --- CLEANING SAMPAH YANG LEBIH CERDAS ---
     if 'Nama Outlet' in df.columns:
-        # Hapus hanya jika Nama Outlet diawali kata-kata ini (biasanya baris rekap bawah)
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
 
     if 'Nama Barang' in df.columns:
-        # Hapus hanya jika Nama Barang diawali kata-kata ini
         df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
@@ -373,23 +369,24 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    # --- NUMERIC CLEANING (LEBIH AMAN UNTUK FORMAT INDONESIA) ---
-    def clean_currency(x):
-        if pd.isna(x): return 0
-        s = str(x).strip()
-        if s == '': return 0
-        # Hapus titik (pemisah ribuan Indonesia)
-        s = s.replace('.', '')
-        # Ganti koma dengan titik (pemisah desimal)
-        s = s.replace(',', '.')
-        # Hapus karakter non-angka kecuali titik desimal
-        s = re.sub(r'[^\d.]', '', s)
-        try:
-            return float(s)
-        except:
-            return 0
-
-    df['Jumlah'] = df['Jumlah'].apply(clean_currency)
+    # --- NUMERIC CLEANING (FIX SELISIH RP 300rb) ---
+    # Masalah: Format 300.000 (IDR) dibaca sebagai 300.0 (float) oleh default converter
+    # Solusi: Hapus titik (.) sebelum konversi ke angka
+    
+    # 1. Pastikan string
+    df['Jumlah'] = df['Jumlah'].astype(str)
+    
+    # 2. Hapus simbol mata uang dan spasi
+    df['Jumlah'] = df['Jumlah'].str.replace(r'[Rp\s]', '', regex=True)
+    
+    # 3. Hapus TITIK sebagai pemisah ribuan (Ini kunci perbaikan 300rb)
+    df['Jumlah'] = df['Jumlah'].str.replace('.', '', regex=False)
+    
+    # 4. Ganti KOMA dengan TITIK (untuk desimal, jika ada)
+    df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
+    
+    # 5. Konversi ke angka
+    df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
     # --- DATE CLEANING ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
@@ -403,11 +400,12 @@ def load_data():
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     
-    # Hanya drop jika Tanggal invalid, jangan drop jika merk/sales kosong (masih bisa masuk omset unknown)
+    # HAPUS FILTER TAHUN (Agar semua data masuk seperti SUM di GSheet)
+    # df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
+    
+    # Hanya drop jika Tanggal Benar-Benar Kosong (untuk plotting chart)
+    # Tapi untuk TOTAL, kita harusnya tetap hitung. Namun karena dashboard butuh tanggal, kita drop NaT.
     df = df.dropna(subset=['Tanggal'])
-
-    current_year = datetime.datetime.now().year
-    df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
     # --- CONVERT STRING FOR METADATA ---
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
