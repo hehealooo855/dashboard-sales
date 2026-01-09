@@ -73,7 +73,7 @@ TARGET_DATABASE = {
         "Walnutt": 30_000_000, 
         "Elizabeth Rose": 50_000_000, 
         "Maskit": 30_000_000, 
-        "Claresta": 300_000_000, 
+        "Claresta": 350_000_000, 
         "Birth Beyond": 120_000_000, 
         "OtwooO": 200_000_000, 
         "Rose All Day": 50_000_000
