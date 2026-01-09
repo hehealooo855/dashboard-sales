@@ -1,6 +1,7 @@
 username,password,role,sales_name
-direktur,bos2026,manager,All
+direktur,bos2026,direktur,All
 manager,admin2026,manager,All
+fauziah,123,manager,All
 madong,123,sales,MADONG
 rozy,123,sales,ROZY
 sherin,123,sales,SHERIN
@@ -15,7 +16,6 @@ fitri,123,sales,FITRI
 sinta,123,sales,SINTA
 william,123,sales,WILLIAM
 dewy,123,sales,DEWY CLA
-fauziah,123,sales,FAUZIAH
 ade,123,sales,ADE
 akbar,123,sales,AKBAR
 mariana,123,sales,MARIANA
