@@ -4,7 +4,9 @@ import plotly.express as px
 import datetime
 import time
 import re
-import pytz 
+import pytz
+import io # Tambahan untuk Excel
+from calendar import monthrange # Tambahan untuk Run Rate
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
@@ -445,10 +447,6 @@ def login_page():
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = match.iloc[0]['role']
                             st.session_state['sales_name'] = match.iloc[0]['sales_name']
-                            
-                            # --- INISIALISASI WAKTU LOGIN ---
-                            st.session_state['last_activity'] = time.time()
-                            
                             st.success("Login Berhasil! Mengalihkan...")
                             time.sleep(1)
                             st.rerun()
@@ -456,21 +454,6 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
-    # --- AUTO LOGOUT LOGIC (10 MENIT) ---
-    if 'last_activity' not in st.session_state:
-        st.session_state['last_activity'] = time.time()
-
-    # Cek jika selisih waktu sekarang dan aktivitas terakhir > 600 detik (10 menit)
-    if time.time() - st.session_state['last_activity'] > 600:
-        st.session_state['logged_in'] = False
-        st.session_state.pop('last_activity', None)
-        st.warning("⚠️ Sesi habis karena tidak aktif selama 10 menit. Silakan login kembali.")
-        time.sleep(2)
-        st.rerun()
-    else:
-        # Update waktu aktivitas terakhir setiap kali user melakukan interaksi/rerun
-        st.session_state['last_activity'] = time.time()
-
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
@@ -506,21 +489,14 @@ def main_dashboard():
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
-    # --- PERUBAHAN DI SINI: MENAMBAHKAN FAUZIAH & LOGIKA VIEW SUPERVISOR ---
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         
-        # LOGIKA KHUSUS: Jika yang dipilih adalah Supervisor (misal Lisman), tampilkan seperti Supervisor View
         if target_sales_filter.upper() in TARGET_DATABASE:
-            # Ini Supervisor! Ambil data berdasarkan BRAND, bukan nama Sales
             selected_spv_key = target_sales_filter.upper()
             spv_brands = TARGET_DATABASE[selected_spv_key].keys()
-            
-            # Filter Data Awal: Semua transaksi Brand milik Supervisor tsb
             df_spv_raw = df[df['Merk'].isin(spv_brands)]
-            
-            # Tambahkan Filter Tim (UI sama seperti Lisman login sendiri)
             team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
             sub_filter = st.sidebar.selectbox(f"Filter Tim ({target_sales_filter}):", ["SEMUA"] + team_list)
             
@@ -529,21 +505,16 @@ def main_dashboard():
             else:
                 df_scope_all = df_spv_raw[df_spv_raw['Penjualan'] == sub_filter]
         else:
-            # Sales Biasa
             df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
-        
-        # Filter 2: Hanya Sales yang relevan
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
-        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: # Sales Biasa
+    else: 
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
@@ -570,20 +541,15 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # --- LOGIKA KENAIKAN/PENURUNAN ---
     if len(date_range) == 2:
         start, end = date_range
         delta_days = (end - start).days + 1
-        
-        # Hitung periode sebelumnya dengan durasi yang sama
         prev_end = start - datetime.timedelta(days=1)
         prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
-        
         omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
         delta_val = current_omset_total - omset_prev_period
         delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
     else:
-        # Jika hanya 1 hari (jarang terjadi di date_input range, tapi untuk safety)
         prev_date = ref_date - datetime.timedelta(days=1)
         omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
         delta_val = current_omset_total - omset_prev_period
@@ -591,7 +557,6 @@ def main_dashboard():
 
     c1, c2, c3 = st.columns(3)
     
-    # --- LOGIKA INDIKATOR WARNA ---
     delta_str = format_idr(delta_val)
     if delta_val < 0:
         delta_str = delta_str.replace("Rp -", "- Rp ")
@@ -599,10 +564,8 @@ def main_dashboard():
         delta_str = f"+ {delta_str}"
 
     c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
-    
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
-    # --- HITUNG TRANSAKSI (UNIQUE FAKTUR) ---
     if 'No Faktur' in df_active.columns:
         valid_faktur = df_active['No Faktur'].astype(str)
         valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', 'None', '.'])]
@@ -612,6 +575,23 @@ def main_dashboard():
         transaksi_count = len(df_active)
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
+
+    # --- FORECASTING / RUN RATE (NEW FEATURE) ---
+    try:
+        from calendar import monthrange
+        today = datetime.date.today()
+        
+        # Only show if current month is selected or part of selection
+        if len(date_range) == 2 and (date_range[1].month == today.month and date_range[1].year == today.year):
+            days_in_month = monthrange(today.year, today.month)[1]
+            day_current = today.day
+            
+            # Simple run rate: (Current Sales / Days Passed) * Total Days in Month
+            if day_current > 0:
+                run_rate = (current_omset_total / day_current) * days_in_month
+                st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
+    except Exception as e:
+        pass # Fail silently if date logic has issues
 
     # --- TARGET MONITOR ---
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
@@ -635,11 +615,9 @@ def main_dashboard():
                 realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                 render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target_val)
                 
-        # --- PERUBAHAN: MENAMPILKAN TARGET SUPERVISOR KETIKA DIPANTAU MANAGER ---
         elif target_sales_filter.upper() in TARGET_DATABASE:
              spv_name = target_sales_filter.upper()
              target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(spv_name, 0)
-             # Realisasi dihitung dari df_active yang sudah difilter di Scope Logic (Brand SPV)
              render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
              
         else:
@@ -691,6 +669,28 @@ def main_dashboard():
             st.plotly_chart(fig_line, use_container_width=True)
 
     with t3:
+        # --- PARETO ANALYSIS (NEW FEATURE) ---
+        st.subheader("📊 Pareto Analysis (80/20 Rule)")
+        st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
+        
+        pareto_df = df_active.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
+        pareto_df['Cumulative Percentage'] = (pareto_df['Jumlah'].cumsum() / pareto_df['Jumlah'].sum()) * 100
+        
+        # Filter top 80% contributors
+        top_performers = pareto_df[pareto_df['Cumulative Percentage'] <= 80]
+        
+        # Display summary metric
+        col_pareto1, col_pareto2 = st.columns(2)
+        col_pareto1.metric("Total Produk Unik", len(pareto_df))
+        col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
+        
+        st.dataframe(
+            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Cumulative Percentage': '{:.2f}%'}),
+            use_container_width=True
+        )
+        
+        st.divider()
+
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("📦 Top 10 Produk")
@@ -727,11 +727,31 @@ def main_dashboard():
             }
         )
         
-        # Only managers/directors can download
-        if role in ['manager', 'direktur']:
-            csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
-            file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
-            st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Fauziah) ---
+        user_role_lower = role.lower()
+        user_name_lower = my_name.lower()
+        
+        if user_role_lower in ['manager', 'direktur'] or 'fauziah' in user_name_lower:
+            # Create an in-memory Excel file
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
+                workbook = writer.book
+                worksheet = writer.sheets['Sales Data']
+                format1 = workbook.add_format({'num_format': '#,##0'})
+                worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
+            
+            st.download_button(
+                label="📥 Download Laporan Excel (XLSX)",
+                data=output.getvalue(),
+                file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
+        elif role in ['manager', 'direktur']: # Legacy condition kept just in case
+             csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
+             file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
+             st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
 # --- 5. ALUR UTAMA ---
 if 'logged_in' not in st.session_state:
