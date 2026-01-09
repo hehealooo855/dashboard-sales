@@ -27,143 +27,55 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET (UPDATED SUPERVISOR HOLDINGS)
+# 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
 TARGET_DATABASE = {
     "MADONG": {
-        "Somethinc": 1_200_000_000, 
-        "SYB": 150_000_000, 
-        "Sekawan": 600_000_000, # AINIE
-        "Avione": 300_000_000, 
-        "Honor": 125_000_000, 
-        "Vlagio": 75_000_000,
-        "Ren & R & L": 20_000_000, 
-        "Mad For Make Up": 25_000_000, 
-        "Satto": 500_000_000,
-        "Mykonos": 20_000_000
+        "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, 
+        "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000,
+        "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000
     },
     "LISMAN": {
-        "Javinci": 1_300_000_000, 
-        "Careso": 400_000_000, 
-        "Newlab": 150_000_000, 
-        "Gloow & Be": 130_000_000, # Glowbe
-        "Dorskin": 20_000_000, 
-        "Whitelab": 150_000_000, 
-        "Bonavie": 50_000_000, 
-        "Goute": 50_000_000, 
-        "Mlen": 100_000_000, 
-        "Artist Inc": 130_000_000
+        "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, 
+        "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, 
+        "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000
     },
     "AKBAR": {
-        "Sociolla": 600_000_000, 
-        "Thai": 300_000_000, 
-        "Inesia": 100_000_000, 
-        "Y2000": 180_000_000, 
-        "Diosys": 520_000_000,
-        "Masami": 40_000_000, 
-        "Cassandra": 50_000_000, 
-        "Clinelle": 80_000_000
+        "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, 
+        "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, 
+        "Cassandra": 50_000_000, "Clinelle": 80_000_000
     },
     "WILLIAM": {
-        "The Face": 600_000_000, 
-        "Yu Chun Mei": 450_000_000, 
-        "Milano": 50_000_000, 
-        "Remar": 0,
-        "Beautica": 100_000_000, 
-        "Walnutt": 30_000_000, 
-        "Elizabeth Rose": 50_000_000, 
-        "Maskit": 30_000_000, 
-        "Claresta": 300_000_000, 
-        "Birth Beyond": 120_000_000, 
-        "OtwooO": 200_000_000, 
-        "Rose All Day": 50_000_000
+        "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0,
+        "Beautica": 100_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000, 
+        "Maskit": 30_000_000, "Claresta": 300_000_000, "Birth Beyond": 120_000_000, 
+        "OtwooO": 200_000_000, "Rose All Day": 50_000_000
     }
 }
 
-# --- DATABASE TARGET INDIVIDU (STRICT MAPPING) ---
 INDIVIDUAL_TARGETS = {
-    # 1. WIRA (Somethinc, SYB, Honor, Vlagio, Elizabeth Rose, Walnutt)
-    "WIRA": { 
-        "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
-        "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000
-    },
-    # 2. HAMZAH (Somethinc, SYB, AINIE, AVIONE, Honor, Vlagio)
-    "HAMZAH": { 
-        "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, 
-        "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 
-    },
-    # 3. ROZY (AINIE, AVIONE)
+    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
+    "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
-    
-    # 4. NOVI (Gabungan Novi + Rapi: AINIE, AVIONE)
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    
-    # 5. DANI (AINIE, AVIONE)
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
-    
-    # 6. FERI (Honor, Thai, Vlagio, Inesia)
     "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
-    
-    # 7. NAUFAL (Javinci only)
     "NAUFAL": { "Javinci": 550_000_000 },
-    
-    # 8. RIZKI (Javinci only)
     "RIZKI": { "Javinci": 450_000_000 },
-    
-    # 9. ADE (Javinci, Careso, Newlab, Gloow, Dorskin, Mlen)
-    "ADE": { 
-        "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
-        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
-    },
-    # 10. FANDI (Javinci, Careso, Newlab, Gloow, Dorskin, Whitelab, Goute, Bonavie, Mlen)
-    "FANDI": { 
-        "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
-        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
-        "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000
-    },
-    # 11. SYAHRUL (Javinci, Careso, Gloow)
+    "ADE": { "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 },
+    "FANDI": { "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000, "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000 },
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
-    
-    # 12. RISKA (Javinci, Sociolla, Thai, Inesia)
-    "RISKA": { 
-        "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 
-    },
-    # 13. DWI (Careso only)
+    "RISKA": { "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 },
     "DWI": { "Careso": 350_000_000 },
-    
-    # 14. SANTI (Goute, Bonavie, Whitelab)
-    "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
-    
-    # 15. ASWIN (Artist Inc only)
+    "SANTI": { "Whitelab": 75_000_000, "Bonavie": 25_000_000, "Goute": 25_000_000 },
     "ASWIN": { "Artist Inc": 130_000_000 },
-    
-    # 16. DEVI (Sociolla, Y2000, Diosys)
-    "DEVI": { "Sociolla": 120_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
-    
-    # 17. GANI (The Face, YCM, Milano, Sociolla, Thai, Inesia)
-    "GANI": { 
-        "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000,
-        "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000
-    },
-    # 18. BASTIAN (Sociolla, Thai, Inesia, Y2000, Diosys)
-    "BASTIAN": { 
-        "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000,
-        "Y2000": 65_000_000, "Diosys": 175_000_000
-    },
-    # 19. BAYU (Y2000, Diosys)
-    "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
-    
-    # 20. YOGI (The Face, YCM, Milano)
+    "DEVI": { "Sociolla": 120_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
+    "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Diosys": 175_000_000, "Y2000": 65_000_000 },
+    "GANI": { "Sociolla": 80_000_000, "Thai": 85_000_000, "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000, "Elizabeth Rose": 20_000_000, "Walnutt": 10_000_000 },
+    "BAYU": { "Diosys": 170_000_000, "Y2000": 50_000_000 },
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
-    
-    # 21. LYDIA (Birth Beyond)
     "LYDIA": { "Birth Beyond": 120_000_000 },
-    
-    # 22. MITHA (Maskit, RAD, OtwooO, Claresta)
-    "MITHA": { 
-        "Maskit": 30_000_000, "Rose All Day": 30_000_000, 
-        "OtwooO": 200_000_000, "Claresta": 350_000_000 
-    }
+    "MITHA": { "Maskit": 30_000_000, "Rose All Day": 30_000_000, "Claresta": 350_000_000, "OtwooO": 200_000_000 }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
@@ -188,89 +100,34 @@ BRAND_ALIASES = {
 }
 
 SALES_MAPPING = {
-    # 1. WIRA 
-    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA",
-    "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
-    "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA",
-    "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", 
-    "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
-
-    # 2. HAMZAH
-    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH",
-    "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
-    "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH",
-    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH",
-
-    # 3. FERI
-    "FERI VG": "FERI", "FERI - VG": "FERI",
-    "FERI HONOR": "FERI", "FERI - HONOR": "FERI",
-    "FERI THAI": "FERI", "FERI - INESIA": "FERI",
-
-    # 4. YOGI
-    "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", 
-    "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
-
-    # 5. GANI
-    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
-    "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
-    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI",
-    "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
-
-    # 6. MITHA
-    "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA",
-    "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
-
-    # 7. LYDIA
+    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
+    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH",
+    "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
+    "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
+    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
+    "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA", "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA",
-
-    # 8. NOVI (MERGE DENGAN RAFI/RAPI)
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", 
-    "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI",
-
-    # 9. ROZY
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI",
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
-
-    # 10. DANI
     "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
-
-    # 11. MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
-
-    # 12. RISKA
-    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
-    "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
-    "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
-    "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
-    "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
-
-    # 13. TIM LISMAN (ADE, FANDI, DLL)
-    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE",
-    "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
-    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
-    "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", 
-    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
-    "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL", "NAUFAL SVD": "NAUFAL", 
-    "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", 
+    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA",
+    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
+    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
+    "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL", "NAUFAL SVD": "NAUFAL",
+    "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI",
     "SAHRUL JAVINCI": "SAHRUL", "SAHRUL TF": "SAHRUL", "SAHRUL JV": "SAHRUL", "GLOOW - SAHRUL": "SAHRUL",
     "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
-    "DWI CRS": "DWI", "DWI NLAB": "DWI", 
+    "DWI CRS": "DWI", "DWI NLAB": "DWI",
     "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN",
-
-    # 14. TIM AKBAR (DEVI, BASTIAN, BAYU)
-    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
-    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
-    "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
-    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI",
-    "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
-    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
-    "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
-
-    # 15. LAIN-LAIN
-    "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", 
-    "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
+    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
+    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI", "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
+    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", "BAYU SHMP": "BAYU", "BAYU YL": "BAYU",
+    "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI",
+    "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN",
     "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM",
-    "RINI JV": "RINI", "RINI SYB": "RINI", 
-    "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", 
+    "RINI JV": "RINI", "RINI SYB": "RINI",
+    "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH",
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
@@ -292,12 +149,9 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50:
-        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80:
-        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
-    else:
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
+    if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
+    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -319,7 +173,11 @@ def render_custom_progress(title, current, target):
 
 @st.cache_data(ttl=60)
 def load_data():
-    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
+    try:
+        url = st.secrets["gsheet"]["url"]
+    except:
+        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
+    
     try:
         url_with_ts = f"{url}&t={int(time.time())}"
         df = pd.read_csv(url_with_ts, dtype=str)
@@ -331,37 +189,30 @@ def load_data():
     if not all(col in df.columns for col in required_cols):
         return None
     
-    # --- AUTO DETECT KOLOM FAKTUR ---
+    # --- 1. AUTO DETECT KOLOM FAKTUR ---
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
             faktur_col = col
             break
+    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    if faktur_col:
-        df = df.rename(columns={faktur_col: 'No Faktur'})
-    
-    # --- CLEANING SAMPAH ---
+    # --- 2. CLEANING SAMPAH (BARIS TOTAL) ---
+    # Cari baris yang mengandung kata 'Total', 'Jumlah', 'Grand' di kolom manapun yang string
+    # Ini metode paling agresif untuk membuang baris rekapitulasi Google Sheet
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.contains(r'Total|Jumlah|Subtotal|Grand|Rekap', case=False, regex=True, na=False)]
-        df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
-        df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
-
     if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.contains(r'Total|Jumlah', case=False, regex=True, na=False)]
-        df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
-
-    # --- NORMALISASI SALES ---
-    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+        df = df[~df['Nama Barang'].astype(str).str.contains(r'Total|Jumlah|Subtotal', case=False, regex=True, na=False)]
     
-    # --- LOGIKA NON-SALES ---
+    # --- 3. NORMALISASI SALES ---
+    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
     valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
     valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
-    
     df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
     df['Penjualan'] = df['Penjualan'].astype('category')
 
-    # --- NORMALISASI BRAND ---
+    # --- 4. NORMALISASI BRAND ---
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
         for target_brand, keywords in BRAND_ALIASES.items():
@@ -370,11 +221,14 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    # --- NUMERIC CLEANING ---
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[^-\d.]', '', regex=True)
+    # --- 5. NUMERIC CLEANING (INDONESIAN FORMAT FIX) ---
+    # Hapus titik (ribuan), ganti koma (desimal) jadi titik
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+    # Hapus karakter non-angka (kecuali titik desimal dan minus)
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[^0-9.-]', '', regex=True)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # --- DATE CLEANING ---
+    # --- 6. DATE CLEANING ---
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
     def fix_swapped_date(d):
         if pd.isnull(d): return d
@@ -387,22 +241,24 @@ def load_data():
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal', 'Penjualan', 'Merk', 'Jumlah'])
 
+    # Filter Tahun (Hanya Tahun Ini & Kemarin)
     current_year = datetime.datetime.now().year
     df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
     
-    # --- CONVERT STRING FOR METADATA ---
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
     for col in cols_to_convert:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
+        if col in df.columns: df[col] = df[col].astype(str).str.strip()
             
     return df
 
-def load_users():
-    try:
-        return pd.read_csv('users.csv')
-    except:
-        return pd.DataFrame()
+# --- SECURITY: CHECK PASSWORD ---
+def check_password(plain_password, stored_password):
+    import bcrypt
+    if not stored_password.startswith("$2b$"):
+        return plain_password == stored_password
+    if isinstance(stored_password, str):
+        stored_password = stored_password.encode('utf-8')
+    return bcrypt.checkpw(plain_password.encode('utf-8'), stored_password)
 
 # ==========================================
 # 4. MAIN DASHBOARD LOGIC
@@ -419,20 +275,22 @@ def login_page():
                 submitted = st.form_submit_button("Masuk Sistem", use_container_width=True)
                 
                 if submitted:
-                    users = load_users()
-                    if users.empty:
-                        st.error("Database user (users.csv) tidak ditemukan.")
-                    else:
-                        match = users[(users['username'] == username) & (users['password'] == password)]
-                        if not match.empty:
-                            st.session_state['logged_in'] = True
-                            st.session_state['role'] = match.iloc[0]['role']
-                            st.session_state['sales_name'] = match.iloc[0]['sales_name']
-                            st.success("Login Berhasil! Mengalihkan...")
-                            time.sleep(1)
-                            st.rerun()
+                    try:
+                        if username in st.secrets["users"]:
+                            user_data = st.secrets["users"][username]
+                            if check_password(password, user_data["password"]):
+                                st.session_state['logged_in'] = True
+                                st.session_state['role'] = user_data["role"]
+                                st.session_state['sales_name'] = user_data["name"]
+                                st.success("Login Berhasil!")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("Password Salah.")
                         else:
-                            st.error("Username atau Password salah.")
+                            st.error("Username tidak ditemukan.")
+                    except FileNotFoundError:
+                        st.error("Konfigurasi user belum ditemukan.")
 
 def main_dashboard():
     with st.sidebar:
@@ -446,7 +304,7 @@ def main_dashboard():
             
     df = load_data()
     if df is None or df.empty:
-        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
+        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau format Google Sheet.")
         return
 
     # --- FILTER ---
@@ -477,13 +335,8 @@ def main_dashboard():
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
-        # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
-        
-        # Filter 2: Hanya Sales yang relevan (opsional, tapi bagus untuk kebersihan)
-        # Kita ambil sales yang pernah menjual brand ini
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
-        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
@@ -514,47 +367,50 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # --- LOGIKA KENAIKAN/PENURUNAN ---
-    if len(date_range) == 2:
-        start, end = date_range
-        delta_days = (end - start).days + 1
-        
-        # Hitung periode sebelumnya dengan durasi yang sama
-        prev_end = start - datetime.timedelta(days=1)
+    # --- LOGIKA KENAIKAN/PENURUNAN (OTOMATIS) ---
+    # Jika Filter Range (Beda Tanggal): Bandingkan Total vs Total Periode Sebelumnya
+    # Jika Filter 1 Hari / Default: Bandingkan Hari Ini vs Kemarin
+    
+    if len(date_range) == 2 and start_date != end_date:
+        delta_days = (end_date - start_date).days + 1
+        prev_end = start_date - datetime.timedelta(days=1)
         prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
         
-        omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
+        omset_prev = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
         delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
     else:
-        # Jika hanya 1 hari (jarang terjadi di date_input range, tapi untuk safety)
-        prev_date = ref_date - datetime.timedelta(days=1)
-        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
-        delta_label = f"vs {prev_date.strftime('%d %b')}"
+        # Single Date Comparison (H vs H-1)
+        target_date = end_date if len(date_range) == 2 else df['Tanggal'].max().date()
+        prev_date = target_date - datetime.timedelta(days=1)
+        omset_prev = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+        delta_label = f"vs Kemarin ({prev_date.strftime('%d %b')})"
+
+    delta_val = current_omset_total - omset_prev
 
     c1, c2, c3 = st.columns(3)
     
-    # --- LOGIKA INDIKATOR WARNA ---
-    delta_str = format_idr(delta_val)
+    # --- INDIKATOR WARNA OTOMATIS ---
+    delta_str = format_idr(abs(delta_val))
     if delta_val < 0:
-        delta_str = delta_str.replace("Rp -", "- Rp ")
-    elif delta_val > 0:
+        delta_str = f"- {delta_str}"
+        delta_color = "normal" # Merah
+    else:
         delta_str = f"+ {delta_str}"
+        delta_color = "normal" # Hijau
 
-    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
+    c1.metric(
+        label="💰 Total Omset", 
+        value=format_idr(current_omset_total), 
+        delta=f"{delta_str} ({delta_label})",
+        delta_color=delta_color
+    )
     
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
-    # --- HITUNG TRANSAKSI (UNIQUE FAKTUR) ---
     if 'No Faktur' in df_active.columns:
-        valid_faktur = df_active['No Faktur'].astype(str)
-        valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', 'None', '.'])]
-        valid_faktur = valid_faktur[valid_faktur.str.len() > 2]
-        transaksi_count = valid_faktur.nunique()
+        transaksi_count = df_active['No Faktur'].nunique()
     else:
         transaksi_count = len(df_active)
-        
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
     # --- TARGET MONITOR ---
