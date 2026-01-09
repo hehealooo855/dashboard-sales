@@ -11,7 +11,7 @@ import pytz
 # ==========================================
 # Ganti string di dalam tanda kutip "" dengan Link CSV Publish to Web Anda.
 
-URL_DATA_TRANSAKSI = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
+URL_DATA_TRANSAKSI = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pubhtml?gid=0&single=true"
 
 # LINK DARI TAB: Master_Target
 URL_MASTER_TARGET  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=2102937723&single=true&output=csv" 
