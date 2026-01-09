@@ -73,7 +73,7 @@ TARGET_DATABASE = {
         "Walnutt": 30_000_000, 
         "Elizabeth Rose": 50_000_000, 
         "Maskit": 30_000_000, 
-        "Claresta": 350_000_000, 
+        "Claresta": 300_000_000, 
         "Birth Beyond": 120_000_000, 
         "OtwooO": 200_000_000, 
         "Rose All Day": 50_000_000
@@ -487,18 +487,38 @@ def main_dashboard():
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
-    if role in ['manager', 'direktur']:
+    # --- PERUBAHAN DI SINI: MENAMBAHKAN FAUZIAH & LOGIKA VIEW SUPERVISOR ---
+    if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
-        df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
+        
+        # LOGIKA KHUSUS: Jika yang dipilih adalah Supervisor (misal Lisman), tampilkan seperti Supervisor View
+        if target_sales_filter.upper() in TARGET_DATABASE:
+            # Ini Supervisor! Ambil data berdasarkan BRAND, bukan nama Sales
+            selected_spv_key = target_sales_filter.upper()
+            spv_brands = TARGET_DATABASE[selected_spv_key].keys()
+            
+            # Filter Data Awal: Semua transaksi Brand milik Supervisor tsb
+            df_spv_raw = df[df['Merk'].isin(spv_brands)]
+            
+            # Tambahkan Filter Tim (UI sama seperti Lisman login sendiri)
+            team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+            sub_filter = st.sidebar.selectbox(f"Filter Tim ({target_sales_filter}):", ["SEMUA"] + team_list)
+            
+            if sub_filter == "SEMUA":
+                df_scope_all = df_spv_raw
+            else:
+                df_scope_all = df_spv_raw[df_spv_raw['Penjualan'] == sub_filter]
+        else:
+            # Sales Biasa
+            df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
         # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
         
-        # Filter 2: Hanya Sales yang relevan (opsional, tapi bagus untuk kebersihan)
-        # Kita ambil sales yang pernah menjual brand ini
+        # Filter 2: Hanya Sales yang relevan
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
         
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
@@ -575,7 +595,7 @@ def main_dashboard():
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
     # --- TARGET MONITOR ---
-    if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS:
+    if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
         
         if target_sales_filter == "SEMUA":
@@ -595,6 +615,14 @@ def main_dashboard():
             for brand, target_val in targets_map.items():
                 realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                 render_custom_progress(f"👤 {brand} - {target_sales_filter}", realisasi_brand, target_val)
+                
+        # --- PERUBAHAN: MENAMPILKAN TARGET SUPERVISOR KETIKA DIPANTAU MANAGER ---
+        elif target_sales_filter.upper() in TARGET_DATABASE:
+             spv_name = target_sales_filter.upper()
+             target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(spv_name, 0)
+             # Realisasi dihitung dari df_active yang sudah difilter di Scope Logic (Brand SPV)
+             render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
+             
         else:
             st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         st.markdown("---")
