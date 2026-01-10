@@ -796,7 +796,7 @@ def main_dashboard():
         pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
         
         # Filter top 80% contributors
-        top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
+        top_performers = pareto_df[pareto_df['Kontribusi %'] <= 80]
         
         # Display summary metric
         col_pareto1, col_pareto2 = st.columns(2)
