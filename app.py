@@ -583,6 +583,7 @@ def main_dashboard():
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
+            
             if is_supervisor_account:
                 target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
@@ -681,10 +682,32 @@ def main_dashboard():
                 
                 # Calendar logic for "Time Gone" calculation
                 today = datetime.date.today()
-                # Check if selected date range includes current month to apply current month logic
-                # For simplicity in this specific detailed view, we often look at "Current Month" context or "Selected Period" context
-                # Let's use the selected Date Range from sidebar
                 
+                # Holidays Indonesia (Example - Update per year)
+                holidays_id = [
+                    '2024-01-01', '2024-02-08', '2024-02-10', '2024-03-11', '2024-03-29',
+                    '2024-04-10', '2024-04-11', '2024-05-01', '2024-05-09', '2024-05-23',
+                    '2024-06-01', '2024-06-17', '2024-07-07', '2024-08-17', '2024-09-16',
+                    '2024-12-25', 
+                    '2025-01-01', '2025-01-27', '2025-03-29', '2025-03-31',
+                    '2025-04-18', '2025-04-20', '2025-05-01', '2025-05-12', '2025-05-29',
+                    '2025-06-01', '2025-06-06', '2025-06-27', '2025-08-17', '2025-09-05',
+                    '2025-10-20', '2025-12-25',
+                    '2026-01-01', '2026-02-17', '2026-03-19', '2026-03-20', '2026-04-03',
+                    '2026-04-05', '2026-05-01', '2026-05-14', '2026-05-24', '2026-06-01',
+                    '2026-06-16', '2026-07-07', '2026-08-17', '2026-08-25', '2026-12-25' 
+                ]
+
+                # Calculate Month End
+                next_month = today.replace(day=28) + datetime.timedelta(days=4)
+                last_day_month = next_month - datetime.timedelta(days=next_month.day)
+                
+                # Calculate Remaining Working Days (From Today until End of Month)
+                # Filter: Not Sunday (6) AND Not in Holiday List
+                date_range_rest = pd.date_range(start=today, end=last_day_month)
+                remaining_workdays = sum(1 for d in date_range_rest if d.weekday() != 6 and d.strftime('%Y-%m-%d') not in holidays_id)
+                
+                # Check if selected date range includes current month to apply current month logic
                 if len(date_range) == 2:
                     start_d, end_d = date_range
                     # Calculate total days in the period
@@ -722,9 +745,10 @@ def main_dashboard():
                             gap = real_sales - expected_ach
                             
                             # Catch-up logic (Required Run Rate for remaining days)
-                            remaining_days = total_days - days_gone
-                            if remaining_days > 0 and (t_pribadi - real_sales) > 0:
-                                catch_up_needed = (t_pribadi - real_sales) / remaining_days
+                            # Gap / Remaining Workdays
+                            target_remaining = t_pribadi - real_sales
+                            if target_remaining > 0 and remaining_workdays > 0:
+                                catch_up_needed = target_remaining / remaining_workdays
                             else:
                                 catch_up_needed = 0 # Target met or no days left
                         else:
@@ -763,6 +787,7 @@ def main_dashboard():
     with t3:
         # --- PARETO ANALYSIS (UPDATED: Contribution %) ---
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
+        st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
         pareto_df = df_active.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
         total_omset_pareto = pareto_df['Jumlah'].sum()
@@ -776,16 +801,13 @@ def main_dashboard():
         # Filter top 80% contributors
         top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
         
+        # Display summary metric
         col_pareto1, col_pareto2 = st.columns(2)
         col_pareto1.metric("Total Produk Unik", len(pareto_df))
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %', 'Cumulative %']].style.format({
-                'Jumlah': 'Rp {:,.0f}', 
-                'Kontribusi %': '{:.2f}%',
-                'Cumulative %': '{:.2f}%'
-            }),
+            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%', 'Cumulative %': '{:.2f}%'}),
             use_container_width=True
         )
         
@@ -827,15 +849,20 @@ def main_dashboard():
             }
         )
         
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
-        if user_role_lower in ['manager', 'direktur'] or 'fauziah' in my_name.lower():
+        # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
+
+        # REMOVED 'fauziah' from the condition
+        if user_role_lower in ['manager', 'direktur']:
+            # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
                 workbook = writer.book
                 worksheet = writer.sheets['Sales Data']
                 format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('F:F', None, format1) 
+                worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX)",
@@ -843,7 +870,8 @@ def main_dashboard():
                 file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-        elif role in ['manager', 'direktur']: 
+        # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
+        elif role in ['manager', 'direktur']: # Legacy condition kept just in case
              csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
