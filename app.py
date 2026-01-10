@@ -807,7 +807,11 @@ def main_dashboard():
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
+            # Select only specific columns to display, excluding Cumulative %
+            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({
+                'Jumlah': 'Rp {:,.0f}',
+                'Kontribusi %': '{:.2f}%'
+            }),
             use_container_width=True
         )
         
