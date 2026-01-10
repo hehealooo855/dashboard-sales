@@ -727,11 +727,11 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Fauziah) ---
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
         user_name_lower = my_name.lower()
         
-        if user_role_lower in ['manager', 'direktur'] in user_name_lower:
+        if user_role_lower in ['manager', 'direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
