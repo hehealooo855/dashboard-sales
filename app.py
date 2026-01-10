@@ -731,7 +731,7 @@ def main_dashboard():
         user_role_lower = role.lower()
         user_name_lower = my_name.lower()
         
-        if user_role_lower in ['manager', 'direktur'] or 'fauziah' in user_name_lower:
+        if user_role_lower in ['manager', 'direktur'] in user_name_lower:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
