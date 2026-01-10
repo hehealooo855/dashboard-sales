@@ -4,9 +4,9 @@ import plotly.express as px
 import datetime
 import time
 import re
-import pytz
-import io # Tambahan untuk Excel
-from calendar import monthrange # Tambahan untuk Run Rate
+import pytz 
+import io 
+from calendar import monthrange 
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
@@ -509,12 +509,16 @@ def main_dashboard():
             
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
+        # Filter 1: Hanya data Brand milik Supervisor
         df_spv_raw = df[df['Merk'].isin(my_brands)]
+        
+        # Filter 2: Hanya Sales yang relevan
         team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+        
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: 
+    else: # Sales Biasa
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
@@ -727,11 +731,12 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Fauziah) ---
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
-        user_name_lower = my_name.lower()
-        
-        if user_role_lower in ['manager', 'direktur'] or 'fauziah' in user_name_lower:
+        # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
+
+        # REMOVED 'fauziah' from the condition
+        if user_role_lower in ['manager', 'direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -753,11 +758,11 @@ def main_dashboard():
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
-# --- 5. ALUR UTAMA ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+        # --- 5. ALUR UTAMA ---
+        if 'logged_in' not in st.session_state:
+            st.session_state['logged_in'] = False
 
-if st.session_state['logged_in']:
-    main_dashboard()
-else:
-    login_page()
+        if st.session_state['logged_in']:
+            main_dashboard()
+        else:
+            login_page()
