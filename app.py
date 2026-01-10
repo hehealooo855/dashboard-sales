@@ -795,9 +795,6 @@ def main_dashboard():
         # Calculate Contribution % (Item Sales / Total Sales)
         pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
         
-        # Calculate Cumulative % for 80/20 cut-off
-        pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
-        
         # Filter top 80% contributors
         top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
         
