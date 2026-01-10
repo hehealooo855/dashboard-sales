@@ -5,8 +5,8 @@ import datetime
 import time
 import re
 import pytz
-import io # Tambahan untuk Excel
-from calendar import monthrange # Tambahan untuk Run Rate
+import io 
+from calendar import monthrange
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
@@ -372,21 +372,14 @@ def load_data():
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
     # --- NUMERIC CLEANING (FIX SELISIH RP 300rb) ---
-    # Masalah: Format 300.000 (IDR) dibaca sebagai 300.0 (float) oleh default converter
-    # Solusi: Hapus titik (.) sebelum konversi ke angka
-    
     # 1. Pastikan string
     df['Jumlah'] = df['Jumlah'].astype(str)
-    
     # 2. Hapus simbol mata uang dan spasi
     df['Jumlah'] = df['Jumlah'].str.replace(r'[Rp\s]', '', regex=True)
-    
-    # 3. Hapus TITIK sebagai pemisah ribuan (Ini kunci perbaikan 300rb)
+    # 3. Hapus TITIK sebagai pemisah ribuan
     df['Jumlah'] = df['Jumlah'].str.replace('.', '', regex=False)
-    
     # 4. Ganti KOMA dengan TITIK (untuk desimal, jika ada)
     df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
-    
     # 5. Konversi ke angka
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
@@ -401,12 +394,6 @@ def load_data():
             pass
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
-    
-    # HAPUS FILTER TAHUN (Agar semua data masuk seperti SUM di GSheet)
-    # df = df[(df['Tanggal'].dt.year >= current_year - 1) & (df['Tanggal'].dt.year <= current_year + 1)]
-    
-    # Hanya drop jika Tanggal Benar-Benar Kosong (untuk plotting chart)
-    # Tapi untuk TOTAL, kita harusnya tetap hitung. Namun karena dashboard butuh tanggal, kita drop NaT.
     df = df.dropna(subset=['Tanggal'])
     
     # --- CONVERT STRING FOR METADATA ---
@@ -514,7 +501,7 @@ def main_dashboard():
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
         
-    else: 
+    else: # Sales Biasa
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
@@ -576,22 +563,18 @@ def main_dashboard():
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
-    # --- FORECASTING / RUN RATE (NEW FEATURE) ---
+    # --- FORECASTING / RUN RATE ---
     try:
         from calendar import monthrange
         today = datetime.date.today()
-        
-        # Only show if current month is selected or part of selection
         if len(date_range) == 2 and (date_range[1].month == today.month and date_range[1].year == today.year):
             days_in_month = monthrange(today.year, today.month)[1]
             day_current = today.day
-            
-            # Simple run rate: (Current Sales / Days Passed) * Total Days in Month
             if day_current > 0:
                 run_rate = (current_omset_total / day_current) * days_in_month
                 st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
     except Exception as e:
-        pass # Fail silently if date logic has issues
+        pass
 
     # --- TARGET MONITOR ---
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
@@ -600,7 +583,6 @@ def main_dashboard():
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
-            
             if is_supervisor_account:
                 target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
                 my_brands_list = TARGET_DATABASE[my_name_key].keys()
@@ -625,7 +607,7 @@ def main_dashboard():
         st.markdown("---")
 
     # --- ANALYTICS TABS ---
-    t1, t2, t3, t4 = st.tabs(["📊 Target Detail", "📈 Tren Harian", "🏆 Top Performance", "📋 Data Rincian"])
+    t1, t2, t_detail_sales, t3, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "📋 Data Rincian"])
     
     with t1:
         if target_sales_filter == "SEMUA":
@@ -638,10 +620,18 @@ def main_dashboard():
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
                     summary_data.append({
                         "Supervisor": spv, "Brand": brand, "Target": format_idr(target), 
-                        "Realisasi": format_idr(realisasi), "Ach (%)": f"{pct_val:.0f}%", 
-                        "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val
+                        "Realisasi": realisasi, "Realisasi (Fmt)": format_idr(realisasi), 
+                        "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val
                     })
             df_summ = pd.DataFrame(summary_data)
+            
+            # --- RANKING LOGIC ---
+            if not df_summ.empty:
+                df_summ = df_summ.sort_values(by="Realisasi", ascending=False).reset_index(drop=True)
+                df_summ.insert(0, "Rank", range(1, len(df_summ) + 1))
+                df_summ = df_summ.drop(columns=["Realisasi"]) # Hide raw number, keep format
+                df_summ = df_summ.rename(columns={"Realisasi (Fmt)": "Realisasi"})
+
             def highlight_row(row): return [f'background-color: {"#d4edda" if row["Ach (Detail %)"] >= 80 else "#f8d7da"}; color: #333'] * len(row)
             st.dataframe(df_summ.style.apply(highlight_row, axis=1).hide(axis="columns", subset=['Ach (Detail %)']), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
         elif target_sales_filter in INDIVIDUAL_TARGETS:
@@ -668,24 +658,134 @@ def main_dashboard():
             fig_line.update_traces(line_color='#2980b9', line_width=3)
             st.plotly_chart(fig_line, use_container_width=True)
 
+    with t_detail_sales:
+        st.subheader("👥 Detail Sales Team per Brand")
+        # Logic to enable dropdown based on user role and context
+        allowed_brands = []
+        if role in ['manager', 'direktur']:
+            # All brands
+            for spv_brands in TARGET_DATABASE.values():
+                allowed_brands.extend(spv_brands.keys())
+        elif is_supervisor_account:
+            allowed_brands = list(TARGET_DATABASE[my_name_key].keys())
+        
+        # If accessing specific sales view, usually no detail team needed, but allowed if they manage brands
+        if allowed_brands:
+            selected_brand_detail = st.selectbox("Pilih Brand untuk Detail Sales:", sorted(set(allowed_brands)))
+            
+            if selected_brand_detail:
+                # Find all sales with individual targets for this brand
+                sales_stats = []
+                total_brand_sales = 0
+                total_brand_target = 0
+                
+                # Calendar logic for "Time Gone" calculation
+                today = datetime.date.today()
+                # Check if selected date range includes current month to apply current month logic
+                # For simplicity in this specific detailed view, we often look at "Current Month" context or "Selected Period" context
+                # Let's use the selected Date Range from sidebar
+                
+                if len(date_range) == 2:
+                    start_d, end_d = date_range
+                    # Calculate total days in the period
+                    total_days = (end_d - start_d).days + 1
+                    # Calculate days elapsed (Time Gone) relative to the period and today
+                    # If period is in past, days gone = total days. If future, 0. If current, today - start.
+                    
+                    if end_d < today: # Past period
+                        days_gone = total_days
+                    elif start_d > today: # Future period
+                        days_gone = 0
+                    else: # Current period
+                        days_gone = (today - start_d).days + 1
+                        # Clamp days_gone to total_days (e.g. if today > end_d)
+                        if days_gone > total_days: days_gone = total_days
+                        if days_gone < 0: days_gone = 0
+                else:
+                    # Single date
+                    total_days = 1
+                    days_gone = 1
+                
+                
+                for sales_name, targets in INDIVIDUAL_TARGETS.items():
+                    if selected_brand_detail in targets:
+                        t_pribadi = targets[selected_brand_detail]
+                        
+                        # Filter dataframe for this sales and brand within selected date range
+                        real_sales = df_active[(df_active['Penjualan'] == sales_name) & (df_active['Merk'] == selected_brand_detail)]['Jumlah'].sum()
+                        
+                        # Time Gone Logic: 
+                        # Expected Achievement = (Target / Total Days) * Days Gone
+                        if total_days > 0:
+                            target_harian = t_pribadi / total_days
+                            expected_ach = target_harian * days_gone
+                            gap = real_sales - expected_ach
+                            
+                            # Catch-up logic (Required Run Rate for remaining days)
+                            remaining_days = total_days - days_gone
+                            if remaining_days > 0 and (t_pribadi - real_sales) > 0:
+                                catch_up_needed = (t_pribadi - real_sales) / remaining_days
+                            else:
+                                catch_up_needed = 0 # Target met or no days left
+                        else:
+                            expected_ach = 0
+                            gap = 0
+                            catch_up_needed = 0
+
+                        sales_stats.append({
+                            "Nama Sales": sales_name,
+                            "Target Pribadi": format_idr(t_pribadi),
+                            "Realisasi": format_idr(real_sales),
+                            "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%",
+                            "Expected (Time Gone)": format_idr(expected_ach),
+                            "Gap (Defisit/Surplus)": format_idr(gap),
+                            "Catch-up (Per Hari)": format_idr(catch_up_needed),
+                            "_real": real_sales,
+                            "_target": t_pribadi
+                        })
+                        total_brand_sales += real_sales
+                        total_brand_target += t_pribadi
+                
+                if sales_stats:
+                    st.dataframe(pd.DataFrame(sales_stats).drop(columns=["_real", "_target"]), use_container_width=True)
+                    
+                    # Summary metrics for the brand
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric(f"Total Target {selected_brand_detail}", format_idr(total_brand_target))
+                    m2.metric(f"Total Omset {selected_brand_detail}", format_idr(total_brand_sales))
+                    ach_total = (total_brand_sales/total_brand_target)*100 if total_brand_target > 0 else 0
+                    m3.metric("Total Ach %", f"{ach_total:.1f}%")
+                else:
+                    st.info(f"Belum ada data target sales individu untuk brand {selected_brand_detail}")
+        else:
+            st.info("Menu ini khusus untuk melihat detail tim sales per brand.")
+
     with t3:
-        # --- PARETO ANALYSIS (NEW FEATURE) ---
+        # --- PARETO ANALYSIS (UPDATED: Contribution %) ---
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
-        st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
         pareto_df = df_active.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
-        pareto_df['Cumulative Percentage'] = (pareto_df['Jumlah'].cumsum() / pareto_df['Jumlah'].sum()) * 100
+        total_omset_pareto = pareto_df['Jumlah'].sum()
+        
+        # Calculate Contribution % (Item Sales / Total Sales)
+        pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
+        
+        # Calculate Cumulative % for 80/20 cut-off
+        pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
         
         # Filter top 80% contributors
-        top_performers = pareto_df[pareto_df['Cumulative Percentage'] <= 80]
+        top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
         
-        # Display summary metric
         col_pareto1, col_pareto2 = st.columns(2)
         col_pareto1.metric("Total Produk Unik", len(pareto_df))
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Cumulative Percentage': '{:.2f}%'}),
+            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %', 'Cumulative %']].style.format({
+                'Jumlah': 'Rp {:,.0f}', 
+                'Kontribusi %': '{:.2f}%',
+                'Cumulative %': '{:.2f}%'
+            }),
             use_container_width=True
         )
         
@@ -727,19 +827,15 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
-        user_name_lower = my_name.lower()
-        
-        if user_role_lower in ['manager', 'direktur']:
-            # Create an in-memory Excel file
+        if user_role_lower in ['manager', 'direktur'] or 'fauziah' in my_name.lower():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
                 workbook = writer.book
                 worksheet = writer.sheets['Sales Data']
                 format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
+                worksheet.set_column('F:F', None, format1) 
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX)",
@@ -747,8 +843,7 @@ def main_dashboard():
                 file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-        # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
-        elif role in ['manager', 'direktur']: # Legacy condition kept just in case
+        elif role in ['manager', 'direktur']: 
              csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
