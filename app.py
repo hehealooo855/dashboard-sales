@@ -25,6 +25,10 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
+    /* Memastikan text dalam dataframe wrap dengan baik */
+    div[data-testid="stDataFrame"] div[role="gridcell"] {
+        white-space: pre-wrap !important; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -611,14 +615,21 @@ def main_dashboard():
     t1, t2, t_detail_sales, t3, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "📋 Data Rincian"])
     
     with t1:
-        if target_sales_filter == "SEMUA":
+        # Determine the loop based on the user's role
+        # Supervisors see only their own brands; Managers/Directors/Fauziah see all
+        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
+             loop_source = TARGET_DATABASE.items()
+        elif is_supervisor_account:
+             loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
+        else:
+             loop_source = None
+
+        if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader("Rapor Target per Brand (Detail Sales)")
             
             summary_data = []
-            target_loop = TARGET_DATABASE.items() if role in ['manager', 'direktur'] else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
             
-            # 1. Loop per Supervisor & Brand (PARENT ROW)
-            for spv, brands_dict in target_loop:
+            for spv, brands_dict in loop_source:
                 for brand, target in brands_dict.items():
                     # Hitung Total Realisasi Brand (Global)
                     realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
@@ -626,14 +637,14 @@ def main_dashboard():
                     
                     # Tambahkan Baris PARENT (Brand)
                     summary_data.append({
-                        "Item": brand, # Nama Brand
-                        "Role": "Brand", # Marker untuk styling
+                        "Item": brand, # Nama Brand Saja
+                        "Role": "Brand", # Marker
                         "Supervisor": spv,
                         "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand),
                         "Ach (%)": f"{pct_brand:.0f}%",
-                        "Bar": pct_brand / 100, # Progress Bar Value
-                        "_sort_val": pct_brand # Helper untuk sorting
+                        "Bar": pct_brand / 100, 
+                        "Progress (Detail %)": pct_brand # Replaced _sort_val
                     })
                     
                     # 2. Cari Salesman yang memegang brand ini (CHILD ROWS)
@@ -644,43 +655,54 @@ def main_dashboard():
                             r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
                             pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
                             
-                            # Tambahkan Baris CHILD (Sales) dengan Indentasi
+                            # Tambahkan Baris CHILD (Sales) dengan Indentasi Visual
                             summary_data.append({
-                                "Item": f"   └─ {s_name}", # Nama Sales dengan indentasi visual
+                                "Item": f"   └─ {s_name}", 
                                 "Role": "Sales",
-                                "Supervisor": "", # Kosongkan agar bersih
+                                "Supervisor": "", 
                                 "Target": format_idr(t_indiv),
                                 "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%",
                                 "Bar": pct_indiv / 100,
-                                "_sort_val": pct_brand # Ikut sorting parentnya agar tetap dibawah brand
+                                "Progress (Detail %)": pct_brand # Ikut parent biar menempel saat sort
                             })
 
             # Buat DataFrame
             df_summ = pd.DataFrame(summary_data)
             
             if not df_summ.empty:
-                # Kita tidak melakukan sorting global biasa agar struktur Parent-Child tidak rusak
-                # Urutan sudah terbentuk dari loop di atas (Brand -> Anak-anaknya)
-                
-                # Styling Khusus
+                # --- FLEXIBLE TRAFFIC LIGHT COLORING ---
                 def style_rows(row):
-                    # Jika ini baris Brand (Parent), beri warna background agar menonjol
-                    if row["Role"] == "Brand":
-                        return ['background-color: #e9ecef; font-weight: bold; color: black'] * len(row)
-                    # Jika ini baris Sales (Child), biarkan putih/standar
+                    # Ambil nilai persentase dari kolom hidden
+                    pct = row['Progress (Detail %)']
+                    
+                    # Logika Warna
+                    if pct >= 80:
+                        bg_color = '#d1e7dd' # Hijau Pastel (Sukses)
+                    elif pct >= 50:
+                        bg_color = '#fff3cd' # Kuning Pastel (Warning)
                     else:
-                        return ['color: #555'] * len(row)
+                        bg_color = '#f8d7da' # Merah Pastel (Bahaya)
 
+                    # Terapkan Warna:
+                    # Jika ini baris BRAND (Parent), warnai background sesuai pencapaian
+                    if row["Role"] == "Brand":
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
+                    
+                    # Jika ini baris SALES (Child), biarkan putih agar kontras dan rapi
+                    else:
+                        return ['background-color: white; color: #555'] * len(row)
+
+                # Render Dataframe
                 st.dataframe(
-                    df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['_sort_val', 'Role']),
+                    df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)', 'Role']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
                         "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
                         "Bar": st.column_config.ProgressColumn(
                             "Progress",
-                            format="%.2f",
+                            format=" ", # Hides number
                             min_value=0,
                             max_value=1,
                         )
@@ -692,7 +714,7 @@ def main_dashboard():
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Fallback (sama seperti sebelumnya)
+            # Fallback untuk view salesman tunggal
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
             for brand in sales_brands:
@@ -862,11 +884,7 @@ def main_dashboard():
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            # Select only specific columns to display, excluding Cumulative %
-            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({
-                'Jumlah': 'Rp {:,.0f}',
-                'Kontribusi %': '{:.2f}%'
-            }),
+            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%', 'Cumulative %': '{:.2f}%'}),
             use_container_width=True
         )
         
