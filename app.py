@@ -24,7 +24,6 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
-    /* Memastikan text dalam dataframe wrap dengan baik */
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
@@ -32,16 +31,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE DINAMIS (LEVEL 2 - FULL CONTROL)
+# 2. KONFIGURASI DATABASE DINAMIS (LEVEL 2)
 # ==========================================
 
-# 🔴 TUGAS ANDA: PASTE LINK CSV DARI GOOGLE SHEET DI SINI 🔴
-# Pastikan link berakhiran ...&output=csv
-URL_TARGETS     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=2102937723&single=true&output=csv"
-URL_MAP_SALES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=518733046&single=true&output=csv"
-URL_MAP_BRAND   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=1629420292&single=true&output=csv"
-URL_USERS       = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=1022938468&single=true&output=csv"
-URL_SYSTEM      = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=598865740&single=true&output=csv"
+# 🔴🔴🔴 PASTE 5 LINK CSV GOOGLE SHEET DI SINI 🔴🔴🔴
+URL_TARGETS     = "PASTE_LINK_CSV_TAB_TARGETS_DISINI"
+URL_MAP_SALES   = "PASTE_LINK_CSV_TAB_MAPPING_SALES_DISINI"
+URL_MAP_BRAND   = "PASTE_LINK_CSV_TAB_MAPPING_BRAND_DISINI"
+URL_USERS       = "PASTE_LINK_CSV_TAB_USERS_DISINI"
+URL_SYSTEM      = "PASTE_LINK_CSV_TAB_SYSTEM_DISINI" # <--- Link ini sekarang berisi RAW DATA TRANSAKSI
 
 @st.cache_data(ttl=300)
 def load_configuration():
@@ -56,7 +54,6 @@ def load_configuration():
                 try:
                     name = str(row['Name']).strip()
                     brand = str(row['Brand']).strip()
-                    # Bersihkan angka
                     amt_str = str(row['Amount']).replace(',', '').replace('.', '').replace('Rp', '')
                     amount = float(amt_str)
                     
@@ -81,17 +78,13 @@ def load_configuration():
             if real not in brand_map_raw: brand_map_raw[real] = []
             brand_map_raw[real].append(key)
 
-        # 4. Load System Config (Data Transaction URL)
-        df_sys = pd.read_csv(URL_SYSTEM, on_bad_lines='skip')
-        data_url = df_sys.loc[df_sys['Key'] == 'DATA_URL', 'Value'].values[0]
-
-        return target_db, indiv_targets, sales_map, brand_map_raw, data_url
+        return target_db, indiv_targets, sales_map, brand_map_raw
 
     except Exception as e:
-        return {}, {}, {}, {}, ""
+        return {}, {}, {}, {}
 
-# --- Load All Configs ---
-TARGET_DATABASE, INDIVIDUAL_TARGETS, SALES_MAPPING, BRAND_ALIASES, DYNAMIC_DATA_URL = load_configuration()
+# --- Load Config saat Startup ---
+TARGET_DATABASE, INDIVIDUAL_TARGETS, SALES_MAPPING, BRAND_ALIASES = load_configuration()
 
 # Hitung Total
 if TARGET_DATABASE:
@@ -136,9 +129,10 @@ def render_custom_progress(title, current, target):
 
 @st.cache_data(ttl=60)
 def load_data():
-    if not DYNAMIC_DATA_URL: return None
+    # LANGSUNG BACA URL SYSTEM SEBAGAI DATA TRANSAKSI
+    if "PASTE_LINK" in URL_SYSTEM: return None
     try:
-        url_with_ts = f"{DYNAMIC_DATA_URL}&t={int(time.time())}"
+        url_with_ts = f"{URL_SYSTEM}&t={int(time.time())}"
         df = pd.read_csv(url_with_ts, dtype=str)
     except Exception: return None
     
@@ -473,7 +467,6 @@ def main_dashboard():
                 total_brand_target = 0
                 today = datetime.date.today()
                 
-                # Holidays Logic (Simplifikasi)
                 next_month = today.replace(day=28) + datetime.timedelta(days=4)
                 last_day_month = next_month - datetime.timedelta(days=next_month.day)
                 date_range_rest = pd.date_range(start=today, end=last_day_month)
