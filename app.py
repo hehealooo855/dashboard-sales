@@ -616,7 +616,6 @@ def main_dashboard():
     
     with t1:
         # Determine the loop based on the user's role
-        # Supervisors see only their own brands; Managers/Directors/Fauziah see all
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
              loop_source = TARGET_DATABASE.items()
         elif is_supervisor_account:
@@ -625,9 +624,10 @@ def main_dashboard():
              loop_source = None
 
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
-            st.subheader("Rapor Target per Brand (Detail Sales)")
+            st.subheader("🏆 Ranking Brand & Detail Sales")
             
-            summary_data = []
+            # 1. TAHAP PENGUMPULAN DATA (GROUPING)
+            temp_grouped_data = [] # List untuk menyimpan paket [Brand + Anak-anaknya]
             
             for spv, brands_dict in loop_source:
                 for brand, target in brands_dict.items():
@@ -635,78 +635,93 @@ def main_dashboard():
                     realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
                     
-                    # --- NEW LOGIC: DETAIL SALES & TARGET PRIBADI (DIGABUNG KE KOLOM BRAND) ---
-                    breakdown_text = []
-                    count_sales = 0
-                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
-                        if brand in s_targets:
-                            count_sales += 1
-                            t_indiv = s_targets[brand]
-                            # Hitung realisasi spesifik sales tersebut untuk brand ini
-                            r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
-                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
-                            
-                            # Format Text with Color Logic
-                            color_code = "green" if pct_indiv >= 80 else "red"
-                            detail_item = f"{s_name}: <span style='color:{color_code}'><b>{format_idr(r_indiv)}</b></span> / {format_idr(t_indiv)} ({pct_indiv:.0f}%)"
-                            breakdown_text.append(detail_item)
-                    
-                    # Gabungkan ke Nama Brand
-                    brand_display = f"<b>{brand}</b>"
-                    if breakdown_text:
-                        detail_str = "<br>".join(breakdown_text)
-                        # Menambahkan info jumlah sales dan detailnya
-                        brand_display = f"<b>{brand}</b> ({count_sales} Sales)<br><span style='font-size:0.85em; color: #333'>{detail_str}</span>"
-                    
-                    # Tambahkan Baris PARENT (Brand)
-                    summary_data.append({
-                        "Item": brand, # Nama Brand Saja (Hidden later, not used in display column)
-                        "Role": "Brand", # Marker for styling
+                    # Siapkan Baris PARENT (Brand)
+                    brand_row = {
+                        "Rank": 0, # Placeholder, akan diisi nanti setelah sort
+                        "Item": brand,
                         "Supervisor": spv,
-                        "Brand": brand_display, # Display Column
                         "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand),
                         "Ach (%)": f"{pct_brand:.0f}%",
                         "Bar": pct_brand / 100, 
-                        "Progress (Detail %)": pct_brand # Replaced _sort_val
+                        "Progress (Detail %)": pct_brand 
+                    }
+                    
+                    # Siapkan Baris CHILDREN (Sales)
+                    sales_rows_list = []
+                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
+                        if brand in s_targets:
+                            t_indiv = s_targets[brand]
+                            r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
+                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
+                            
+                            sales_rows_list.append({
+                                "Rank": "", # Kosongkan rank untuk sales
+                                "Item": f"   └─ {s_name}", 
+                                "Supervisor": "", 
+                                "Target": format_idr(t_indiv),
+                                "Realisasi": format_idr(r_indiv),
+                                "Ach (%)": f"{pct_indiv:.0f}%",
+                                "Bar": pct_indiv / 100,
+                                "Progress (Detail %)": pct_brand 
+                            })
+                    
+                    # Simpan paket data brand ini beserta sorting key-nya (realisasi_brand)
+                    temp_grouped_data.append({
+                        "parent": brand_row,
+                        "children": sales_rows_list,
+                        "sort_val": realisasi_brand # Key untuk sorting
                     })
 
-            # Buat DataFrame
-            df_summ = pd.DataFrame(summary_data)
+            # 2. TAHAP SORTING & RANKING
+            # Sort berdasarkan omset (sort_val) tertinggi ke terendah
+            temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
+            
+            # 3. TAHAP FLATTENING (Menyusun kembali jadi flat list untuk DataFrame)
+            final_summary_data = []
+            for idx, group in enumerate(temp_grouped_data, 1):
+                # Update Rank pada Parent
+                group['parent']['Rank'] = idx 
+                
+                # Masukkan Parent
+                final_summary_data.append(group['parent'])
+                
+                # Masukkan Children (Sales) tepat dibawahnya
+                final_summary_data.extend(group['children'])
+
+            # Buat DataFrame Akhir
+            df_summ = pd.DataFrame(final_summary_data)
             
             if not df_summ.empty:
-                # --- RANKING LOGIC ---
-                df_summ = df_summ.sort_values(by="Progress (Detail %)", ascending=False).reset_index(drop=True)
-                df_summ.insert(0, "Rank", range(1, len(df_summ) + 1))
+                # Pindahkan kolom Rank ke paling depan (opsional, tapi good practice)
+                cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
+                df_summ = df_summ[cols]
 
                 # --- FLEXIBLE TRAFFIC LIGHT COLORING ---
                 def style_rows(row):
-                    # Ambil nilai persentase dari kolom hidden
                     pct = row['Progress (Detail %)']
                     
-                    # Logika Warna
-                    if pct >= 80:
-                        bg_color = '#d1e7dd' # Hijau Pastel (Sukses)
-                    elif pct >= 50:
-                        bg_color = '#fff3cd' # Kuning Pastel (Warning)
-                    else:
-                        bg_color = '#f8d7da' # Merah Pastel (Bahaya)
+                    if pct >= 80: bg_color = '#d1e7dd' 
+                    elif pct >= 50: bg_color = '#fff3cd' 
+                    else: bg_color = '#f8d7da'
 
-                    return [f'background-color: {bg_color}; color: black; border-top: 1px solid white'] * len(row)
+                    # Styling: Brand (ada Supervisor) vs Sales (Kosong)
+                    if row["Supervisor"]: 
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
+                    else:
+                        return ['background-color: white; color: #555'] * len(row)
 
                 # Render Dataframe
                 st.dataframe(
-                    df_summ.style.apply(style_rows, axis=1)
-                       .bar(subset=['Bar'], color='#ff2b2b', vmin=0, vmax=1)
-                       .hide(axis="columns", subset=['Progress (Detail %)', 'Role', 'Item']),
+                    df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Rank": st.column_config.NumberColumn("Rank", width="small"),
-                        "Brand": st.column_config.TextColumn("Brand & Detail Sales", width="large"),
+                        "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
+                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
                         "Bar": st.column_config.ProgressColumn(
                             "Progress",
-                            format=" ", # Hides number
+                            format=" ",
                             min_value=0,
                             max_value=1,
                         )
@@ -718,7 +733,7 @@ def main_dashboard():
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Fallback untuk view salesman tunggal
+            # Fallback (Existing code logic for non-grouped view)
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
             for brand in sales_brands:
@@ -729,7 +744,7 @@ def main_dashboard():
                     real = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct = (real/target)*100
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
-            if indiv_data: st.dataframe(pd.DataFrame(indiv_data), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
+            if indiv_data: st.dataframe(pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
     with t2:
@@ -876,9 +891,6 @@ def main_dashboard():
         # Calculate Contribution % (Item Sales / Total Sales)
         pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
         
-        # Calculate Cumulative % for 80/20 cut-off
-        pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
-        
         # Filter top 80% contributors
         top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
         
@@ -888,11 +900,7 @@ def main_dashboard():
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            # Select only specific columns to display, excluding Cumulative %
-            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({
-                'Jumlah': 'Rp {:,.0f}',
-                'Kontribusi %': '{:.2f}%'
-            }),
+            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
             use_container_width=True
         )
         
@@ -938,8 +946,7 @@ def main_dashboard():
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        # REMOVED 'fauziah' from the condition
-        if user_role_lower in ['manager', 'direktur']:
+        if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -956,7 +963,7 @@ def main_dashboard():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
-        elif role in ['manager', 'direktur']: # Legacy condition kept just in case
+        elif role in ['direktur']: # Legacy condition kept just in case
              csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
