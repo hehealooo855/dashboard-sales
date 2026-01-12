@@ -957,4 +957,5 @@ if 'logged_in' not in st.session_state:
 if st.session_state['logged_in']:
     main_dashboard()
 else:
-    login_page()a
+    login_page()
+
