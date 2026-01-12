@@ -657,6 +657,7 @@ def main_dashboard():
                                 "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%",
                                 "Bar": pct_indiv / 100,
+                                "_sort_val": pct_brand # Ikut parent biar menempel saat sort (jika ada logic sort)
                             })
 
             # Buat DataFrame
@@ -675,15 +676,6 @@ def main_dashboard():
                         bg_color = '#fff3cd' # Kuning Pastel (Warning)
                     else:
                         bg_color = '#f8d7da' # Merah Pastel (Bahaya)
-
-                    # Terapkan Warna:
-                    # Jika ini baris BRAND (Parent), warnai background sesuai pencapaian
-                    if row["Role"] == "Brand":
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
-                    
-                    # Jika ini baris SALES (Child), biarkan putih agar kontras dan rapi
-                    else:
-                        return ['background-color: white; color: #555'] * len(row)
 
                 # Render Dataframe
                 st.dataframe(
