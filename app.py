@@ -623,22 +623,29 @@ def main_dashboard():
                     
                     # --- NEW LOGIC: DETAIL SALES & TARGET PRIBADI (DIGABUNG KE KOLOM BRAND) ---
                     breakdown_text = []
+                    count_sales = 0
                     for s_name, s_targets in INDIVIDUAL_TARGETS.items():
                         if brand in s_targets:
-                            # Format: WIRA: 660jt
-                            breakdown_text.append(f"{s_name}: {format_idr(s_targets[brand])}")
+                            count_sales += 1
+                            t_indiv = s_targets[brand]
+                            # Hitung realisasi spesifik sales tersebut untuk brand ini
+                            r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
+                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
+                            
+                            # Format: WIRA: 100jt / 200jt (50%)
+                            breakdown_text.append(f"{s_name}: {format_idr(r_indiv)} / {format_idr(t_indiv)} ({pct_indiv:.0f}%)")
                     
-                    # Gabungkan ke Nama Brand agar tidak buat kolom baru
+                    # Gabungkan ke Nama Brand
                     brand_display = brand
                     if breakdown_text:
-                        # Menggunakan string join
-                        detail_str = ", ".join(breakdown_text)
-                        brand_display = f"{brand} ({detail_str})"
+                        detail_str = " | ".join(breakdown_text)
+                        # Menambahkan info jumlah sales dan detailnya
+                        brand_display = f"{brand} ({count_sales} Sales)\n👉 {detail_str}"
                     # ---------------------------------------------------------------------------
 
                     summary_data.append({
                         "Supervisor": spv, 
-                        "Brand": brand_display, # Menggunakan nama brand yang sudah ada detailnya
+                        "Brand": brand_display, 
                         "Target": format_idr(target), 
                         "Realisasi": realisasi, "Realisasi (Fmt)": format_idr(realisasi), 
                         "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val
