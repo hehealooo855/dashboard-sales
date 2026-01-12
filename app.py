@@ -623,24 +623,24 @@ def main_dashboard():
                     
                     # --- NEW LOGIC: DETAIL SALES & TARGET PRIBADI (DIGABUNG KE KOLOM BRAND) ---
                     breakdown_text = []
-                    count_sales = 0
+                    
+                    # Loop untuk mencari sales yang punya target di brand ini
                     for s_name, s_targets in INDIVIDUAL_TARGETS.items():
                         if brand in s_targets:
-                            count_sales += 1
                             t_indiv = s_targets[brand]
-                            # Hitung realisasi spesifik sales tersebut untuk brand ini
+                            # Hitung realisasi sales ini khusus untuk brand ini
                             r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
                             pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
                             
-                            # Format: WIRA: 100jt / 200jt (50%)
+                            # Format string: WIRA: 100jt / 200jt (50%)
                             breakdown_text.append(f"{s_name}: {format_idr(r_indiv)} / {format_idr(t_indiv)} ({pct_indiv:.0f}%)")
                     
                     # Gabungkan ke Nama Brand
                     brand_display = brand
                     if breakdown_text:
                         detail_str = " | ".join(breakdown_text)
-                        # Menambahkan info jumlah sales dan detailnya
-                        brand_display = f"{brand} ({count_sales} Sales)\n👉 {detail_str}"
+                        # Tampilan akhir: NAMA BRAND (Detail...)
+                        brand_display = f"{brand}\n👉 {detail_str}"
                     # ---------------------------------------------------------------------------
 
                     summary_data.append({
