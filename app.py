@@ -25,6 +25,10 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
+    /* Memastikan text dalam dataframe wrap dengan baik */
+    div[data-testid="stDataFrame"] div[role="gridcell"] {
+        white-space: pre-wrap !important; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -582,7 +586,7 @@ def main_dashboard():
         
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
-            render_custom_progress("🏢 Target Global (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
+            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
             
             if is_supervisor_account:
                 target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
@@ -632,7 +636,7 @@ def main_dashboard():
                             r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
                             pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
                             
-                            # Format Text with Color Logic
+                            # Tentukan Warna Detail Sales
                             color_code = "green" if pct_indiv >= 80 else "red"
                             detail_item = f"{s_name}: <span style='color:{color_code}'><b>{format_idr(r_indiv)}</b></span> / {format_idr(t_indiv)} ({pct_indiv:.0f}%)"
                             breakdown_text.append(detail_item)
@@ -642,7 +646,7 @@ def main_dashboard():
                     if breakdown_text:
                         detail_str = "<br>".join(breakdown_text)
                         # Menambahkan info jumlah sales dan detailnya
-                        brand_display = f"<b>{brand}</b> ({count_sales} Sales)<br><span style='font-size:0.85em; color: gray'>{detail_str}</span>"
+                        brand_display = f"<b>{brand}</b> ({count_sales} Sales)<br><span style='font-size:0.85em; color: #333'>{detail_str}</span>"
                     # ---------------------------------------------------------------------------
 
                     summary_data.append({
@@ -661,6 +665,7 @@ def main_dashboard():
                 df_summ = df_summ.drop(columns=["Realisasi"]) # Hide raw number, keep format
                 df_summ = df_summ.rename(columns={"Realisasi (Fmt)": "Realisasi"})
 
+            # Visualisasi Traffic Light (Baris) + Kontras Teks Hitam
             def highlight_row(row): 
                 pct = row["Ach (Detail %)"]
                 if pct >= 80:
@@ -670,6 +675,7 @@ def main_dashboard():
                 else:
                     bg = "#fff5f5" # Merah Muda Pastel
                 
+                # Force text color black
                 return [f'background-color: {bg}; color: #000000'] * len(row)
 
             st.dataframe(
@@ -680,7 +686,7 @@ def main_dashboard():
                 hide_index=True,
                 column_config={
                     "Brand": st.column_config.TextColumn("Brand (Detail Sales)", width="large", help="Detail target per sales ada di bawah nama brand"),
-                    "Pencapaian": st.column_config.ProgressColumn("Progress", format="%.2f", min_value=0, max_value=1)
+                    "Pencapaian": st.column_config.ProgressColumn("Progress Brand", format="%.2f", min_value=0, max_value=1)
                 }
             )
         elif target_sales_filter in INDIVIDUAL_TARGETS:
