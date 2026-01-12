@@ -35,11 +35,11 @@ st.markdown("""
 # ==========================================
 
 # 🔴🔴🔴 PASTE 5 LINK CSV GOOGLE SHEET DI SINI 🔴🔴🔴
-URL_TARGETS     = "PASTE_LINK_CSV_TAB_TARGETS_DISINI"
-URL_MAP_SALES   = "PASTE_LINK_CSV_TAB_MAPPING_SALES_DISINI"
-URL_MAP_BRAND   = "PASTE_LINK_CSV_TAB_MAPPING_BRAND_DISINI"
-URL_USERS       = "PASTE_LINK_CSV_TAB_USERS_DISINI"
-URL_SYSTEM      = "PASTE_LINK_CSV_TAB_SYSTEM_DISINI" # <--- Link ini sekarang berisi RAW DATA TRANSAKSI
+URL_TARGETS     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=2102937723&single=true&output=csv"
+URL_MAP_SALES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=518733046&single=true&output=csv"
+URL_MAP_BRAND   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=1629420292&single=true&output=csv"
+URL_USERS       = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=1022938468&single=true&output=csv"
+URL_SYSTEM      = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=598865740&single=true&output=csv" 
 
 @st.cache_data(ttl=300)
 def load_configuration():
