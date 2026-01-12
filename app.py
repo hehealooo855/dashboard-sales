@@ -657,7 +657,6 @@ def main_dashboard():
                                 "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%",
                                 "Bar": pct_indiv / 100,
-                                "_sort_val": pct_brand # Ikut parent biar menempel saat sort (jika ada logic sort)
                             })
 
             # Buat DataFrame
