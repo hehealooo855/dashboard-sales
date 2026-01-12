@@ -582,7 +582,7 @@ def main_dashboard():
         
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum() if len(date_range)==2 else df['Jumlah'].sum()
-            render_custom_progress("🏢 Target Global (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
+            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
             
             if is_supervisor_account:
                 target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
@@ -615,14 +615,26 @@ def main_dashboard():
             st.subheader("Rapor Target per Brand")
             summary_data = []
             target_loop = TARGET_DATABASE.items() if role in ['manager', 'direktur'] else {my_name_key: TARGET_DATABASE[my_name_key]}.items()
+            
             for spv, brands_dict in target_loop:
                 for brand, target in brands_dict.items():
                     realisasi = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct_val = (realisasi / target) * 100 if target > 0 else 0
+                    
+                    # --- NEW LOGIC: FIND SALES DETAILS ---
+                    details_list = []
+                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
+                        if brand in s_targets:
+                             details_list.append(f"{s_name} ({format_idr(s_targets[brand])})")
+                    
+                    details_str = ", ".join(details_list)
+                    # -------------------------------------
+
                     summary_data.append({
                         "Supervisor": spv, "Brand": brand, "Target": format_idr(target), 
                         "Realisasi": realisasi, "Realisasi (Fmt)": format_idr(realisasi), 
-                        "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val
+                        "Ach (%)": f"{pct_val:.0f}%", "Pencapaian": pct_val / 100, "Ach (Detail %)": pct_val,
+                        "Detail Sales & Target": details_str
                     })
             df_summ = pd.DataFrame(summary_data)
             
