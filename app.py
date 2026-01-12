@@ -656,8 +656,8 @@ def main_dashboard():
                                 "Target": format_idr(t_indiv),
                                 "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%",
-                                "Bar": pct_indiv / 100,
-                                "_sort_val": pct_brand # Ikut parent biar menempel saat sort (jika ada logic sort)
+                                "Bar": pct_indiv,
+                                "Progress (Detail %)": pct_brand # Ikut parent biar menempel saat sort (jika ada logic sort)
                             })
 
             # Buat DataFrame
@@ -667,7 +667,7 @@ def main_dashboard():
                 # --- FLEXIBLE TRAFFIC LIGHT COLORING ---
                 def style_rows(row):
                     # Ambil nilai persentase dari kolom hidden
-                    pct = row['_sort_val']
+                    pct = row['Progress (Detail %)']
                     
                     # Logika Warna
                     if pct >= 80:
@@ -692,7 +692,7 @@ def main_dashboard():
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Item": st.column_config.TextColumn("Brand / Salesman * 100%", width="medium"),
+                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
                         "Bar": st.column_config.ProgressColumn(
                             "Progress",
                             format="%.2f",
