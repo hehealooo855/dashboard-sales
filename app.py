@@ -949,7 +949,6 @@ def main_dashboard():
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        # REMOVED 'fauziah' from the condition
         if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
@@ -967,7 +966,7 @@ def main_dashboard():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
-        elif role in ['manager', 'direktur']: # Legacy condition kept just in case
+        elif role in ['direktur']: # Legacy condition kept just in case
              csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
