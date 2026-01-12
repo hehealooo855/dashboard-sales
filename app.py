@@ -692,12 +692,12 @@ def main_dashboard():
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
+                        "Item": st.column_config.TextColumn("Brand / Salesman * 100%", width="medium"),
                         "Bar": st.column_config.ProgressColumn(
                             "Progress",
                             format="%.2f",
                             min_value=0,
-                            max_value=1,
+                            max_value=100,
                         )
                     }
                 )
@@ -958,4 +958,3 @@ if st.session_state['logged_in']:
     main_dashboard()
 else:
     login_page()
-
