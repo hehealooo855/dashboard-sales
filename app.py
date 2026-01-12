@@ -950,7 +950,7 @@ def main_dashboard():
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
         # REMOVED 'fauziah' from the condition
-        if user_role_lower in ['manager', 'direktur']:
+        if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
