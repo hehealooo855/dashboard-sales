@@ -327,19 +327,99 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600) # UBAH: Naikkan TTL jadi 600 detik (10 menit) agar tidak terlalu sering request ke Google
 def load_data():
-    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
-    try:
-        url_with_ts = f"{url}&t={int(time.time())}"
-        df = pd.read_csv(url_with_ts, dtype=str)
-    except Exception as e:
-        return None
+    base_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
     
-    df.columns = df.columns.str.strip()
-    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols):
-        return None
+    # Mekanisme Retry (Coba 3 kali jika gagal)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Kita kurangi frekuensi timestamp agar cache Google bisa bekerja sedikit
+            # Menggunakan timestamp per menit, bukan per detik
+            timestamp = int(time.time() / 60) 
+            url_with_ts = f"{base_url}&t={timestamp}"
+            
+            df = pd.read_csv(url_with_ts, dtype=str)
+            
+            # --- MULAI CLEANING DATA ---
+            df.columns = df.columns.str.strip()
+            required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
+            
+            # Validasi kolom dasar
+            if not all(col in df.columns for col in required_cols):
+                return None
+            
+            # Auto Detect Faktur
+            faktur_col = None
+            for col in df.columns:
+                if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
+                    faktur_col = col
+                    break
+            if faktur_col:
+                df = df.rename(columns={faktur_col: 'No Faktur'})
+            
+            # Cleaning Baris Sampah (Total/Grand Total)
+            if 'Nama Outlet' in df.columns:
+                df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+                df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
+                df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+
+            if 'Nama Barang' in df.columns:
+                df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
+                df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
+
+            # Normalisasi Sales
+            df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+            valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+            valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
+            df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+            df['Penjualan'] = df['Penjualan'].astype('category')
+
+            # Normalisasi Brand
+            def normalize_brand(raw_brand):
+                raw_upper = str(raw_brand).upper()
+                for target_brand, keywords in BRAND_ALIASES.items():
+                    for keyword in keywords:
+                        if keyword in raw_upper: return target_brand
+                return raw_brand
+            df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
+            
+            # Cleaning Angka (IDR Format)
+            df['Jumlah'] = df['Jumlah'].astype(str)
+            df['Jumlah'] = df['Jumlah'].str.replace(r'[Rp\s]', '', regex=True)
+            df['Jumlah'] = df['Jumlah'].str.replace('.', '', regex=False)
+            df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
+            df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+            
+            # Cleaning Tanggal
+            df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
+            def fix_swapped_date(d):
+                if pd.isnull(d): return d
+                try:
+                    if d.day <= 12 and d.day != d.month:
+                        return d.replace(day=d.month, month=d.day)
+                except:
+                    pass
+                return d
+            df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
+            df = df.dropna(subset=['Tanggal'])
+            
+            # Convert String Metadata
+            cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
+            for col in cols_to_convert:
+                if col in df.columns:
+                    df[col] = df[col].astype(str).str.strip()
+                    
+            return df # Sukses, kembalikan data
+            
+        except Exception as e:
+            # Jika gagal, tunggu sebentar lalu coba lagi (Backoff)
+            time.sleep(1.5) 
+            continue
+            
+    # Jika sudah 3x mencoba masih gagal, kembalikan None
+    return None
     
     # --- AUTO DETECT KOLOM FAKTUR ---
     faktur_col = None
