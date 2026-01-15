@@ -944,8 +944,11 @@ def main_dashboard():
         # 6. Formatting & Sorting Final
         final_rekap = final_rekap.sort_values(['Bulan_Sort', 'Omset Toko'], ascending=[False, False])
         
+        # Insert Rank
+        final_rekap.insert(0, 'Rank', range(1, len(final_rekap) + 1))
+        
         # Rename columns for display
-        final_rekap_display = final_rekap[['Bulan', 'Merk', 'Nama Outlet', 'Omset Toko', 'Nama Barang', 'Kontribusi %']].rename(columns={
+        final_rekap_display = final_rekap[['Rank', 'Bulan', 'Merk', 'Nama Outlet', 'Omset Toko', 'Nama Barang', 'Kontribusi %']].rename(columns={
             'Nama Barang': 'Produk Terlaris',
             'Kontribusi %': 'Kontribusi Max Item'
         })
@@ -967,7 +970,7 @@ def main_dashboard():
             workbook = writer.book
             worksheet = writer.sheets['Rekap Bulanan']
             money_fmt = workbook.add_format({'num_format': '#,##0'})
-            worksheet.set_column('D:D', 15, money_fmt) # Kolom Omset
+            worksheet.set_column('E:E', 15, money_fmt) # Kolom Omset
             
         st.download_button(
             label="📥 Download Rekap Toko (Excel)",
