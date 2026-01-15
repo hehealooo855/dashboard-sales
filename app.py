@@ -204,7 +204,7 @@ SALES_MAPPING = {
     "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH",
     "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
     "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH",
-    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
+    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH",
 
     # 3. FERI
     "FERI VG": "FERI", "FERI - VG": "FERI",
@@ -461,17 +461,37 @@ def main_dashboard():
 
     # --- FILTER ---
     st.sidebar.subheader("📅 Filter Periode")
+    
+    # -- UPDATE: DATE PICKER PRESET --
     col_p1, col_p2 = st.sidebar.columns(2)
-    if col_p1.button("Bulan Ini", use_container_width=True):
-        today = datetime.date.today()
-        st.session_state['start_date'] = today.replace(day=1)
-        st.session_state['end_date'] = today
+    today = datetime.date.today()
     
     if 'start_date' not in st.session_state:
         st.session_state['start_date'] = df['Tanggal'].max().date().replace(day=1)
         st.session_state['end_date'] = df['Tanggal'].max().date()
 
-    date_range = st.sidebar.date_input("Rentang Waktu", [st.session_state['start_date'], st.session_state['end_date']])
+    # Preset Buttons
+    if st.sidebar.button("Kemarin", use_container_width=True):
+        st.session_state['start_date'] = today - datetime.timedelta(days=1)
+        st.session_state['end_date'] = today - datetime.timedelta(days=1)
+    
+    col_w1, col_w2 = st.sidebar.columns(2)
+    if col_w1.button("7 Hari Terakhir", use_container_width=True):
+        st.session_state['start_date'] = today - datetime.timedelta(days=7)
+        st.session_state['end_date'] = today
+    
+    if col_w2.button("Bulan Ini", use_container_width=True):
+        st.session_state['start_date'] = today.replace(day=1)
+        st.session_state['end_date'] = today
+
+    if st.sidebar.button("Bulan Lalu", use_container_width=True):
+        first_day_this_month = today.replace(day=1)
+        last_day_prev_month = first_day_this_month - datetime.timedelta(days=1)
+        first_day_prev_month = last_day_prev_month.replace(day=1)
+        st.session_state['start_date'] = first_day_prev_month
+        st.session_state['end_date'] = last_day_prev_month
+
+    date_range = st.sidebar.date_input("Rentang Waktu Manual", [st.session_state['start_date'], st.session_state['end_date']])
 
     # --- SCOPE LOGIC ---
     role = st.session_state['role']
@@ -612,10 +632,11 @@ def main_dashboard():
         st.markdown("---")
 
     # --- ANALYTICS TABS ---
-    t1, t2, t_detail_sales, t3, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "📋 Data Rincian"])
+    t1, t2, t_detail_sales, t3, t5, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "📋 Data Rincian"])
     
     with t1:
         # Determine the loop based on the user's role
+        # Supervisors see only their own brands; Managers/Directors/Fauziah see all
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
              loop_source = TARGET_DATABASE.items()
         elif is_supervisor_account:
@@ -624,10 +645,9 @@ def main_dashboard():
              loop_source = None
 
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
-            st.subheader("🏆 Ranking Brand & Detail Sales")
+            st.subheader("Rapor Target per Brand (Detail Sales)")
             
-            # 1. TAHAP PENGUMPULAN DATA (GROUPING)
-            temp_grouped_data = [] # List untuk menyimpan paket [Brand + Anak-anaknya]
+            summary_data = []
             
             for spv, brands_dict in loop_source:
                 for brand, target in brands_dict.items():
@@ -635,93 +655,78 @@ def main_dashboard():
                     realisasi_brand = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
                     
-                    # Siapkan Baris PARENT (Brand)
-                    brand_row = {
-                        "Rank": 0, # Placeholder, akan diisi nanti setelah sort
-                        "Item": brand,
+                    # --- NEW LOGIC: DETAIL SALES & TARGET PRIBADI (DIGABUNG KE KOLOM BRAND) ---
+                    breakdown_text = []
+                    count_sales = 0
+                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
+                        if brand in s_targets:
+                            count_sales += 1
+                            t_indiv = s_targets[brand]
+                            # Hitung realisasi spesifik sales tersebut untuk brand ini
+                            r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
+                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
+                            
+                            # Format Text with Color Logic
+                            color_code = "green" if pct_indiv >= 80 else "red"
+                            detail_item = f"{s_name}: <span style='color:{color_code}'><b>{format_idr(r_indiv)}</b></span> / {format_idr(t_indiv)} ({pct_indiv:.0f}%)"
+                            breakdown_text.append(detail_item)
+                    
+                    # Gabungkan ke Nama Brand
+                    brand_display = f"<b>{brand}</b>"
+                    if breakdown_text:
+                        detail_str = "<br>".join(breakdown_text)
+                        # Menambahkan info jumlah sales dan detailnya
+                        brand_display = f"<b>{brand}</b> ({count_sales} Sales)<br><span style='font-size:0.85em; color: #333'>{detail_str}</span>"
+                    
+                    # Tambahkan Baris PARENT (Brand)
+                    summary_data.append({
+                        "Item": brand, # Nama Brand Saja (Hidden later, not used in display column)
+                        "Role": "Brand", # Marker for styling
                         "Supervisor": spv,
+                        "Brand": brand_display, # Display Column
                         "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand),
                         "Ach (%)": f"{pct_brand:.0f}%",
                         "Bar": pct_brand / 100, 
-                        "Progress (Detail %)": pct_brand 
-                    }
-                    
-                    # Siapkan Baris CHILDREN (Sales)
-                    sales_rows_list = []
-                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
-                        if brand in s_targets:
-                            t_indiv = s_targets[brand]
-                            r_indiv = df_active[(df_active['Penjualan'] == s_name) & (df_active['Merk'] == brand)]['Jumlah'].sum()
-                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
-                            
-                            sales_rows_list.append({
-                                "Rank": "", # Kosongkan rank untuk sales
-                                "Item": f"   └─ {s_name}", 
-                                "Supervisor": "", 
-                                "Target": format_idr(t_indiv),
-                                "Realisasi": format_idr(r_indiv),
-                                "Ach (%)": f"{pct_indiv:.0f}%",
-                                "Bar": pct_indiv / 100,
-                                "Progress (Detail %)": pct_brand 
-                            })
-                    
-                    # Simpan paket data brand ini beserta sorting key-nya (realisasi_brand)
-                    temp_grouped_data.append({
-                        "parent": brand_row,
-                        "children": sales_rows_list,
-                        "sort_val": realisasi_brand # Key untuk sorting
+                        "Progress (Detail %)": pct_brand # Replaced _sort_val
                     })
 
-            # 2. TAHAP SORTING & RANKING
-            # Sort berdasarkan omset (sort_val) tertinggi ke terendah
-            temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
-            
-            # 3. TAHAP FLATTENING (Menyusun kembali jadi flat list untuk DataFrame)
-            final_summary_data = []
-            for idx, group in enumerate(temp_grouped_data, 1):
-                # Update Rank pada Parent
-                group['parent']['Rank'] = idx 
-                
-                # Masukkan Parent
-                final_summary_data.append(group['parent'])
-                
-                # Masukkan Children (Sales) tepat dibawahnya
-                final_summary_data.extend(group['children'])
-
-            # Buat DataFrame Akhir
-            df_summ = pd.DataFrame(final_summary_data)
+            # Buat DataFrame
+            df_summ = pd.DataFrame(summary_data)
             
             if not df_summ.empty:
-                # Pindahkan kolom Rank ke paling depan (opsional, tapi good practice)
-                cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
-                df_summ = df_summ[cols]
+                # --- RANKING LOGIC ---
+                df_summ = df_summ.sort_values(by="Progress (Detail %)", ascending=False).reset_index(drop=True)
+                df_summ.insert(0, "Rank", range(1, len(df_summ) + 1))
 
                 # --- FLEXIBLE TRAFFIC LIGHT COLORING ---
                 def style_rows(row):
+                    # Ambil nilai persentase dari kolom hidden
                     pct = row['Progress (Detail %)']
                     
-                    if pct >= 80: bg_color = '#d1e7dd' 
-                    elif pct >= 50: bg_color = '#fff3cd' 
-                    else: bg_color = '#f8d7da'
-
-                    # Styling: Brand (ada Supervisor) vs Sales (Kosong)
-                    if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
+                    # Logika Warna
+                    if pct >= 80:
+                        bg_color = '#d1e7dd' # Hijau Pastel (Sukses)
+                    elif pct >= 50:
+                        bg_color = '#fff3cd' # Kuning Pastel (Warning)
                     else:
-                        return ['background-color: white; color: #555'] * len(row)
+                        bg_color = '#f8d7da' # Merah Pastel (Bahaya)
+
+                    return [f'background-color: {bg_color}; color: black; border-top: 1px solid white'] * len(row)
 
                 # Render Dataframe
                 st.dataframe(
-                    df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
+                    df_summ.style.apply(style_rows, axis=1)
+                       .bar(subset=['Bar'], color='#ff2b2b', vmin=0, vmax=1)
+                       .hide(axis="columns", subset=['Progress (Detail %)', 'Role', 'Item']),
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
-                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
+                        "Rank": st.column_config.NumberColumn("Rank", width="small"),
+                        "Brand": st.column_config.TextColumn("Brand & Detail Sales", width="large"),
                         "Bar": st.column_config.ProgressColumn(
                             "Progress",
-                            format=" ",
+                            format=" ", # Hides number
                             min_value=0,
                             max_value=1,
                         )
@@ -733,7 +738,7 @@ def main_dashboard():
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
-            # Fallback (Existing code logic for non-grouped view)
+            # Fallback untuk view salesman tunggal
             sales_brands = df_active['Merk'].unique()
             indiv_data = []
             for brand in sales_brands:
@@ -744,7 +749,7 @@ def main_dashboard():
                     real = df_active[df_active['Merk'] == brand]['Jumlah'].sum()
                     pct = (real/target)*100
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
-            if indiv_data: st.dataframe(pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
+            if indiv_data: st.dataframe(pd.DataFrame(indiv_data), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
     with t2:
@@ -891,8 +896,11 @@ def main_dashboard():
         # Calculate Contribution % (Item Sales / Total Sales)
         pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
         
+        # Calculate Cumulative % for 80/20 cut-off
+        pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
+        
         # Filter top 80% contributors
-        top_performers = pareto_df[pareto_df['Kontribusi %'] >= 80/100]
+        top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
         
         # Display summary metric
         col_pareto1, col_pareto2 = st.columns(2)
@@ -900,7 +908,11 @@ def main_dashboard():
         col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
         
         st.dataframe(
-            top_performers.style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
+            # Select only specific columns to display, excluding Cumulative %
+            top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({
+                'Jumlah': 'Rp {:,.0f}',
+                'Kontribusi %': '{:.2f}%'
+            }),
             use_container_width=True
         )
         
@@ -919,6 +931,86 @@ def main_dashboard():
             fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#27ae60'])
             fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_out, use_container_width=True)
+            
+    with t5:
+        st.subheader("🚀 Kejar Omset (Actionable Insights)")
+        
+        # 1. Analisa Toko Tidur (Churn Risk)
+        # Toko yang pernah beli, tapi tidak beli dalam periode ini
+        # ATAU (Lebih canggih) Toko yang beli bulan lalu, tapi bulan ini 0
+        
+        st.write("#### 🚨 Toko Tidur (Potensi Hilang)")
+        st.caption("Toko yang bertransaksi di masa lalu (sebelum periode ini) tetapi TIDAK bertransaksi di periode yang dipilih.")
+        
+        all_outlets = df_scope_all['Nama Outlet'].unique()
+        active_outlets = df_active['Nama Outlet'].unique()
+        sleeping_outlets = list(set(all_outlets) - set(active_outlets))
+        
+        if sleeping_outlets:
+            st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
+            with st.expander("Lihat Daftar Toko Tidur"):
+                # Cari last transaction date untuk toko tidur
+                last_trx = []
+                for outlet in sleeping_outlets:
+                    outlet_df = df_scope_all[df_scope_all['Nama Outlet'] == outlet]
+                    last_date = outlet_df['Tanggal'].max()
+                    sales_handler = outlet_df['Penjualan'].iloc[0] if not outlet_df.empty else "-"
+                    last_trx.append({
+                        "Nama Toko": outlet,
+                        "Sales": sales_handler,
+                        "Terakhir Order": last_date.strftime('%d %b %Y'),
+                        "Hari Sejak Order Terakhir": (datetime.date.today() - last_date.date()).days
+                    })
+                
+                df_sleep = pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir")
+                st.dataframe(df_sleep, use_container_width=True)
+        else:
+            st.success("Luar biasa! Semua toko langganan sudah order di periode ini.")
+
+        st.divider()
+
+        # 2. Analisa Cross-Selling (Peluang)
+        # Toko yang beli Brand A, tapi belum beli Brand B (dalam portofolio sales/SPV yang sama)
+        st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
+        
+        # Ambil daftar brand yang relevan dalam scope saat ini
+        relevant_brands = df_active['Merk'].unique()
+        
+        if len(relevant_brands) > 1:
+            col_cs1, col_cs2 = st.columns(2)
+            with col_cs1:
+                brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0)
+            with col_cs2:
+                # Remove brand_acuan from options to avoid same-same comparison
+                target_options = [b for b in relevant_brands if b != brand_acuan]
+                brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None)
+            
+            if brand_target:
+                # Logic: Find outlets that bought Brand A but sum(Sales Brand B) == 0
+                outlets_buy_acuan = df_active[df_active['Merk'] == brand_acuan]['Nama Outlet'].unique()
+                
+                # Dari outlet tersebut, mana yang tidak punya transaksi di brand target?
+                opportunities = []
+                for outlet in outlets_buy_acuan:
+                    # Cek apakah outlet ini beli brand target
+                    check = df_active[(df_active['Nama Outlet'] == outlet) & (df_active['Merk'] == brand_target)]
+                    if check.empty:
+                        # Get Salesman name for this outlet
+                        sales_name = df_active[df_active['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                        opportunities.append({
+                            "Nama Toko": outlet,
+                            "Salesman": sales_name,
+                            "Potensi": f"Tawarkan {brand_target}"
+                        })
+                
+                if opportunities:
+                    st.info(f"Ditemukan **{len(opportunities)} Toko** yang beli {brand_acuan} tapi belum beli {brand_target}.")
+                    st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                else:
+                    st.success(f"Hebat! Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
+        else:
+            st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
+
 
     with t4:
         st.subheader("📋 Rincian Transaksi Lengkap")
