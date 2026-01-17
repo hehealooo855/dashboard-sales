@@ -32,6 +32,11 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
+    /* Security: Hide Menu & Footer */
+    [data-testid="stElementToolbar"] { display: none; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -494,6 +499,7 @@ def get_cross_sell_recommendations(df):
     if recommendations:
         return pd.DataFrame(recommendations)
     return None
+
 # ==========================================
 # 4. MAIN DASHBOARD LOGIC
 # ==========================================
@@ -528,6 +534,41 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
+    # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
+    def add_watermark():
+        user_name = st.session_state.get('sales_name', 'User')
+        st.markdown(f"""
+        <style>
+        .watermark {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            pointer-events: none;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-content: space-around;
+            opacity: 0.04;
+        }}
+        .watermark-text {{
+            transform: rotate(-45deg);
+            font-size: 24px;
+            color: #000;
+            font-weight: bold;
+            margin: 50px;
+        }}
+        </style>
+        <div class="watermark">
+            {''.join([f'<div class="watermark-text">{user_name} - CONFIDENTIAL</div>' for _ in range(20)])}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    add_watermark()
+    # -----------------------------------------------
+
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
@@ -554,14 +595,33 @@ def main_dashboard():
         st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
         return
 
+    # --- SECURITY: STRICT SCOPING (POINT 3 - ISOLASI DATA) ---
+    user_role = st.session_state['role']
+    user_name = st.session_state['sales_name']
+    
+    # Jika bukan Direktur/Manager/Fauziah, potong data df agar hanya berisi data mereka sendiri
+    if user_role not in ['manager', 'direktur', 'supervisor'] and user_name.lower() != 'fauziah':
+        # 1. Isolasi Dataframe Transaksi
+        df = df[df['Penjualan'] == user_name]
+    
+    # 2. SUPERVISOR: Lihat data berdasarkan Brand yang dipegang
+    elif user_name.upper() in TARGET_DATABASE: 
+         # Ambil list brand yang dipegang Supervisor ini
+         spv_brands = list(TARGET_DATABASE[user_name.upper()].keys())
+         # Filter DataFrame hanya untuk brand tersebut
+         df = df[df['Merk'].isin(spv_brands)]
+    # ---------------------------------------------------------
+
     # --- FILTER ---
     st.sidebar.subheader("📅 Filter Periode")
+
     # -- DATE PICKER PRESET (ADDED FEATURE) --
     today = datetime.date.today()
     
     if 'start_date' not in st.session_state:
         st.session_state['start_date'] = df['Tanggal'].max().date().replace(day=1)
         st.session_state['end_date'] = df['Tanggal'].max().date()
+
     col_preset1, col_preset2 = st.sidebar.columns(2)
     
     with col_preset1:
@@ -582,13 +642,16 @@ def main_dashboard():
             first_day_prev_month = last_day_prev_month.replace(day=1)
             st.session_state['start_date'] = first_day_prev_month
             st.session_state['end_date'] = last_day_prev_month
+
     date_range = st.sidebar.date_input("Rentang Waktu Manual", [st.session_state['start_date'], st.session_state['end_date']])
+
     # --- SCOPE LOGIC ---
     role = st.session_state['role']
     my_name = st.session_state['sales_name']
     my_name_key = my_name.strip().upper()
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
+
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
         sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
@@ -617,6 +680,7 @@ def main_dashboard():
     else: # Sales Biasa
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
+
     # --- APPLY FILTER ---
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
         unique_brands = sorted(df_scope_all['Merk'].unique())
@@ -625,6 +689,7 @@ def main_dashboard():
         unique_outlets = sorted(df_scope_all['Nama Outlet'].unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -632,6 +697,7 @@ def main_dashboard():
     else:
         df_active = df_scope_all
         ref_date = df['Tanggal'].max().date()
+
     # --- KPI METRICS ---
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
@@ -651,6 +717,7 @@ def main_dashboard():
         omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
         delta_val = current_omset_total - omset_prev_period
         delta_label = f"vs {prev_date.strftime('%d %b')}"
+
     c1, c2, c3 = st.columns(3)
     
     delta_str = format_idr(delta_val)
@@ -658,6 +725,7 @@ def main_dashboard():
         delta_str = delta_str.replace("Rp -", "- Rp ")
     elif delta_val > 0:
         delta_str = f"+ {delta_str}"
+
     c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
     c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
@@ -670,6 +738,7 @@ def main_dashboard():
         transaksi_count = len(df_active)
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
+
     # --- FORECASTING / RUN RATE ---
     try:
         from calendar import monthrange
@@ -682,6 +751,7 @@ def main_dashboard():
                 st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
     except Exception as e:
         pass
+
     # --- TARGET MONITOR ---
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
@@ -712,6 +782,7 @@ def main_dashboard():
         else:
             st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         st.markdown("---")
+
     # --- ANALYTICS TABS ---
     t1, t2, t_detail_sales, t3, t5, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "📋 Data Rincian"])
     
@@ -724,6 +795,7 @@ def main_dashboard():
              loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
         else:
              loop_source = None
+
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader("🏆 Ranking Brand & Detail Sales")
             
@@ -773,6 +845,7 @@ def main_dashboard():
                         "children": sales_rows_list,
                         "sort_val": realisasi_brand # Key untuk sorting
                     })
+
             # 2. TAHAP SORTING & RANKING
             # Sort berdasarkan omset (sort_val) tertinggi ke terendah
             temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
@@ -788,6 +861,7 @@ def main_dashboard():
                 
                 # Masukkan Children (Sales) tepat dibawahnya
                 final_summary_data.extend(group['children'])
+
             # Buat DataFrame Akhir
             df_summ = pd.DataFrame(final_summary_data)
             
@@ -795,6 +869,7 @@ def main_dashboard():
                 # Pindahkan kolom Rank ke paling depan (opsional, tapi good practice)
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
+
                 # --- FLEXIBLE TRAFFIC LIGHT COLORING ---
                 def style_rows(row):
                     pct = row['Progress (Detail %)']
@@ -802,11 +877,13 @@ def main_dashboard():
                     if pct >= 80: bg_color = '#d1e7dd' 
                     elif pct >= 50: bg_color = '#fff3cd' 
                     else: bg_color = '#f8d7da'
+
                     # Styling: Brand (ada Supervisor) vs Sales (Kosong)
                     if row["Supervisor"]: 
                         return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
                     else:
                         return ['background-color: white; color: #555'] * len(row)
+
                 # Render Dataframe
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -825,6 +902,7 @@ def main_dashboard():
                 )
             else:
                 st.warning("Tidak ada data untuk ditampilkan.")
+
         elif target_sales_filter in INDIVIDUAL_TARGETS:
              st.info("Lihat progress bar di atas untuk detail target individu.")
         else:
@@ -841,6 +919,7 @@ def main_dashboard():
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
             if indiv_data: st.dataframe(pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
+
     with t2:
         st.subheader("📈 Tren Harian")
         if not df_active.empty:
@@ -848,6 +927,7 @@ def main_dashboard():
             fig_line = px.line(daily, x='Tanggal', y='Jumlah', markers=True)
             fig_line.update_traces(line_color='#2980b9', line_width=3)
             st.plotly_chart(fig_line, use_container_width=True)
+
     with t_detail_sales:
         st.subheader("👥 Detail Sales Team per Brand")
         # Logic to enable dropdown based on user role and context
@@ -886,6 +966,7 @@ def main_dashboard():
                     '2026-04-05', '2026-05-01', '2026-05-14', '2026-05-24', '2026-06-01',
                     '2026-06-16', '2026-07-07', '2026-08-17', '2026-08-25', '2026-12-25' 
                 ]
+
                 # Calculate Month End
                 next_month = today.replace(day=28) + datetime.timedelta(days=4)
                 last_day_month = next_month - datetime.timedelta(days=next_month.day)
@@ -943,6 +1024,7 @@ def main_dashboard():
                             expected_ach = 0
                             gap = 0
                             catch_up_needed = 0
+
                         sales_stats.append({
                             "Nama Sales": sales_name,
                             "Target Pribadi": format_idr(t_pribadi),
@@ -970,6 +1052,7 @@ def main_dashboard():
                     st.info(f"Belum ada data target sales individu untuk brand {selected_brand_detail}")
         else:
             st.info("Menu ini khusus untuk melihat detail tim sales per brand.")
+
     with t3:
         # --- PARETO ANALYSIS (UPDATED: Contribution %) ---
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
@@ -1002,6 +1085,7 @@ def main_dashboard():
         )
         
         st.divider()
+
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("📦 Top 10 Produk")
@@ -1050,7 +1134,9 @@ def main_dashboard():
                 st.dataframe(df_sleep, use_container_width=True)
         else:
             st.success("Luar biasa! Semua toko langganan sudah order di periode ini.")
+
         st.divider()
+
         # 2. Analisa Cross-Selling (Peluang)
         # Toko yang beli Brand A, tapi belum beli Brand B (dalam portofolio sales/SPV yang sama)
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
@@ -1092,7 +1178,9 @@ def main_dashboard():
                     st.success(f"Hebat! Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
         else:
             st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
+        
         st.divider()
+
         # 3. Rekomendasi Cross-Selling Cerdas (AI-Powered dengan Association Rules)
         st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (Berdasarkan Pola Transaksi)")
         st.caption("AI menganalisa pola pembelian dari ribuan transaksi untuk menemukan rekomendasi tersembunyi.")
@@ -1105,6 +1193,8 @@ def main_dashboard():
             st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
         else:
             st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
+
+
     with t4:
         st.subheader("📋 Rincian Transaksi Lengkap")
         
@@ -1114,6 +1204,7 @@ def main_dashboard():
                 df_active.nlargest(10, 'Jumlah')[['Tanggal', 'Nama Outlet', 'Nama Barang', 'Jumlah']],
                 use_container_width=True
             )
+
         cols_to_show = ['Tanggal', 'No Faktur', 'Nama Outlet', 'Merk', 'Nama Barang', 'Jumlah', 'Penjualan']
         final_cols = [c for c in cols_to_show if c in df_active.columns]
         
@@ -1129,6 +1220,7 @@ def main_dashboard():
         # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
+
         if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
@@ -1138,7 +1230,7 @@ def main_dashboard():
                 worksheet = writer.sheets['Sales Data']
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
-                
+            
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX)",
                 data=output.getvalue(),
@@ -1150,9 +1242,11 @@ def main_dashboard():
              csv = df_active[final_cols].to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
+
 # --- 5. ALUR UTAMA ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
+
 if st.session_state['logged_in']:
     main_dashboard()
 else:
