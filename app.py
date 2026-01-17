@@ -1,24 +1,26 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import datetime
 import time
 import re
 import pytz
 import io 
+import os
+import numpy as np
 from calendar import monthrange
 
-# --- 1. KONFIGURASI HALAMAN & CSS PREMIUM + KEAMANAN ---
+# --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
     page_title="Dashboard Sales", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (Tampilan & KEAMANAN STEP 2)
+# Custom CSS
 st.markdown("""
 <style>
-    /* UI Style Cards */
     .metric-card {
         border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px;
         background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -30,17 +32,6 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-
-    /* --- SECURITY SECTION (POINT 2) --- */
-    /* Sembunyikan tombol download/action di setiap dataframe */
-    [data-testid="stElementToolbar"] {
-        display: none;
-    }
-    /* Sembunyikan menu burger (titik tiga) di pojok kanan atas */
-    #MainMenu {visibility: hidden;}
-    /* Sembunyikan footer Streamlit */
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -295,6 +286,20 @@ SALES_MAPPING = {
 # 3. CORE LOGIC
 # ==========================================
 
+# --- SECURITY FEATURE: AUDIT LOGGING ---
+def log_activity(user, action):
+    # Simpan log ke file CSV sederhana untuk audit trail
+    log_file = 'audit_log.csv'
+    timestamp = datetime.datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S")
+    
+    new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
+    
+    if not os.path.isfile(log_file):
+        new_log.to_csv(log_file, index=False)
+    else:
+        new_log.to_csv(log_file, mode='a', header=False, index=False)
+# ---------------------------------------
+
 def get_current_time_wib():
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
@@ -430,6 +435,9 @@ def load_users():
 # 4. MAIN DASHBOARD LOGIC
 # ==========================================
 
+import os 
+import numpy as np
+
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
@@ -450,6 +458,10 @@ def login_page():
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = match.iloc[0]['role']
                             st.session_state['sales_name'] = match.iloc[0]['sales_name']
+                            
+                            # LOGGING LOGIN
+                            log_activity(match.iloc[0]['sales_name'], "LOGIN SUCCESS")
+                            
                             st.success("Login Berhasil! Mengalihkan...")
                             time.sleep(1)
                             st.rerun()
@@ -457,45 +469,22 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
-    # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
-    def add_watermark():
-        user_name = st.session_state.get('sales_name', 'User')
-        st.markdown(f"""
-        <style>
-        .watermark {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            pointer-events: none;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            align-content: space-around;
-            opacity: 0.04;
-        }}
-        .watermark-text {{
-            transform: rotate(-45deg);
-            font-size: 24px;
-            color: #000;
-            font-weight: bold;
-            margin: 50px;
-        }}
-        </style>
-        <div class="watermark">
-            {''.join([f'<div class="watermark-text">{user_name} - CONFIDENTIAL</div>' for _ in range(20)])}
-        </div>
-        """, unsafe_allow_html=True)
-    
-    add_watermark()
-    # -----------------------------------------------
-
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
+        
+        # --- AUDIT LOG VIEWER FOR DIRECTOR (POINT 5) ---
+        if st.session_state['role'] == 'direktur':
+            with st.expander("🛡️ Audit Log (Director Only)"):
+                if os.path.isfile('audit_log.csv'):
+                    audit_df = pd.read_csv('audit_log.csv', names=['Timestamp', 'User', 'Action'])
+                    st.dataframe(audit_df.sort_values('Timestamp', ascending=False), height=200)
+                else:
+                    st.write("Belum ada log.")
+        # ---------------------------------------------
+        
         if st.button("🚪 Logout", use_container_width=True):
+            log_activity(st.session_state['sales_name'], "LOGOUT")
             st.session_state['logged_in'] = False
             st.rerun()
         st.markdown("---")
@@ -678,7 +667,7 @@ def main_dashboard():
         st.markdown("---")
 
     # --- ANALYTICS TABS ---
-    t1, t2, t_detail_sales, t3, t5, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "📋 Data Rincian"])
+    t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
     with t1:
         # Determine the loop based on the user's role
@@ -1073,6 +1062,61 @@ def main_dashboard():
         else:
             st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
 
+    with t_forecast:
+        # --- FEATURE 3: FORECASTING (PREDIKSI OMSET) ---
+        st.subheader("🔮 Prediksi Omset (Forecasting)")
+        st.info("Prediksi tren omset 30 hari ke depan berdasarkan data historis harian.")
+        
+        # 1. Prepare Data
+        # Group by Date
+        df_forecast = df_scope_all.groupby('Tanggal')['Jumlah'].sum().reset_index()
+        df_forecast = df_forecast.sort_values('Tanggal')
+        
+        if len(df_forecast) > 10: # Need minimal data points
+            # 2. Linear Regression (Simple) using Numpy
+            # Convert date to ordinal for regression
+            df_forecast['Date_Ordinal'] = df_forecast['Tanggal'].apply(lambda x: x.toordinal())
+            
+            x = df_forecast['Date_Ordinal'].values
+            y = df_forecast['Jumlah'].values
+            
+            # Fit Polynomial (Degree 1 = Linear)
+            # slope (m), intercept (c) = np.polyfit(x, y, 1)
+            z = np.polyfit(x, y, 1)
+            p = np.poly1d(z)
+            
+            # 3. Create Future Dates
+            last_date = df_forecast['Tanggal'].max()
+            future_days = 30
+            future_dates = [last_date + datetime.timedelta(days=i) for i in range(1, future_days + 1)]
+            future_ordinals = [d.toordinal() for d in future_dates]
+            
+            # Predict
+            future_values = p(future_ordinals)
+            
+            # Combine for Visualization
+            df_history = df_forecast[['Tanggal', 'Jumlah']].copy()
+            df_history['Type'] = 'Historis'
+            
+            df_future = pd.DataFrame({'Tanggal': future_dates, 'Jumlah': future_values})
+            df_future['Type'] = 'Prediksi'
+            
+            df_combined = pd.concat([df_history, df_future])
+            
+            # 4. Visualize
+            fig_forecast = px.line(df_combined, x='Tanggal', y='Jumlah', color='Type', 
+                                   line_dash='Type', 
+                                   color_discrete_map={'Historis': '#2980b9', 'Prediksi': '#e74c3c'})
+            
+            fig_forecast.update_layout(title="Proyeksi Omset 30 Hari Kedepan", xaxis_title="Tanggal", yaxis_title="Omset")
+            st.plotly_chart(fig_forecast, use_container_width=True)
+            
+            # 5. Insight Text
+            trend = "NAIK 📈" if z[0] > 0 else "TURUN 📉"
+            st.write(f"**Analisa Tren:** Berdasarkan data historis, tren penjualan terlihat **{trend}**.")
+            
+        else:
+            st.warning("Data belum cukup untuk melakukan prediksi (minimal 10 hari transaksi).")
 
     with t4:
         st.subheader("📋 Rincian Transaksi Lengkap")
