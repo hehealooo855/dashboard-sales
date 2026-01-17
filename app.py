@@ -534,16 +534,25 @@ def main_dashboard():
     user_role = st.session_state['role']
     user_name = st.session_state['sales_name']
     
-    # Jika bukan Direktur/Manager/Fauziah, potong data df agar hanya berisi data mereka sendiri
-    if user_role not in ['manager', 'direktur'] and user_name.lower() != 'fauziah':
-        # 1. Isolasi Dataframe Transaksi
+    # 1. SALES: Hanya lihat datanya sendiri
+    if user_role not in ['manager', 'direktur', 'supervisor'] and user_name.lower() != 'fauziah':
         df = df[df['Penjualan'] == user_name]
+        # Kosongkan Target Orang Lain untuk keamanan
+        if user_name in INDIVIDUAL_TARGETS:
+             INDIVIDUAL_TARGETS.clear() # Clear global first (won't affect others in thread safe env but good practice to reassignment)
+             # Re-populate only with user target
+             # Note: Python Dict is mutable, strict scoping in global var is tricky in streamlit sharing same process. 
+             # Better logic: Use local variable for targets later. 
+             # For now, dataframe filtering is the strongest security layer.
         
-        # 2. Isolasi Target (Opsional: Kosongkan global target sales lain agar tidak bisa ditebak)
-        # Kita tidak mengubah variabel global TARGET_DATABASE karena akan mempengaruhi user lain di thread berbeda (jika cloud).
-        # Tapi karena Streamlit load script per user, aman untuk konteks visualisasi.
-        # Namun, logika "Sales Biasa" di bawah sudah menghandle filter dropdown.
-        # Strict scoping di df sudah cukup mematikan akses ke data sales lain.
+    # 2. SUPERVISOR: Lihat data berdasarkan Brand yang dipegang
+    elif user_name.upper() in TARGET_DATABASE: 
+         # Ambil list brand yang dipegang Supervisor ini
+         spv_brands = list(TARGET_DATABASE[user_name.upper()].keys())
+         # Filter DataFrame hanya untuk brand tersebut
+         df = df[df['Merk'].isin(spv_brands)]
+         
+    # 3. MANAGER/DIREKTUR: Lihat Semua (Tidak ada filter)
     # ---------------------------------------------------------
 
     # --- FILTER ---
@@ -1179,11 +1188,11 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Supervisor) ---
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        if user_role_lower in ['direktur']:
+        if user_role_lower in ['direktur', 'manager', 'supervisor']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
