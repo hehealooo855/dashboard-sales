@@ -32,11 +32,6 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-    /* Security: Hide Menu & Footer */
-    [data-testid="stElementToolbar"] { display: none; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -293,8 +288,10 @@ SALES_MAPPING = {
 
 # --- SECURITY FEATURE: AUDIT LOGGING ---
 def log_activity(user, action):
+    # Simpan log ke file CSV sederhana untuk audit trail
     log_file = 'audit_log.csv'
     timestamp = datetime.datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S")
+    
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
     
     if not os.path.isfile(log_file):
@@ -438,6 +435,9 @@ def load_users():
 # 4. MAIN DASHBOARD LOGIC
 # ==========================================
 
+import os 
+import numpy as np
+
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
@@ -469,41 +469,6 @@ def login_page():
                             st.error("Username atau Password salah.")
 
 def main_dashboard():
-    # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
-    def add_watermark():
-        user_name = st.session_state.get('sales_name', 'User')
-        st.markdown(f"""
-        <style>
-        .watermark {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            pointer-events: none;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            align-content: space-around;
-            opacity: 0.04;
-        }}
-        .watermark-text {{
-            transform: rotate(-45deg);
-            font-size: 24px;
-            color: #000;
-            font-weight: bold;
-            margin: 50px;
-        }}
-        </style>
-        <div class="watermark">
-            {''.join([f'<div class="watermark-text">{user_name} - CONFIDENTIAL</div>' for _ in range(20)])}
-        </div>
-        """, unsafe_allow_html=True)
-    
-    add_watermark()
-    # -----------------------------------------------
-
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
@@ -529,31 +494,6 @@ def main_dashboard():
     if df is None or df.empty:
         st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
         return
-
-    # --- SECURITY: STRICT SCOPING (POINT 3 - ISOLASI DATA) ---
-    user_role = st.session_state['role']
-    user_name = st.session_state['sales_name']
-    
-    # 1. SALES: Hanya lihat datanya sendiri
-    if user_role not in ['manager', 'direktur', 'supervisor'] and user_name.lower() != 'fauziah':
-        df = df[df['Penjualan'] == user_name]
-        # Kosongkan Target Orang Lain untuk keamanan
-        if user_name in INDIVIDUAL_TARGETS:
-             INDIVIDUAL_TARGETS.clear() # Clear global first (won't affect others in thread safe env but good practice to reassignment)
-             # Re-populate only with user target
-             # Note: Python Dict is mutable, strict scoping in global var is tricky in streamlit sharing same process. 
-             # Better logic: Use local variable for targets later. 
-             # For now, dataframe filtering is the strongest security layer.
-        
-    # 2. SUPERVISOR: Lihat data berdasarkan Brand yang dipegang
-    elif user_name.upper() in TARGET_DATABASE: 
-         # Ambil list brand yang dipegang Supervisor ini
-         spv_brands = list(TARGET_DATABASE[user_name.upper()].keys())
-         # Filter DataFrame hanya untuk brand tersebut
-         df = df[df['Merk'].isin(spv_brands)]
-         
-    # 3. MANAGER/DIREKTUR: Lihat Semua (Tidak ada filter)
-    # ---------------------------------------------------------
 
     # --- FILTER ---
     st.sidebar.subheader("📅 Filter Periode")
@@ -1044,72 +984,84 @@ def main_dashboard():
             st.plotly_chart(fig_out, use_container_width=True)
             
     with t5:
-        # --- REKAP TOKO BULANAN ---
-        st.subheader("📅 Rekapitulasi Toko & Produk Laris Bulanan")
+        st.subheader("🚀 Kejar Omset (Actionable Insights)")
         
-        # Prepare Data
-        df_rekap = df_active.copy()
+        # 1. Analisa Toko Tidur (Churn Risk)
+        # Toko yang pernah beli, tapi tidak beli dalam periode ini
+        # ATAU (Lebih canggih) Toko yang beli bulan lalu, tapi bulan ini 0
         
-        # Buat Kolom Bulan (YYYY-MM Format untuk sorting yang benar, lalu di format jadi Nama Bulan)
-        df_rekap['Bulan_Sort'] = df_rekap['Tanggal'].dt.strftime('%Y-%m')
-        df_rekap['Bulan'] = df_rekap['Tanggal'].dt.strftime('%B %Y')
+        st.write("#### 🚨 Toko Tidur (Potensi Hilang)")
+        st.caption("Toko yang bertransaksi di masa lalu (sebelum periode ini) tetapi TIDAK bertransaksi di periode yang dipilih.")
         
-        # 1. Total Omset per Toko per Brand per Bulan
-        # Group by: Bulan_Sort (untuk urutan), Bulan (tampilan), Merk, Nama Outlet
-        total_sales = df_rekap.groupby(['Bulan_Sort', 'Bulan', 'Merk', 'Nama Outlet'])['Jumlah'].sum().reset_index(name='Omset Toko')
+        all_outlets = df_scope_all['Nama Outlet'].unique()
+        active_outlets = df_active['Nama Outlet'].unique()
+        sleeping_outlets = list(set(all_outlets) - set(active_outlets))
         
-        # 2. Sales per SKU per Toko per Brand per Bulan
-        sku_sales = df_rekap.groupby(['Bulan_Sort', 'Bulan', 'Merk', 'Nama Outlet', 'Nama Barang'])['Jumlah'].sum().reset_index(name='Omset SKU')
+        if sleeping_outlets:
+            st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
+            with st.expander("Lihat Daftar Toko Tidur"):
+                # Cari last transaction date untuk toko tidur
+                last_trx = []
+                for outlet in sleeping_outlets:
+                    outlet_df = df_scope_all[df_scope_all['Nama Outlet'] == outlet]
+                    last_date = outlet_df['Tanggal'].max()
+                    sales_handler = outlet_df['Penjualan'].iloc[0] if not outlet_df.empty else "-"
+                    last_trx.append({
+                        "Nama Toko": outlet,
+                        "Sales": sales_handler,
+                        "Terakhir Order": last_date.strftime('%d %b %Y'),
+                        "Hari Sejak Order Terakhir": (datetime.date.today() - last_date.date()).days
+                    })
+                
+                df_sleep = pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir")
+                st.dataframe(df_sleep, use_container_width=True)
+        else:
+            st.success("Luar biasa! Semua toko langganan sudah order di periode ini.")
+
+        st.divider()
+
+        # 2. Analisa Cross-Selling (Peluang)
+        # Toko yang beli Brand A, tapi belum beli Brand B (dalam portofolio sales/SPV yang sama)
+        st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
-        # 3. Cari Best SKU (Produk dengan omset tertinggi di toko & bulan tsb)
-        # Sort values agar yang terbesar ada di paling atas per grup, lalu drop duplicates keep first
-        best_sku = sku_sales.sort_values(['Bulan_Sort', 'Merk', 'Nama Outlet', 'Omset SKU'], ascending=False).drop_duplicates(['Bulan_Sort', 'Merk', 'Nama Outlet'])
+        # Ambil daftar brand yang relevan dalam scope saat ini
+        relevant_brands = df_active['Merk'].unique()
         
-        # 4. Gabungkan Data (Merge)
-        # Gabungkan total sales toko dengan data best sku
-        final_rekap = pd.merge(total_sales, best_sku[['Bulan_Sort', 'Merk', 'Nama Outlet', 'Nama Barang', 'Omset SKU']], on=['Bulan_Sort', 'Merk', 'Nama Outlet'], how='left')
-        
-        # 5. Hitung Kontribusi % Best SKU
-        final_rekap['Kontribusi %'] = (final_rekap['Omset SKU'] / final_rekap['Omset Toko'] * 100).fillna(0)
-        
-        # 6. Formatting & Sorting Final
-        final_rekap = final_rekap.sort_values(['Bulan_Sort', 'Omset Toko'], ascending=[False, False])
-        
-        # Insert Rank
-        final_rekap.insert(0, 'Rank', range(1, len(final_rekap) + 1))
-        
-        # Rename columns for display
-        final_rekap_display = final_rekap[['Rank', 'Bulan', 'Merk', 'Nama Outlet', 'Omset Toko', 'Nama Barang', 'Kontribusi %']].rename(columns={
-            'Nama Barang': 'Produk Terlaris',
-            'Kontribusi %': 'Kontribusi Max Item'
-        })
-        
-        # Tampilkan Dataframe
-        st.dataframe(
-            final_rekap_display.style.format({
-                'Omset Toko': 'Rp {:,.0f}',
-                'Kontribusi Max Item': '{:.1f}%'
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Download Button Khusus Rekap
-        output_rekap = io.BytesIO()
-        with pd.ExcelWriter(output_rekap, engine='xlsxwriter') as writer:
-            final_rekap_display.to_excel(writer, index=False, sheet_name='Rekap Bulanan')
-            workbook = writer.book
-            worksheet = writer.sheets['Rekap Bulanan']
-            money_fmt = workbook.add_format({'num_format': '#,##0'})
-            worksheet.set_column('E:E', 15, money_fmt) # Kolom Omset
+        if len(relevant_brands) > 1:
+            col_cs1, col_cs2 = st.columns(2)
+            with col_cs1:
+                brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0)
+            with col_cs2:
+                # Remove brand_acuan from options to avoid same-same comparison
+                target_options = [b for b in relevant_brands if b != brand_acuan]
+                brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None)
             
-        st.download_button(
-            label="📥 Download Rekap Toko (Excel)",
-            data=output_rekap.getvalue(),
-            file_name=f"Rekap_Toko_Sales_{datetime.date.today()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    
+            if brand_target:
+                # Logic: Find outlets that bought Brand A but sum(Sales Brand B) == 0
+                outlets_buy_acuan = df_active[df_active['Merk'] == brand_acuan]['Nama Outlet'].unique()
+                
+                # Dari outlet tersebut, mana yang tidak punya transaksi di brand target?
+                opportunities = []
+                for outlet in outlets_buy_acuan:
+                    # Cek apakah outlet ini beli brand target
+                    check = df_active[(df_active['Nama Outlet'] == outlet) & (df_active['Merk'] == brand_target)]
+                    if check.empty:
+                        # Get Salesman name for this outlet
+                        sales_name = df_active[df_active['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                        opportunities.append({
+                            "Nama Toko": outlet,
+                            "Salesman": sales_name,
+                            "Potensi": f"Tawarkan {brand_target}"
+                        })
+                
+                if opportunities:
+                    st.info(f"Ditemukan **{len(opportunities)} Toko** yang beli {brand_acuan} tapi belum beli {brand_target}.")
+                    st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                else:
+                    st.success(f"Hebat! Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
+        else:
+            st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
+
     with t_forecast:
         # --- FEATURE 3: FORECASTING (PREDIKSI OMSET) ---
         st.subheader("🔮 Prediksi Omset (Forecasting)")
@@ -1188,11 +1140,11 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Supervisor) ---
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        if user_role_lower in ['direktur', 'manager', 'supervisor']:
+        if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
