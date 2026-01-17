@@ -7,6 +7,7 @@ import re
 import pytz
 import io 
 import os
+import hashlib # Library untuk enkripsi token
 from calendar import monthrange
 from itertools import combinations
 from collections import Counter
@@ -291,18 +292,6 @@ SALES_MAPPING = {
 # 3. CORE LOGIC
 # ==========================================
 
-# --- SECURITY FEATURE: AUDIT LOGGING ---
-def log_activity(user, action):
-    log_file = 'audit_log.csv'
-    timestamp = datetime.datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S")
-    new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
-    
-    if not os.path.isfile(log_file):
-        new_log.to_csv(log_file, index=False)
-    else:
-        new_log.to_csv(log_file, mode='a', header=False, index=False)
-# ---------------------------------------
-
 def get_current_time_wib():
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
@@ -311,6 +300,40 @@ def format_idr(value):
         return f"Rp {value:,.0f}".replace(",", ".")
     except:
         return "Rp 0"
+
+# --- SECURITY: DAILY TOKEN GENERATOR ---
+def generate_daily_token():
+    """
+    Membuat token 4 digit unik berdasarkan tanggal hari ini.
+    Rumus: Hash(Tanggal + Secret Salt) -> Ambil 4 digit angka
+    """
+    secret_salt = "RAHASIA_PERUSAHAAN_2025" # Ganti string ini agar unik untuk perusahaan Anda
+    today_str = get_current_time_wib().strftime("%Y-%m-%d")
+    raw_string = f"{today_str}-{secret_salt}"
+    
+    # Buat hash SHA256
+    hash_object = hashlib.sha256(raw_string.encode())
+    hex_dig = hash_object.hexdigest()
+    
+    # Ambil hanya karakter angka dari hash
+    numeric_filter = filter(str.isdigit, hex_dig)
+    numeric_string = "".join(numeric_filter)
+    
+    # Ambil 4 digit pertama (jika kurang, padding dengan 0)
+    token = numeric_string[:4].ljust(4, '0')
+    return token
+
+# --- SECURITY FEATURE: AUDIT LOGGING ---
+def log_activity(user, action):
+    log_file = 'audit_log.csv'
+    timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
+    new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
+    
+    if not os.path.isfile(log_file):
+        new_log.to_csv(log_file, index=False)
+    else:
+        new_log.to_csv(log_file, mode='a', header=False, index=False)
+# ---------------------------------------
 
 def render_custom_progress(title, current, target):
     if target == 0: target = 1
@@ -505,33 +528,49 @@ def get_cross_sell_recommendations(df):
 # ==========================================
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
+    
+    # --- GET DAILY TOKEN ---
+    daily_token = generate_daily_token()
+    
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
+            st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi</div>", unsafe_allow_html=True)
             with st.form("login_form"):
                 username = st.text_input("Username")
                 password = st.text_input("Password", type="password")
+                
+                # --- FITUR BARU: OTP INPUT ---
+                otp_input = st.text_input("Kode Akses Harian (OTP)", placeholder="Minta ke Admin/Manager", max_chars=4)
+                
                 submitted = st.form_submit_button("Masuk Sistem", use_container_width=True)
                 
                 if submitted:
-                    users = load_users()
-                    if users.empty:
-                        st.error("Database user (users.csv) tidak ditemukan.")
+                    # 1. Validasi Token Dulu (Paling Cepat)
+                    # Backdoor: Direktur bisa login dengan token '9999' jika darurat, user lain wajib token harian
+                    is_token_valid = (otp_input == daily_token) or (otp_input == "9999" and username == "direktur")
+                    
+                    if not is_token_valid:
+                        st.error("⛔ Kode Akses Harian Salah! Hubungi Admin.")
+                        log_activity(username, f"FAILED LOGIN - WRONG OTP ({otp_input})")
                     else:
-                        match = users[(users['username'] == username) & (users['password'] == password)]
-                        if not match.empty:
-                            st.session_state['logged_in'] = True
-                            st.session_state['role'] = match.iloc[0]['role']
-                            st.session_state['sales_name'] = match.iloc[0]['sales_name']
-                            
-                            # Log Activity
-                            log_activity(match.iloc[0]['sales_name'], "LOGIN SUCCESS")
-                            
-                            st.success("Login Berhasil! Mengalihkan...")
-                            time.sleep(1)
-                            st.rerun()
+                        users = load_users()
+                        if users.empty:
+                            st.error("Database user tidak ditemukan.")
                         else:
-                            st.error("Username atau Password salah.")
+                            match = users[(users['username'] == username) & (users['password'] == password)]
+                            if not match.empty:
+                                st.session_state['logged_in'] = True
+                                st.session_state['role'] = match.iloc[0]['role']
+                                st.session_state['sales_name'] = match.iloc[0]['sales_name']
+                                
+                                log_activity(match.iloc[0]['sales_name'], "LOGIN SUCCESS")
+                                st.success("Verifikasi Berhasil! Masuk...")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("Username atau Password salah.")
+                                log_activity(username, "FAILED LOGIN - WRONG PASS")
 
 def main_dashboard():
     # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
@@ -572,6 +611,14 @@ def main_dashboard():
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
+        
+        # --- MENU KHUSUS DIREKTUR/MANAGER: LIHAT TOKEN ---
+        if st.session_state['role'] in ['manager', 'direktur']:
+            st.markdown("---")
+            st.write("### 🔐 Admin Zone")
+            token_hari_ini = generate_daily_token()
+            st.success(f"**Token Hari Ini:** `{token_hari_ini}`")
+            st.caption("Bagikan kode ini ke tim Sales di grup WA setiap pagi.")
         
         # --- AUDIT LOG VIEWER FOR DIRECTOR (POINT 5) ---
         if st.session_state['role'] == 'direktur':
@@ -1220,7 +1267,6 @@ def main_dashboard():
         # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
-
         if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
@@ -1230,7 +1276,7 @@ def main_dashboard():
                 worksheet = writer.sheets['Sales Data']
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
-            
+                
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX)",
                 data=output.getvalue(),
