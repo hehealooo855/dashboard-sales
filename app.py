@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import datetime
 import time
 import re
@@ -8,6 +9,7 @@ import pytz
 import io 
 import os
 import hashlib # Library untuk enkripsi token
+import numpy as np
 from calendar import monthrange
 from itertools import combinations
 from collections import Counter
@@ -292,6 +294,18 @@ SALES_MAPPING = {
 # 3. CORE LOGIC
 # ==========================================
 
+# --- SECURITY FEATURE: AUDIT LOGGING ---
+def log_activity(user, action):
+    log_file = 'audit_log.csv'
+    timestamp = datetime.datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S")
+    new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
+    
+    if not os.path.isfile(log_file):
+        new_log.to_csv(log_file, index=False)
+    else:
+        new_log.to_csv(log_file, mode='a', header=False, index=False)
+# ---------------------------------------
+
 def get_current_time_wib():
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
@@ -322,18 +336,6 @@ def generate_daily_token():
     # Ambil 4 digit pertama (jika kurang, padding dengan 0)
     token = numeric_string[:4].ljust(4, '0')
     return token
-
-# --- SECURITY FEATURE: AUDIT LOGGING ---
-def log_activity(user, action):
-    log_file = 'audit_log.csv'
-    timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
-    new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
-    
-    if not os.path.isfile(log_file):
-        new_log.to_csv(log_file, index=False)
-    else:
-        new_log.to_csv(log_file, mode='a', header=False, index=False)
-# ---------------------------------------
 
 def render_custom_progress(title, current, target):
     if target == 0: target = 1
@@ -540,37 +542,51 @@ def login_page():
                 username = st.text_input("Username")
                 password = st.text_input("Password", type="password")
                 
-                # --- FITUR BARU: OTP INPUT ---
-                otp_input = st.text_input("Kode Akses Harian (OTP)", placeholder="Minta ke Admin/Manager", max_chars=4)
+                # --- FITUR BARU: OTP INPUT (OPSIONAL UNTUK MANAGER/DIREKTUR) ---
+                otp_input = st.text_input("Kode Akses Harian (OTP) - Wajib untuk Sales/SPV", placeholder="Minta ke Admin/Manager", max_chars=4)
                 
                 submitted = st.form_submit_button("Masuk Sistem", use_container_width=True)
                 
                 if submitted:
-                    # 1. Validasi Token Dulu (Paling Cepat)
-                    # Backdoor: Direktur bisa login dengan token '9999' jika darurat, user lain wajib token harian
-                    is_token_valid = (otp_input == daily_token) or (otp_input == "9999" and username == "direktur")
-                    
-                    if not is_token_valid:
-                        st.error("⛔ Kode Akses Harian Salah! Hubungi Admin.")
-                        log_activity(username, f"FAILED LOGIN - WRONG OTP ({otp_input})")
+                    users = load_users()
+                    if users.empty:
+                        st.error("Database user (users.csv) tidak ditemukan.")
                     else:
-                        users = load_users()
-                        if users.empty:
-                            st.error("Database user tidak ditemukan.")
+                        # 1. Cek User & Password Terlebih Dahulu
+                        match = users[(users['username'] == username) & (users['password'] == password)]
+                        
+                        if match.empty:
+                            st.error("Username atau Password salah.")
+                            log_activity(username, "FAILED LOGIN - WRONG PASS")
                         else:
-                            match = users[(users['username'] == username) & (users['password'] == password)]
-                            if not match.empty:
+                            # 2. Cek Role & Validasi OTP
+                            user_role = match.iloc[0]['role']
+                            user_sales_name = match.iloc[0]['sales_name']
+                            
+                            is_authorized = False
+                            
+                            # BYPASS OTP untuk Direktur & Manager
+                            if user_role in ['direktur', 'manager']:
+                                is_authorized = True
+                            # WAJIB OTP untuk Sales & Supervisor
+                            else:
+                                if otp_input == daily_token:
+                                    is_authorized = True
+                                else:
+                                    st.error("⛔ Kode Akses Harian Salah! Hubungi Admin.")
+                                    log_activity(user_sales_name, f"FAILED LOGIN - WRONG OTP ({otp_input})")
+                            
+                            if is_authorized:
                                 st.session_state['logged_in'] = True
-                                st.session_state['role'] = match.iloc[0]['role']
-                                st.session_state['sales_name'] = match.iloc[0]['sales_name']
+                                st.session_state['role'] = user_role
+                                st.session_state['sales_name'] = user_sales_name
                                 
-                                log_activity(match.iloc[0]['sales_name'], "LOGIN SUCCESS")
-                                st.success("Verifikasi Berhasil! Masuk...")
+                                # Log Activity
+                                log_activity(user_sales_name, "LOGIN SUCCESS")
+                                
+                                st.success("Login Berhasil! Mengalihkan...")
                                 time.sleep(1)
                                 st.rerun()
-                            else:
-                                st.error("Username atau Password salah.")
-                                log_activity(username, "FAILED LOGIN - WRONG PASS")
 
 def main_dashboard():
     # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
@@ -831,7 +847,7 @@ def main_dashboard():
         st.markdown("---")
 
     # --- ANALYTICS TABS ---
-    t1, t2, t_detail_sales, t3, t5, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "📋 Data Rincian"])
+    t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
     with t1:
         # Determine the loop based on the user's role
@@ -1240,7 +1256,62 @@ def main_dashboard():
             st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
         else:
             st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
-
+            
+    with t_forecast:
+        # --- FEATURE 3: FORECASTING (PREDIKSI OMSET) ---
+        st.subheader("🔮 Prediksi Omset (Forecasting)")
+        st.info("Prediksi tren omset 30 hari ke depan berdasarkan data historis harian.")
+        
+        # 1. Prepare Data
+        # Group by Date
+        df_forecast = df_scope_all.groupby('Tanggal')['Jumlah'].sum().reset_index()
+        df_forecast = df_forecast.sort_values('Tanggal')
+        
+        if len(df_forecast) > 10: # Need minimal data points
+            # 2. Linear Regression (Simple) using Numpy
+            # Convert date to ordinal for regression
+            df_forecast['Date_Ordinal'] = df_forecast['Tanggal'].apply(lambda x: x.toordinal())
+            
+            x = df_forecast['Date_Ordinal'].values
+            y = df_forecast['Jumlah'].values
+            
+            # Fit Polynomial (Degree 1 = Linear)
+            # slope (m), intercept (c) = np.polyfit(x, y, 1)
+            z = np.polyfit(x, y, 1)
+            p = np.poly1d(z)
+            
+            # 3. Create Future Dates
+            last_date = df_forecast['Tanggal'].max()
+            future_days = 30
+            future_dates = [last_date + datetime.timedelta(days=i) for i in range(1, future_days + 1)]
+            future_ordinals = [d.toordinal() for d in future_dates]
+            
+            # Predict
+            future_values = p(future_ordinals)
+            
+            # Combine for Visualization
+            df_history = df_forecast[['Tanggal', 'Jumlah']].copy()
+            df_history['Type'] = 'Historis'
+            
+            df_future = pd.DataFrame({'Tanggal': future_dates, 'Jumlah': future_values})
+            df_future['Type'] = 'Prediksi'
+            
+            df_combined = pd.concat([df_history, df_future])
+            
+            # 4. Visualize
+            fig_forecast = px.line(df_combined, x='Tanggal', y='Jumlah', color='Type', 
+                                   line_dash='Type', 
+                                   color_discrete_map={'Historis': '#2980b9', 'Prediksi': '#e74c3c'})
+            
+            fig_forecast.update_layout(title="Proyeksi Omset 30 Hari Kedepan", xaxis_title="Tanggal", yaxis_title="Omset")
+            st.plotly_chart(fig_forecast, use_container_width=True)
+            
+            # 5. Insight Text
+            trend = "NAIK 📈" if z[0] > 0 else "TURUN 📉"
+            st.write(f"**Analisa Tren:** Berdasarkan data historis, tren penjualan terlihat **{trend}**.")
+            
+        else:
+            st.warning("Data belum cukup untuk melakukan prediksi (minimal 10 hari transaksi).")
 
     with t4:
         st.subheader("📋 Rincian Transaksi Lengkap")
@@ -1264,10 +1335,11 @@ def main_dashboard():
             }
         )
         
-        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur) ---
+        # --- EXCEL EXPORT (NEW FEATURE: Only for Manager, Direktur, Supervisor) ---
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
-        if user_role_lower in ['direktur']:
+
+        if user_role_lower in ['direktur', 'manager', 'supervisor']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -1276,7 +1348,7 @@ def main_dashboard():
                 worksheet = writer.sheets['Sales Data']
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
-                
+            
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX)",
                 data=output.getvalue(),
