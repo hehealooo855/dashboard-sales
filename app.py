@@ -8,7 +8,7 @@ import re
 import pytz
 import io 
 import os
-import hashlib
+import hashlib # Library untuk enkripsi token
 import numpy as np
 import pyotp  # Library WAJIB untuk Google Authenticator
 import qrcode # Library WAJIB untuk QR Code
@@ -101,7 +101,6 @@ BRAND_ALIASES = {
 }
 
 SALES_MAPPING = {
-    # (Mapping Sales Anda yang lengkap ada di sini - saya persingkat agar muat)
     "WIRA VG": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA",
     "HAMZAH VG": "HAMZAH", "FERI VG": "FERI", "YOGI TF": "YOGI", 
     "GANI TF": "GANI", "MITHA MASKIT": "MITHA", "LYDIA KITO": "LYDIA",
@@ -141,18 +140,28 @@ def render_custom_progress(title, current, target):
     if target == 0: target = 1
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
-    if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
-    else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
+    
+    if pct < 50:
+        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
+    elif 50 <= pct < 80:
+        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    else:
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
-    <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee;">
+    <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-weight: 700; color: #34495e;">{title}</span>
-            <span style="font-weight: 600; color: #555;">{format_idr(current)} / {format_idr(target)}</span>
+            <span style="font-weight: 700; font-size: 15px; color: #34495e;">{title}</span>
+            <span style="font-weight: 600; color: #555; font-size: 14px;">{format_idr(current)} <span style="color:#999; font-weight:normal;">/ {format_idr(target)}</span></span>
         </div>
-        <div style="width: 100%; background-color: #ecf0f1; border-radius: 20px; height: 26px;">
-            <div style="width: {visual_pct}%; background: {bar_color}; height: 100%; border-radius: 20px;"></div>
+        <div style="width: 100%; background-color: #ecf0f1; border-radius: 20px; height: 26px; position: relative; overflow: hidden;">
+            <div style="width: {visual_pct}%; background: {bar_color}; height: 100%; border-radius: 20px; transition: width 0.8s ease;"></div>
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                        display: flex; align-items: center; justify-content: center;
+                        z-index: 10; font-weight: 800; font-size: 13px; color: #222;
+                        text-shadow: 0px 0px 4px #fff;">
+                {pct:.1f}%
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -163,36 +172,68 @@ def load_data():
     try:
         url_with_ts = f"{url}&t={int(time.time())}"
         df = pd.read_csv(url_with_ts, dtype=str)
-    except: return None
+    except Exception as e:
+        return None
     
     df.columns = df.columns.str.strip()
+    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
+    if not all(col in df.columns for col in required_cols):
+        return None
     
+    # --- AUTO DETECT KOLOM FAKTUR ---
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-            faktur_col = col; break
-    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+            faktur_col = col
+            break
     
+    if faktur_col:
+        df = df.rename(columns={faktur_col: 'No Faktur'})
+    
+    # --- CLEANING SAMPAH ---
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal)', case=False, na=False)]
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
+        df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+
+    if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
+        df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-    valid_sales = list(INDIVIDUAL_TARGETS.keys()) + ["MADONG", "LISMAN", "AKBAR", "WILLIAM"]
-    df.loc[~df['Penjualan'].isin(valid_sales), 'Penjualan'] = 'Non-Sales'
     
-    def normalize_brand(raw):
-        raw_u = str(raw).upper()
-        for k, v in BRAND_ALIASES.items():
-            for kw in v: 
-                if kw in raw_u: return k
-        return raw
-    df['Merk'] = df['Merk'].apply(normalize_brand)
+    valid_sales_names = list(INDIVIDUAL_TARGETS.keys()) + ["MADONG", "LISMAN", "AKBAR", "WILLIAM"]
+    df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+    df['Penjualan'] = df['Penjualan'].astype('category')
 
-    df['Jumlah'] = pd.to_numeric(df['Jumlah'].astype(str).str.replace(r'[Rp\s.]', '', regex=True).str.replace(',','.'), errors='coerce').fillna(0)
-    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items():
+            for keyword in keywords:
+                if keyword in raw_upper: return target_brand
+        return raw_brand
+    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
+    
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[Rp\s]', '', regex=True).str.replace('.', '').str.replace(',', '.')
+    df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+    
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
+    def fix_swapped_date(d):
+        if pd.isnull(d): return d
+        try:
+            if d.day <= 12 and d.day != d.month:
+                return d.replace(day=d.month, month=d.day)
+        except:
+            pass
+        return d
+    df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
     
+    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
+    for col in cols_to_convert:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+            
     return df
 
 # --- DATABASE USER & SECRET KEY MANAGER ---
@@ -218,49 +259,48 @@ def save_user_secret(username, secret_key):
 # 4. FUNGSI ANALISIS CERDAS
 # ==========================================
 def compute_association_rules(df):
-    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
+    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns:
+        return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
     total_transactions = df['No Faktur'].nunique()
-    
-    # Simple Association Rules (A -> B)
-    pair_counts = Counter()
-    for _, group in df.groupby('No Faktur'):
-        items = sorted(group['Nama Barang'].unique())
-        if len(items) > 1:
-            pair_counts.update(combinations(items, 2))
-            
+    pair_df = df.groupby('No Faktur')['Nama Barang'].apply(lambda x: list(combinations(sorted(x.unique()), 2)) if len(x.unique()) > 1 else [])
+    pairs = [p for sublist in pair_df for p in sublist]
+    pair_support = Counter(pairs)
     rules = []
-    for (A, B), count in pair_counts.items():
-        conf_a = count / item_support[A]
-        conf_b = count / item_support[B]
-        if conf_a > 0.4: # Threshold 40%
-            rules.append({'antecedent': A, 'consequent': B, 'confidence': conf_a})
-        if conf_b > 0.4:
-            rules.append({'antecedent': B, 'consequent': A, 'confidence': conf_b})
-            
-    return pd.DataFrame(rules).sort_values('confidence', ascending=False) if rules else None
+    for (A, B), supp_ab in pair_support.items():
+        conf_ab = supp_ab / item_support[A]
+        conf_ba = supp_ab / item_support[B]
+        rules.append({'antecedent': A, 'consequent': B, 'support': supp_ab / total_transactions, 'confidence': conf_ab})
+        rules.append({'antecedent': B, 'consequent': A, 'support': supp_ab / total_transactions, 'confidence': conf_ba})
+    rules_df = pd.DataFrame(rules).drop_duplicates().sort_values('confidence', ascending=False)
+    rules_df = rules_df[rules_df['confidence'] > 0.5] 
+    return rules_df
 
 def get_cross_sell_recommendations(df):
-    rules = compute_association_rules(df)
-    if rules is None or rules.empty: return None
-    
+    rules_df = compute_association_rules(df)
+    if rules_df is None or rules_df.empty:
+        return None
+    outlet_purchases = df.groupby('Nama Outlet')['Nama Barang'].apply(set).to_dict()
     recommendations = []
-    # Cek histori toko terakhir
-    latest_tx = df.sort_values('Tanggal', ascending=False).groupby('Nama Outlet').head(30) # Ambil 30 transaksi terakhir per toko
-    
-    outlet_items = latest_tx.groupby('Nama Outlet')['Nama Barang'].apply(set).to_dict()
-    
-    for outlet, items in outlet_items.items():
-        salesman = df[df['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
-        for item in items:
-            matches = rules[rules['antecedent'] == item]
-            for _, r in matches.iterrows():
-                if r['consequent'] not in items:
-                    rec_text = f"Toko beli **{r['antecedent']}**, tawarkan **{r['consequent']}** (Peluang: {r['confidence']:.0%})"
-                    recommendations.append({'Sales': salesman, 'Toko': outlet, 'Rekomendasi': rec_text})
-                    break # Ambil 1 rekomendasi terbaik per item source
-    
-    return pd.DataFrame(recommendations)
+    for outlet, purchased in outlet_purchases.items():
+        if not purchased: continue
+        sales = df[df['Nama Outlet'] == outlet]['Penjualan'].unique()[0] if not df[df['Nama Outlet'] == outlet].empty else "-"
+        possible_recs = {}
+        for item in purchased:
+            matching_rules = rules_df[rules_df['antecedent'] == item]
+            for _, rule in matching_rules.iterrows():
+                consequent = rule['consequent']
+                if consequent not in purchased:
+                    conf = rule['confidence']
+                    if consequent not in possible_recs or conf > possible_recs[consequent][1]:
+                        possible_recs[consequent] = (item, conf)
+        if possible_recs:
+            top_consequent, (antecedent, conf) = max(possible_recs.items(), key=lambda x: x[1][1])
+            rec_text = f"Tawarkan {top_consequent}, karena {conf*100:.0f}% toko yang beli {antecedent} juga membelinya."
+            recommendations.append({'Toko': outlet, 'Sales': sales, 'Rekomendasi': rec_text})
+    if recommendations:
+        return pd.DataFrame(recommendations)
+    return None
 
 # ==========================================
 # 5. MAIN LOGIC (LOGIN & DASHBOARD)
@@ -287,24 +327,27 @@ def login_page():
                     
                     if submitted:
                         users = load_users()
-                        match = users[(users['username'] == username) & (users['password'] == password)]
-                        
-                        if not match.empty:
-                            user_row = match.iloc[0]
-                            # BYPASS UNTUK DIREKTUR / MANAGER (Optional)
-                            if user_row['role'] in ['direktur', 'manager']:
-                                st.session_state['logged_in'] = True
-                                st.session_state['role'] = user_row['role']
-                                st.session_state['sales_name'] = user_row['sales_name']
-                                log_activity(user_row['sales_name'], "LOGIN (BYPASS OTP)")
-                                st.rerun()
-                            else:
-                                st.session_state['temp_user_data'] = user_row
-                                st.session_state['login_step'] = '2fa_check'
-                                st.rerun()
+                        if users.empty:
+                             st.error("Database User tidak ditemukan.")
                         else:
-                            st.error("Username/Password Salah")
-                            log_activity(username, "FAILED LOGIN - CREDENTIALS")
+                            match = users[(users['username'] == username) & (users['password'] == password)]
+                            
+                            if not match.empty:
+                                user_row = match.iloc[0]
+                                # BYPASS UNTUK DIREKTUR / MANAGER
+                                if user_row['role'] in ['direktur', 'manager']:
+                                    st.session_state['logged_in'] = True
+                                    st.session_state['role'] = user_row['role']
+                                    st.session_state['sales_name'] = user_row['sales_name']
+                                    log_activity(user_row['sales_name'], "LOGIN (BYPASS OTP)")
+                                    st.rerun()
+                                else:
+                                    st.session_state['temp_user_data'] = user_row
+                                    st.session_state['login_step'] = '2fa_check'
+                                    st.rerun()
+                            else:
+                                st.error("Username/Password Salah")
+                                log_activity(username, "FAILED LOGIN - CREDENTIALS")
 
             # --- STEP 2: 2FA CHECK ---
             elif st.session_state['login_step'] == '2fa_check':
@@ -415,6 +458,10 @@ def main_dashboard():
 
     # --- SECURITY: STRICT SCOPING ---
     user_role = st.session_state['role']
+    # Define variables to avoid NameError later
+    role = user_role 
+    my_name = user_name
+
     if user_role not in ['manager', 'direktur', 'supervisor'] and user_name.lower() != 'fauziah':
         df = df[df['Penjualan'] == user_name]
     elif user_name.upper() in TARGET_DATABASE: 
