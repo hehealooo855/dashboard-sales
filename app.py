@@ -589,15 +589,14 @@ def login_page():
                                 st.rerun()
 
 def main_dashboard():
-    # --- SECURITY SECTION (POINT 1 - AGGRESSIVE TILED WATERMARK) ---
+    # --- SECURITY SECTION (POINT 1 - AGGRESSIVE TILED WATERMARK & BLACKOUT) ---
     def add_aggressive_watermark():
         user_name = st.session_state.get('sales_name', 'User')
         role_name = st.session_state.get('role', 'staff')
         
-        # Jika bukan direktur, tampilkan watermark agresif
+        # Jika bukan direktur, tampilkan watermark agresif & fitur blackout
         if role_name != 'direktur':
             # Buat teks watermark berulang
-            watermark_content = f"{user_name} - {role_name.upper()} - {datetime.date.today()} " * 500
             
             st.markdown(f"""
             <style>
@@ -612,7 +611,7 @@ def main_dashboard():
                 overflow: hidden;
                 display: flex;
                 flex-wrap: wrap;
-                opacity: 0.12; /* Transparansi cukup mengganggu screenshot tapi bisa dibaca */
+                opacity: 0.15; /* Transparansi cukup mengganggu screenshot tapi bisa dibaca */
             }}
             
             .watermark-text {{
@@ -632,12 +631,15 @@ def main_dashboard():
             </div>
             
             <script>
-            // --- FITUR AUTO-BLUR SAAT KEHILANGAN FOKUS (Anti-Snipping) ---
+            // --- FITUR AUTO-BLACKOUT & BLUR SAAT KEHILANGAN FOKUS (Anti-Snipping Tool) ---
             window.addEventListener('blur', () => {{
-                document.body.style.filter = 'blur(15px)';
+                // Saat user pindah ke aplikasi lain (misal Snipping Tool), layar jadi hitam & blur
+                document.body.style.filter = 'blur(20px) brightness(0.4)'; 
                 document.body.style.backgroundColor = '#000';
             }});
+            
             window.addEventListener('focus', () => {{
+                // Saat user kembali ke browser, layar normal kembali
                 document.body.style.filter = 'none';
                 document.body.style.backgroundColor = '#fff';
             }});
