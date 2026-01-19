@@ -624,34 +624,66 @@ def main_dashboard():
     add_watermark()
     # -----------------------------------------------
 
+    # --- FITUR DRM: ANTI-SCREENSHOT & ANTI-COPY (Kecuali Direktur) ---
+    if st.session_state['role'] != 'direktur':
+        st.markdown("""
+            <script>
+            document.addEventListener('keyup', (e) => {
+                if (e.key == 'PrintScreen') {
+                    navigator.clipboard.writeText('');
+                    alert('⚠️ Tangkapan Layar (Screenshot) dinonaktifkan oleh Admin!');
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key == 'p') {
+                    alert('⚠️ Mencetak (Print) dinonaktifkan!');
+                    e.cancelBubble = true;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            });
+            </script>
+            <style>
+            /* Sembunyikan konten saat dicetak (Print/Save to PDF) */
+            @media print {
+                body {
+                    display: none;
+                    visibility: hidden;
+                }
+                :after {
+                    content: "⚠️ DOKUMEN RAHASIA - DILARANG MENCETAK";
+                    visibility: visible;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 50px;
+                    font-weight: bold;
+                    color: red;
+                }
+            }
+            /* Mencegah seleksi teks (Copy-Paste) */
+            body {
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+    # -----------------------------------------------------------------
+
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
-        # --- MENU KHUSUS DIREKTUR/MANAGER: CENTRALIZED PROVISIONING ---
+        # --- MENU KHUSUS DIREKTUR/MANAGER: LIHAT TOKEN ---
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             st.write("### 🔐 Admin Zone")
             token_hari_ini = generate_daily_token()
-            
-            # 1. Tampilan Master Token (Untuk Direktur sendiri)
-            st.write(f"**Token Master:** `{token_hari_ini}`")
-            
-            # 2. Centralized Provisioning (Generate QR for specific user)
-            st.markdown("#### 📱 Generate QR Sales")
-            st.caption("Ketik nama sales untuk membuatkan akses khusus.")
-            
-            target_sales = st.text_input("Nama Sales", placeholder="Ketik nama (mis: Wira)...")
-            
-            if target_sales:
-                # Menggunakan API QR Server untuk generate gambar
-                # QR Code berisi Token Harian, tapi disajikan secara personal
-                qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={token_hari_ini}"
-                
-                st.image(qr_url, caption=f"QR Akses untuk {target_sales.upper()}", width=150)
-                st.warning(f"⚠️ **PENTING:** Foto QR ini dan kirim JAPRI ke {target_sales}. Jangan share di grup!")
-            else:
-                st.info("Input nama sales diatas untuk memunculkan QR Code.")
+            st.success(f"**Token Hari Ini:** `{token_hari_ini}`")
+            st.caption("Bagikan kode ini ke tim Sales di grup WA setiap pagi.")
         
         # --- AUDIT LOG VIEWER FOR DIRECTOR (POINT 5) ---
         if st.session_state['role'] == 'direktur':
@@ -1356,7 +1388,7 @@ def main_dashboard():
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        if user_role_lower in ['direktur']:
+        if user_role_lower in ['direktur', 'manager', 'supervisor']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
