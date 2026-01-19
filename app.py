@@ -589,91 +589,79 @@ def login_page():
                                 st.rerun()
 
 def main_dashboard():
-    # --- SECURITY SECTION (POINT 1 - WATERMARK) ---
-    def add_watermark():
+    # --- SECURITY SECTION (POINT 1 - AGGRESSIVE TILED WATERMARK) ---
+    def add_aggressive_watermark():
         user_name = st.session_state.get('sales_name', 'User')
-        st.markdown(f"""
-        <style>
-        .watermark {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 9999;
-            pointer-events: none;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            align-content: space-around;
-            opacity: 0.04;
-        }}
-        .watermark-text {{
-            transform: rotate(-45deg);
-            font-size: 24px;
-            color: #000;
-            font-weight: bold;
-            margin: 50px;
-        }}
-        </style>
-        <div class="watermark">
-            {''.join([f'<div class="watermark-text">{user_name} - CONFIDENTIAL</div>' for _ in range(20)])}
-        </div>
-        """, unsafe_allow_html=True)
+        role_name = st.session_state.get('role', 'staff')
+        
+        # Jika bukan direktur, tampilkan watermark agresif
+        if role_name != 'direktur':
+            # Buat teks watermark berulang
+            watermark_content = f"{user_name} - {role_name.upper()} - {datetime.date.today()} " * 500
+            
+            st.markdown(f"""
+            <style>
+            .watermark-container {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 99999; /* Paling atas */
+                pointer-events: none; /* Klik tembus ke bawah */
+                overflow: hidden;
+                display: flex;
+                flex-wrap: wrap;
+                opacity: 0.12; /* Transparansi cukup mengganggu screenshot tapi bisa dibaca */
+            }}
+            
+            .watermark-text {{
+                font-family: 'Arial', sans-serif;
+                font-size: 16px;
+                color: #555;
+                font-weight: 700;
+                transform: rotate(-30deg);
+                white-space: nowrap;
+                margin: 20px;
+                user-select: none;
+            }}
+            </style>
+            
+            <div class="watermark-container">
+                {''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {datetime.datetime.now().strftime("%H:%M")}</div>' for _ in range(300)])}
+            </div>
+            
+            <script>
+            // --- FITUR AUTO-BLUR SAAT KEHILANGAN FOKUS (Anti-Snipping) ---
+            window.addEventListener('blur', () => {{
+                document.body.style.filter = 'blur(15px)';
+                document.body.style.backgroundColor = '#000';
+            }});
+            window.addEventListener('focus', () => {{
+                document.body.style.filter = 'none';
+                document.body.style.backgroundColor = '#fff';
+            }});
+            
+            // --- ANTI PRINT SHORTCUT ---
+            document.addEventListener('keydown', (e) => {{
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{
+                    e.preventDefault();
+                    alert('⚠️ Action Disabled for Security Reasons!');
+                }}
+            }});
+            </script>
+            """, unsafe_allow_html=True)
     
-    add_watermark()
+    add_aggressive_watermark()
     # -----------------------------------------------
 
-    # --- FITUR DRM: ANTI-SCREENSHOT & ANTI-COPY (Kecuali Direktur) ---
+    # --- FITUR DRM: ANTI-COPY (Kecuali Direktur) ---
     if st.session_state['role'] != 'direktur':
         st.markdown("""
-            <script>
-            // Mencegah Tombol PrintScreen & Shortcut Print
-            document.addEventListener('keyup', (e) => {
-                if (e.key == 'PrintScreen') {
-                    navigator.clipboard.writeText('');
-                    alert('⚠️ Tangkapan Layar (Screenshot) dinonaktifkan oleh Admin!');
-                }
-            });
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key == 'p') {
-                    alert('⚠️ Mencetak (Print) dinonaktifkan!');
-                    e.cancelBubble = true;
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                }
-            });
-
-            // --- FITUR AUTO-BLUR (Anti-Intip / Snipping Tool Deterrent) ---
-            // Saat user klik aplikasi lain (misal Snipping Tool), layar jadi blur
-            window.addEventListener('blur', () => {
-                document.body.style.filter = 'blur(20px)';
-                document.title = '⚠️ Protected Content';
-            });
-            window.addEventListener('focus', () => {
-                document.body.style.filter = 'none';
-                document.title = 'Dashboard Sales';
-            });
-            </script>
-
             <style>
             /* Sembunyikan konten saat dicetak (Print/Save to PDF) */
             @media print {
-                body {
-                    display: none;
-                    visibility: hidden;
-                }
-                :after {
-                    content: "⚠️ DOKUMEN RAHASIA - DILARANG MENCETAK";
-                    visibility: visible;
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-size: 50px;
-                    font-weight: bold;
-                    color: red;
-                }
+                body { display: none !important; }
             }
             /* Mencegah seleksi teks (Copy-Paste) */
             body {
@@ -682,10 +670,7 @@ def main_dashboard():
                 -ms-user-select: none;
                 user-select: none;
             }
-            /* Mencegah Save Image As */
-            img {
-                pointer-events: none;
-            }
+            img { pointer-events: none; }
             </style>
             """, unsafe_allow_html=True)
     # -----------------------------------------------------------------
@@ -1429,23 +1414,13 @@ def main_dashboard():
                 df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
                 workbook = writer.book
                 worksheet = writer.sheets['Sales Data']
-                
-                # --- DRM LOGIC (WATERMARKING) ---
-                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                # Add Header Watermark
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
             
             st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                label="📥 Download Laporan Excel (XLSX)",
                 data=output.getvalue(),
-                file_name=f"Laporan_Sales_Protected_{datetime.date.today()}.xlsx",
+                file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
