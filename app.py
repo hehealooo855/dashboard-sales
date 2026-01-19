@@ -628,6 +628,7 @@ def main_dashboard():
     if st.session_state['role'] != 'direktur':
         st.markdown("""
             <script>
+            // Mencegah Tombol PrintScreen & Shortcut Print
             document.addEventListener('keyup', (e) => {
                 if (e.key == 'PrintScreen') {
                     navigator.clipboard.writeText('');
@@ -642,7 +643,19 @@ def main_dashboard():
                     e.stopImmediatePropagation();
                 }
             });
+
+            // --- FITUR AUTO-BLUR (Anti-Intip / Snipping Tool Deterrent) ---
+            // Saat user klik aplikasi lain (misal Snipping Tool), layar jadi blur
+            window.addEventListener('blur', () => {
+                document.body.style.filter = 'blur(20px)';
+                document.title = '⚠️ Protected Content';
+            });
+            window.addEventListener('focus', () => {
+                document.body.style.filter = 'none';
+                document.title = 'Dashboard Sales';
+            });
             </script>
+
             <style>
             /* Sembunyikan konten saat dicetak (Print/Save to PDF) */
             @media print {
@@ -669,6 +682,10 @@ def main_dashboard():
                 -ms-user-select: none;
                 user-select: none;
             }
+            /* Mencegah Save Image As */
+            img {
+                pointer-events: none;
+            }
             </style>
             """, unsafe_allow_html=True)
     # -----------------------------------------------------------------
@@ -677,13 +694,30 @@ def main_dashboard():
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
-        # --- MENU KHUSUS DIREKTUR/MANAGER: LIHAT TOKEN ---
+        # --- MENU KHUSUS DIREKTUR/MANAGER: CENTRALIZED PROVISIONING ---
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             st.write("### 🔐 Admin Zone")
             token_hari_ini = generate_daily_token()
-            st.success(f"**Token Hari Ini:** `{token_hari_ini}`")
-            st.caption("Bagikan kode ini ke tim Sales di grup WA setiap pagi.")
+            
+            # 1. Tampilan Master Token (Untuk Direktur sendiri)
+            st.write(f"**Token Master:** `{token_hari_ini}`")
+            
+            # 2. Centralized Provisioning (Generate QR for specific user)
+            st.markdown("#### 📱 Generate QR Sales")
+            st.caption("Ketik nama sales untuk membuatkan akses khusus.")
+            
+            target_sales = st.text_input("Nama Sales", placeholder="Ketik nama (mis: Wira)...")
+            
+            if target_sales:
+                # Menggunakan API QR Server untuk generate gambar
+                # QR Code berisi Token Harian, tapi disajikan secara personal
+                qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={token_hari_ini}"
+                
+                st.image(qr_url, caption=f"QR Akses untuk {target_sales.upper()}", width=150)
+                st.warning(f"⚠️ **PENTING:** Foto QR ini dan kirim JAPRI ke {target_sales}. Jangan share di grup!")
+            else:
+                st.info("Input nama sales diatas untuk memunculkan QR Code.")
         
         # --- AUDIT LOG VIEWER FOR DIRECTOR (POINT 5) ---
         if st.session_state['role'] == 'direktur':
@@ -1395,13 +1429,23 @@ def main_dashboard():
                 df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
                 workbook = writer.book
                 worksheet = writer.sheets['Sales Data']
+                
+                # --- DRM LOGIC (WATERMARKING) ---
+                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
+                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                
+                # Add Header Watermark
+                worksheet.set_header(f'&C&10{watermark_text}')
+                worksheet.set_footer(f'&RPage &P of &N')
+                
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
             
             st.download_button(
-                label="📥 Download Laporan Excel (XLSX)",
+                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
                 data=output.getvalue(),
-                file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
+                file_name=f"Laporan_Sales_Protected_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
