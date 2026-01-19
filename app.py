@@ -628,21 +628,30 @@ def main_dashboard():
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
-        # --- MENU KHUSUS DIREKTUR/MANAGER: ADMIN ZONE (UPDATE: QR CODE) ---
+        # --- MENU KHUSUS DIREKTUR/MANAGER: CENTRALIZED PROVISIONING ---
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             st.write("### 🔐 Admin Zone")
             token_hari_ini = generate_daily_token()
             
-            # Tampilan Token
-            st.success(f"**Token Hari Ini:** `{token_hari_ini}`")
+            # 1. Tampilan Master Token (Untuk Direktur sendiri)
+            st.write(f"**Token Master:** `{token_hari_ini}`")
             
-            # Tampilan QR Code untuk Sales Lain
-            # Menggunakan API QR Server untuk generate gambar tanpa library berat
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={token_hari_ini}"
-            st.image(qr_url, caption=f"QR Code Token: {token_hari_ini}", width=150)
+            # 2. Centralized Provisioning (Generate QR for specific user)
+            st.markdown("#### 📱 Generate QR Sales")
+            st.caption("Ketik nama sales untuk membuatkan akses khusus.")
             
-            st.caption("Bagikan kode ini atau minta sales scan QR untuk login.")
+            target_sales = st.text_input("Nama Sales", placeholder="Ketik nama (mis: Wira)...")
+            
+            if target_sales:
+                # Menggunakan API QR Server untuk generate gambar
+                # QR Code berisi Token Harian, tapi disajikan secara personal
+                qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={token_hari_ini}"
+                
+                st.image(qr_url, caption=f"QR Akses untuk {target_sales.upper()}", width=150)
+                st.warning(f"⚠️ **PENTING:** Foto QR ini dan kirim JAPRI ke {target_sales}. Jangan share di grup!")
+            else:
+                st.info("Input nama sales diatas untuk memunculkan QR Code.")
         
         # --- AUDIT LOG VIEWER FOR DIRECTOR (POINT 5) ---
         if st.session_state['role'] == 'direktur':
