@@ -15,6 +15,7 @@ from itertools import combinations
 from collections import Counter
 
 # --- IMPORT KONFIGURASI DARI FILE LAIN (CLEAN CODE) ---
+# Pastikan file config.py berada satu folder dengan file ini
 from config import TARGET_DATABASE, INDIVIDUAL_TARGETS, SUPERVISOR_TOTAL_TARGETS, TARGET_NASIONAL_VAL, BRAND_ALIASES, SALES_MAPPING
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
@@ -53,7 +54,8 @@ st.markdown("""
 # --- SECURITY FEATURE: AUDIT LOGGING ---
 def log_activity(user, action):
     log_file = 'audit_log.csv'
-    timestamp = datetime.datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S")
+    # Menggunakan WIB untuk Log
+    timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
     
     if not os.path.isfile(log_file):
@@ -62,7 +64,9 @@ def log_activity(user, action):
         new_log.to_csv(log_file, mode='a', header=False, index=False)
 # ---------------------------------------
 
+# --- FITUR: HARDCODED TIMEZONE WIB (GMT+7) ---
 def get_current_time_wib():
+    # Memaksa program menggunakan zona waktu Asia/Jakarta (WIB)
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
 def format_idr(value):
@@ -71,15 +75,23 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- SECURITY: DAILY TOKEN GENERATOR ---
+# --- SECURITY: DAILY TOKEN GENERATOR (12-HOUR ROTATION) ---
 def generate_daily_token():
     """
-    Membuat token 4 digit unik berdasarkan tanggal hari ini.
-    Rumus: Hash(Tanggal + Secret Salt) -> Ambil 4 digit angka
+    Membuat token 4 digit unik yang berubah setiap 12 jam (AM/PM) mengikuti waktu WIB.
+    Rumus: Hash(Tanggal + AM/PM + Secret Salt) -> Ambil 4 digit angka
     """
-    secret_salt = "RAHASIA_PERUSAHAAN_2025" # Ganti string ini agar unik untuk perusahaan Anda
-    today_str = get_current_time_wib().strftime("%Y-%m-%d")
-    raw_string = f"{today_str}-{secret_salt}"
+    secret_salt = "RAHASIA_PERUSAHAAN_2025" 
+    
+    # Ambil waktu WIB saat ini
+    now_wib = get_current_time_wib()
+    
+    # Format string kunci: YYYY-MM-DD-AM atau YYYY-MM-DD-PM
+    # %p akan menghasilkan 'AM' atau 'PM'. 
+    # Token akan refresh otomatis jam 00:00 WIB dan 12:00 WIB.
+    time_key = now_wib.strftime("%Y-%m-%d-%p")
+    
+    raw_string = f"{time_key}-{secret_salt}"
     
     # Buat hash SHA256
     hash_object = hashlib.sha256(raw_string.encode())
@@ -287,7 +299,7 @@ def get_cross_sell_recommendations(df):
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
-    # --- GET DAILY TOKEN ---
+    # --- GET DAILY TOKEN (NOW REFRESHES EVERY 12 HOURS) ---
     daily_token = generate_daily_token()
     
     col1, col2, col3 = st.columns([1,2,1])
@@ -383,7 +395,7 @@ def main_dashboard():
             </style>
             
             <div class="watermark-container">
-                {''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {datetime.datetime.now().strftime("%H:%M")}</div>' for _ in range(300)])}
+                {''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}
             </div>
             
             <script>
@@ -444,7 +456,7 @@ def main_dashboard():
             token_hari_ini = generate_daily_token()
             
             # 1. Tampilan Master Token (Untuk Direktur sendiri)
-            st.write(f"**Token Master:** `{token_hari_ini}`")
+            st.write(f"**Token Master (Refresh per 12 Jam):** `{token_hari_ini}`")
             
             # 2. Centralized Provisioning (Generate QR for specific user)
             st.markdown("#### 📱 Generate QR Sales")
@@ -477,7 +489,8 @@ def main_dashboard():
             st.session_state['logged_in'] = False
             st.rerun()
         st.markdown("---")
-        st.caption(f"Last Updated: {get_current_time_wib().strftime('%H:%M:%S')} WIB")
+        # Menampilkan waktu WIB di footer sidebar
+        st.caption(f"Waktu Server (WIB): {get_current_time_wib().strftime('%d-%b-%Y %H:%M:%S')}")
             
     df = load_data()
     if df is None or df.empty:
@@ -1172,13 +1185,23 @@ def main_dashboard():
                 df_active[final_cols].to_excel(writer, index=False, sheet_name='Sales Data')
                 workbook = writer.book
                 worksheet = writer.sheets['Sales Data']
+                
+                # --- DRM LOGIC (WATERMARKING) ---
+                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
+                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                
+                # Add Header Watermark
+                worksheet.set_header(f'&C&10{watermark_text}')
+                worksheet.set_footer(f'&RPage &P of &N')
+                
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('F:F', None, format1) # Assuming 'Jumlah' is column F (index 5)
             
             st.download_button(
-                label="📥 Download Laporan Excel (XLSX)",
+                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
                 data=output.getvalue(),
-                file_name=f"Laporan_Sales_Profesional_{datetime.date.today()}.xlsx",
+                file_name=f"Laporan_Sales_Protected_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         # Keep CSV for others or as fallback if needed (Optional, removing as requested focus is upgrade)
