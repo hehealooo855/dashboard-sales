@@ -1178,7 +1178,7 @@ def main_dashboard():
         user_role_lower = role.lower()
         # user_name_lower = my_name.lower() # No longer needed for specific exclusion logic if we just rely on role, but keeping it is fine if logic changes later.
 
-        if user_role_lower in ['direktur', 'manager', 'supervisor']:
+        if user_role_lower in ['direktur']:
             # Create an in-memory Excel file
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
