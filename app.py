@@ -26,6 +26,7 @@ st.set_page_config(
 )
 
 # Custom CSS
+# Custom CSS
 st.markdown("""
 <style>
     .metric-card {
@@ -39,11 +40,17 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
+    
     /* Security: Hide Menu & Footer */
     [data-testid="stElementToolbar"] { display: none; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    
+    /* JANGAN SEMBUNYIKAN HEADER AGAR TOMBOL SIDEBAR TETAP MUNCUL */
+    /* header {visibility: hidden;}  <-- Baris ini saya matikan */
+    
+    /* Opsional: Jika ingin header bersih tapi tombol sidebar tetap ada, gunakan ini: */
+    /* .stAppHeader {background-color: transparent;} */
 </style>
 """, unsafe_allow_html=True)
 
