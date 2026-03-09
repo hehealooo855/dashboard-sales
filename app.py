@@ -283,7 +283,6 @@ def get_cross_sell_recommendations(df):
 # ==========================================
 # 4. MAIN DASHBOARD LOGIC
 # ==========================================
-
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
@@ -549,6 +548,9 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian Bulanan per Customer")
         
+        if not AGGRID_AVAILABLE:
+            st.warning("Pustaka 'streamlit-aggrid' belum terinstall. Menggunakan tabel bawaan.")
+            
         list_merk_excel = sorted(df_active['Merk'].dropna().astype(str).unique())
         selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
         
@@ -609,6 +611,7 @@ def main_dashboard():
                 gb.configure_side_bar()
                 
                 # FITUR TAMBAHAN: Mengaktifkan Filter secara Global untuk AgGrid
+                # Ini akan membuat setiap kolom (Kode Customer, Nama Customer, Kota, hingga bulan-bulan) bisa di-filter
                 gb.configure_default_column(filter=True, sortable=True, resizable=True)
                 
                 num_cols = list(bulan_indo.values()) + ['Total Penjualan']
@@ -619,7 +622,7 @@ def main_dashboard():
                 AgGrid(master_pivot, gridOptions=gridOptions, enable_enterprise_modules=True, height=500, theme='alpine')
             else:
                 format_dict = {col: "Rp {:,.0f}" for col in list(bulan_indo.values()) + ['Total Penjualan']}
-                # st.dataframe secara native sudah memiliki filter UI pada versi Streamlit terbaru
+                # Jika aggrid tidak terinstall, gunakan DataFrame bawaan Streamlit
                 st.dataframe(master_pivot.style.format(format_dict), use_container_width=True, hide_index=True)
         else:
             st.info("Data Kosong.")
