@@ -987,7 +987,7 @@ def main_dashboard():
             master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer'})
 
             # ========================================================
-            # FITUR BARU: FILTER MULTISELECT (MEMILIH APA YANG TERSEDIA)
+            # FITUR FILTER MULTISELECT
             # ========================================================
             st.markdown("#### 🔎 Filter Spesifik")
             col_f1, col_f2, col_f3 = st.columns(3)
@@ -1010,39 +1010,75 @@ def main_dashboard():
             if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
             if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
             
-            st.caption(f"Menampilkan {len(df_filtered)} data.")
+            st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+
+            # ========================================================
+            # FITUR BARU: BARIS GRAND TOTAL DI BAWAH TABEL
+            # ========================================================
+            if not df_filtered.empty:
+                num_cols = list(bulan_indo.values()) + ['Total Penjualan']
+                
+                # Buat dictionary kosong untuk baris total
+                total_dict = {col: "" for col in df_filtered.columns}
+                total_dict['Nama Customer'] = "GRAND TOTAL" # Label untuk baris paling bawah
+                
+                # Hitung sum (jumlah) hanya untuk kolom angka (bulan & total)
+                for col in num_cols:
+                    total_dict[col] = df_filtered[col].sum()
+                
+                # Tempelkan baris Grand Total ke tabel utama
+                df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+            else:
+                df_display = df_filtered.copy()
             # ========================================================
 
+            # Tampilkan Tabel
             if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_filtered)
+                gb = GridOptionsBuilder.from_dataframe(df_display)
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
                 gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'])
                 
-                num_cols = list(bulan_indo.values()) + ['Total Penjualan']
+                # Menerapkan format Rupiah
                 for col in num_cols:
                     gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
                 
+                # Agar baris "GRAND TOTAL" menonjol (opsional pada AgGrid)
+                jscode = JsCode("""
+                function(params) {
+                    if (params.data['Nama Customer'] === 'GRAND TOTAL') {
+                        return {
+                            'font-weight': 'bold',
+                            'background-color': '#eef2f5',
+                            'border-top': '2px solid #2980b9'
+                        }
+                    }
+                }
+                """)
+                gb.configure_grid_options(getRowStyle=jscode)
+                
                 gridOptions = gb.build()
-                AgGrid(df_filtered, gridOptions=gridOptions, enable_enterprise_modules=True, height=500, theme='alpine')
+                AgGrid(df_display, gridOptions=gridOptions, enable_enterprise_modules=True, height=550, theme='alpine', allow_unsafe_jscode=True)
             else:
-                format_dict = {col: "Rp {:,.0f}" for col in list(bulan_indo.values()) + ['Total Penjualan']}
-                st.dataframe(df_filtered.style.format(format_dict), use_container_width=True, hide_index=True)
+                # Format untuk Native Streamlit
+                format_dict = {col: "Rp {:,.0f}" for col in num_cols}
+                st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
         else:
             st.info("Data Kosong.")
 
-        # --- EXCEL EXPORT (Akan mengunduh data sesuai filter yang dipilih!) ---
+        # --- EXCEL EXPORT (Akan mengunduh data termasuk Grand Total!) ---
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_filtered' in locals() and not df_filtered.empty:
-                    df_filtered.to_excel(writer, index=False, sheet_name='Master Data')
+                # Gunakan df_display agar export Excel juga ada Grand Total-nya
+                if 'df_display' in locals() and not df_display.empty:
+                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
                 else:
                     df_active.to_excel(writer, index=False, sheet_name='Sales Data')
                 
                 workbook = writer.book
-                worksheet = writer.sheets['Master Data' if 'df_filtered' in locals() else 'Sales Data']
+                worksheet = writer.sheets['Master Data' if 'df_display' in locals() else 'Sales Data']
                 
                 user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
                 time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1053,6 +1089,12 @@ def main_dashboard():
                 
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('D:P', None, format1) 
+                
+                # Cetak tebal baris Grand Total di Excel jika ada
+                if 'df_display' in locals() and not df_display.empty:
+                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                    last_row_idx = len(df_display) # Header is row 0 in excel mapping, last row is length
+                    worksheet.set_row(last_row_idx, None, bold_format)
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX) - DRM Protected",
@@ -1061,7 +1103,7 @@ def main_dashboard():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         elif role in ['direktur']: 
-             csv = df_filtered.to_csv(index=False).encode('utf-8') if 'df_filtered' in locals() else df_active.to_csv(index=False).encode('utf-8')
+             csv = df_display.to_csv(index=False).encode('utf-8') if 'df_display' in locals() else df_active.to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
