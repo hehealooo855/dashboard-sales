@@ -304,14 +304,8 @@ def load_data():
     df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
-    def fix_swapped_date(d):
-        if pd.isnull(d): return d
-        try:
-            if d.day <= 12 and d.day != d.month: return d.replace(day=d.month, month=d.day)
-        except: pass
-        return d
-    df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
+    # PERBAIKAN TANGGAL: Cukup format dayfirst=True yang stabil tanpa fix yang merusak
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
     df = df.dropna(subset=['Tanggal'])
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
@@ -582,9 +576,8 @@ def main_dashboard():
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
-    # ---------- PERBAIKAN ERROR TYPERROR ADA DI SINI ----------
+    # PERBAIKAN TYPERROR PADA SORTING SIDEBAR FILTER
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
-        # Menggunakan .dropna().astype(str) agar kebal terhadap sel kosong (NaN)
         unique_brands = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
         if pilih_merk: df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
@@ -592,7 +585,6 @@ def main_dashboard():
         unique_outlets = sorted(df_scope_all['Nama Outlet'].dropna().astype(str).unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
-    # ---------------------------------------------------------
 
     if len(date_range) == 2:
         start_date, end_date = date_range
@@ -883,7 +875,10 @@ def main_dashboard():
 
         st.divider()
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
-        relevant_brands = df_active['Merk'].unique()
+        
+        # PERBAIKAN TYPERROR PADA CROSS SELLING BRAND
+        relevant_brands = df_active['Merk'].dropna().astype(str).unique()
+        
         if len(relevant_brands) > 1:
             col_cs1, col_cs2 = st.columns(2)
             with col_cs1: brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0)
