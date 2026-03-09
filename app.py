@@ -57,7 +57,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET (DIKEMBALIKAN KE FILE UTAMA)
+# 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
 
 TARGET_DATABASE = {
@@ -112,48 +112,84 @@ TARGET_DATABASE = {
 }
 
 INDIVIDUAL_TARGETS = {
+    # 1. WIRA 
     "WIRA": { 
         "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
         "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000
     },
+    # 2. HAMZAH
     "HAMZAH": { 
         "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, 
         "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 
     },
+    # 3. ROZY
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
+    
+    # 4. NOVI
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
+    
+    # 5. DANI
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
+    
+    # 6. FERI
     "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
+    
+    # 7. NAUFAL
     "NAUFAL": { "Javinci": 550_000_000 },
+    
+    # 8. RIZKI
     "RIZKI": { "Javinci": 450_000_000 },
+    
+    # 9. ADE
     "ADE": { 
         "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
     },
+    # 10. FANDI
     "FANDI": { 
         "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
         "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
         "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000
     },
+    # 11. SYAHRUL
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
+    
+    # 12. RISKA
     "RISKA": { 
         "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 
     },
+    # 13. DWI
     "DWI": { "Careso": 350_000_000 },
+    
+    # 14. SANTI
     "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
+    
+    # 15. ASWIN
     "ASWIN": { "Artist Inc": 130_000_000 },
+    
+    # 16. DEVI
     "DEVI": { "Sociolla": 120_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
+    
+    # 17. GANI
     "GANI": { 
         "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000,
         "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000
     },
+    # 18. BASTIAN
     "BASTIAN": { 
         "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000,
         "Y2000": 65_000_000, "Diosys": 175_000_000
     },
+    # 19. BAYU
     "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
+    
+    # 20. YOGI
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
+    
+    # 21. LYDIA
     "LYDIA": { "Birth Beyond": 120_000_000 },
+    
+    # 22. MITHA
     "MITHA": { 
         "Maskit": 30_000_000, "Rose All Day": 30_000_000, 
         "OtwooO": 200_000_000, "Claresta": 350_000_000 
@@ -182,37 +218,62 @@ BRAND_ALIASES = {
 }
 
 SALES_MAPPING = {
+    # 1. WIRA 
     "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA",
     "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
     "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA",
     "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", 
     "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
+
+    # 2. HAMZAH
     "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH",
     "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
     "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH",
     "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
+
+    # 3. FERI
     "FERI VG": "FERI", "FERI - VG": "FERI",
     "FERI HONOR": "FERI", "FERI - HONOR": "FERI",
     "FERI THAI": "FERI", "FERI - INESIA": "FERI",
+
+    # 4. YOGI
     "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", 
     "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
+
+    # 5. GANI
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
     "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
     "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI",
     "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
+
+    # 6. MITHA
     "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA",
     "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
+
+    # 7. LYDIA
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA", "LYDIA - KITO": "LYDIA",
+
+    # 8. NOVI (MERGE DENGAN RAFI/RAPI)
     "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", 
     "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
+
+    # 9. ROZY
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
+
+    # 10. DANI
     "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
+
+    # 11. MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
+
+    # 12. RISKA
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
     "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
     "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
     "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
     "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
+
+    # 13. TIM LISMAN (ADE, FANDI, DLL)
     "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE",
     "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
     "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
@@ -224,6 +285,8 @@ SALES_MAPPING = {
     "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
     "DWI CRS": "DWI", "DWI NLAB": "DWI", 
     "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN", "ASWIN Inc": "ASWIN", "ASWIN INC": "ASWIN", "ASWIN - ARTIST INC": "ASWIN",
+
+    # 14. TIM AKBAR (DEVI, BASTIAN, BAYU)
     "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
     "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
     "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
@@ -231,6 +294,8 @@ SALES_MAPPING = {
     "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
     "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
     "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
+
+    # 16. LAIN-LAIN
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", 
     "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
     "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM",
@@ -239,12 +304,15 @@ SALES_MAPPING = {
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
+
 # ==========================================
 # 3. CORE LOGIC
 # ==========================================
 
+# --- SECURITY FEATURE: AUDIT LOGGING ---
 def log_activity(user, action):
     log_file = 'audit_log.csv'
+    # Menggunakan WIB untuk Log
     timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
     
@@ -252,8 +320,11 @@ def log_activity(user, action):
         new_log.to_csv(log_file, index=False)
     else:
         new_log.to_csv(log_file, mode='a', header=False, index=False)
+# ---------------------------------------
 
+# --- FITUR: HARDCODED TIMEZONE WIB (GMT+7) ---
 def get_current_time_wib():
+    # Memaksa program menggunakan zona waktu Asia/Jakarta (WIB)
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
 def format_idr(value):
@@ -262,10 +333,19 @@ def format_idr(value):
     except:
         return "Rp 0"
 
+# --- SECURITY: DAILY TOKEN GENERATOR (12-HOUR ROTATION) ---
 def generate_daily_token():
+    """
+    Membuat token 4 digit unik yang berubah setiap 12 jam (AM/PM) mengikuti waktu WIB.
+    Rumus: Hash(Tanggal + AM/PM + Secret Salt) -> Ambil 4 digit angka
+    """
     secret_salt = "RAHASIA_PERUSAHAAN_2025" 
-    today_str = get_current_time_wib().strftime("%Y-%m-%d")
-    time_key = get_current_time_wib().strftime("%Y-%m-%d-%p")
+    
+    # Ambil waktu WIB saat ini
+    now_wib = get_current_time_wib()
+    
+    # Format string kunci: YYYY-MM-DD-AM atau YYYY-MM-DD-PM
+    time_key = now_wib.strftime("%Y-%m-%d-%p")
     raw_string = f"{time_key}-{secret_salt}"
     
     hash_object = hashlib.sha256(raw_string.encode())
@@ -273,6 +353,7 @@ def generate_daily_token():
     
     numeric_filter = filter(str.isdigit, hex_dig)
     numeric_string = "".join(numeric_filter)
+    
     token = numeric_string[:4].ljust(4, '0')
     return token
 
@@ -281,9 +362,12 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
-    else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
+    if pct < 50:
+        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
+    elif 50 <= pct < 80:
+        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    else:
+        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -650,7 +734,7 @@ def main_dashboard():
     target_sales_filter = "SEMUA"
 
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().astype(str).unique()))
+        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Sales:", sales_list)
         if target_sales_filter == "SEMUA": df_active = df
         else: df_active = df[df['Penjualan'] == target_sales_filter]
@@ -766,20 +850,21 @@ def main_dashboard():
             master_pivot = master_pivot.reset_index()
             master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer'})
 
+            # --- MENGAKTIFKAN FILTER KOLOM GLOBAL (AGGRID & STREAMLIT NATIVE) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(master_pivot)
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
                 
-                # --- FITUR YANG ANDA MINTA: FILTER CHECKBOX (EXCEL-LIKE) DI SEMUA KOLOM ---
+                # FITUR YANG ANDA MINTA: FILTER CHECKBOX (EXCEL-LIKE) DI SEMUA KOLOM
+                # 'agSetColumnFilter' akan memunculkan menu dropdown dengan list checkbox (contoh: Toko Wartini dkk)
                 gb.configure_default_column(
-                    filter='agSetColumnFilter', # Menampilkan pilihan checkbox seperti Excel
+                    filter='agSetColumnFilter', 
                     sortable=True, 
                     resizable=True,
-                    floatingFilter=True # Menampilkan kotak pencarian persis di bawah header
+                    floatingFilter=True 
                 )
                 
-                # Format khusus untuk kolom angka agar menjadi Rupiah
                 num_cols = list(bulan_indo.values()) + ['Total Penjualan']
                 for col in num_cols:
                     gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
