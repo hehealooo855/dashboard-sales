@@ -46,16 +46,8 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     /* Security: Hide Menu & Footer */
-    
-    /* Toolbar dimunculkan agar fitur Download & Filter Streamlit bawaan bisa dipakai */
-    /* [data-testid="stElementToolbar"] { display: none; } */
-    
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
-    /* BARIS DI BAWAH INI ADALAH PENYEBABNYA - HAPUS ATAU KOMENTARI */
-    /* header {visibility: hidden;} */ 
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -115,88 +107,28 @@ TARGET_DATABASE = {
 }
 
 INDIVIDUAL_TARGETS = {
-    # 1. WIRA 
-    "WIRA": { 
-        "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000,
-        "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000
-    },
-    # 2. HAMZAH
-    "HAMZAH": { 
-        "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, 
-        "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 
-    },
-    # 3. ROZY
+    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
+    "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
-    
-    # 4. NOVI
     "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    
-    # 5. DANI
     "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
-    
-    # 6. FERI
     "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
-    
-    # 7. NAUFAL
     "NAUFAL": { "Javinci": 550_000_000 },
-    
-    # 8. RIZKI
     "RIZKI": { "Javinci": 450_000_000 },
-    
-    # 9. ADE
-    "ADE": { 
-        "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
-        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 
-    },
-    # 10. FANDI
-    "FANDI": { 
-        "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, 
-        "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000,
-        "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000
-    },
-    # 11. SYAHRUL
+    "ADE": { "Javinci": 180_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Mlen": 50_000_000 },
+    "FANDI": { "Javinci": 40_000_000, "Careso": 20_000_000, "Newlab": 75_000_000, "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 75_000_000, "Goute": 25_000_000, "Bonavie": 25_000_000, "Mlen": 50_000_000 },
     "SYAHRUL": { "Javinci": 40_000_000, "Careso": 10_000_000, "Gloow & Be": 10_000_000 },
-    
-    # 12. RISKA
-    "RISKA": { 
-        "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 
-    },
-    # 13. DWI
+    "RISKA": { "Javinci": 40_000_000, "Sociolla": 190_000_000, "Thai": 30_000_000, "Inesia": 20_000_000 },
     "DWI": { "Careso": 350_000_000 },
-    
-    # 14. SANTI
     "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
-    
-    # 15. ASWIN
     "ASWIN": { "Artist Inc": 130_000_000 },
-    
-    # 16. DEVI
     "DEVI": { "Sociolla": 120_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
-    
-    # 17. GANI
-    "GANI": { 
-        "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000,
-        "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000
-    },
-    # 18. BASTIAN
-    "BASTIAN": { 
-        "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000,
-        "Y2000": 65_000_000, "Diosys": 175_000_000
-    },
-    # 19. BAYU
+    "GANI": { "The Face": 200_000_000, "Yu Chun Mei": 175_000_000, "Milano": 20_000_000, "Sociolla": 80_000_000, "Thai": 85_000_000, "Inesia": 25_000_000 },
+    "BASTIAN": { "Sociolla": 210_000_000, "Thai": 85_000_000, "Inesia": 25_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000 },
     "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
-    
-    # 20. YOGI
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
-    
-    # 21. LYDIA
     "LYDIA": { "Birth Beyond": 120_000_000 },
-    
-    # 22. MITHA
-    "MITHA": { 
-        "Maskit": 30_000_000, "Rose All Day": 30_000_000, 
-        "OtwooO": 200_000_000, "Claresta": 350_000_000 
-    }
+    "MITHA": { "Maskit": 30_000_000, "Rose All Day": 30_000_000, "OtwooO": 200_000_000, "Claresta": 350_000_000 }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
@@ -222,89 +154,46 @@ BRAND_ALIASES = {
 
 SALES_MAPPING = {
     # 1. WIRA 
-    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA",
-    "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
-    "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA",
-    "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", 
-    "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
-
+    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
+    "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
     # 2. HAMZAH
-    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH",
-    "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
-    "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH",
-    "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
-
+    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
+    "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
     # 3. FERI
-    "FERI VG": "FERI", "FERI - VG": "FERI",
-    "FERI HONOR": "FERI", "FERI - HONOR": "FERI",
-    "FERI THAI": "FERI", "FERI - INESIA": "FERI",
-
+    "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
     # 4. YOGI
-    "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", 
-    "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
-
+    "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
     # 5. GANI
-    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", 
-    "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", 
-    "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI",
-    "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
-
+    "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
     # 6. MITHA
-    "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA",
-    "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
-
+    "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA", "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
     # 7. LYDIA
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA", "LYDIA - KITO": "LYDIA",
-
-    # 8. NOVI (MERGE DENGAN RAFI/RAPI)
-    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", 
-    "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
-
+    # 8. NOVI
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
     # 9. ROZY
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
-
     # 10. DANI
     "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
-
     # 11. MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
-
     # 12. RISKA
-    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", 
-    "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", 
-    "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA",
-    "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", 
-    "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
-
-    # 13. TIM LISMAN (ADE, FANDI, DLL)
-    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE",
-    "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
-    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", 
-    "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", 
-    "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
-    "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL", "NAUFAL SVD": "NAUFAL", 
-    "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", 
+    "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
+    # 13. TIM LISMAN
+    "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
+    "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
+    "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL", "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", 
     "SAHRUL JAVINCI": "SYAHRUL", "SAHRUL TF": "SYAHRUL", "SAHRUL JV": "SYAHRUL", "GLOOW - SAHRUL": "SYAHRUL",
-    "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI",
-    "DWI CRS": "DWI", "DWI NLAB": "DWI", 
+    "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI", "DWI CRS": "DWI", "DWI NLAB": "DWI", 
     "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN", "ASWIN Inc": "ASWIN", "ASWIN INC": "ASWIN", "ASWIN - ARTIST INC": "ASWIN",
-
-    # 14. TIM AKBAR (DEVI, BASTIAN, BAYU)
-    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", 
-    "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", 
-    "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
-    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI",
-    "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
-    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", 
-    "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
-
+    # 14. TIM AKBAR
+    "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
+    "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI", "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
+    "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
     # 16. LAIN-LAIN
-    "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", 
-    "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
-    "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM",
-    "RINI JV": "RINI", "RINI SYB": "RINI", 
-    "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", 
-    "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
+    "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
+    "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM", "RINI JV": "RINI", "RINI SYB": "RINI", 
+    "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
 
@@ -312,42 +201,24 @@ SALES_MAPPING = {
 # 3. CORE LOGIC
 # ==========================================
 
-# --- SECURITY FEATURE: AUDIT LOGGING ---
 def log_activity(user, action):
     log_file = 'audit_log.csv'
-    # Menggunakan WIB untuk Log
     timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
     
-    if not os.path.isfile(log_file):
-        new_log.to_csv(log_file, index=False)
-    else:
-        new_log.to_csv(log_file, mode='a', header=False, index=False)
-# ---------------------------------------
+    if not os.path.isfile(log_file): new_log.to_csv(log_file, index=False)
+    else: new_log.to_csv(log_file, mode='a', header=False, index=False)
 
-# --- FITUR: HARDCODED TIMEZONE WIB (GMT+7) ---
 def get_current_time_wib():
-    # Memaksa program menggunakan zona waktu Asia/Jakarta (WIB)
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
 def format_idr(value):
-    try:
-        return f"Rp {value:,.0f}".replace(",", ".")
-    except:
-        return "Rp 0"
+    try: return f"Rp {value:,.0f}".replace(",", ".")
+    except: return "Rp 0"
 
-# --- SECURITY: DAILY TOKEN GENERATOR (12-HOUR ROTATION) ---
 def generate_daily_token():
-    """
-    Membuat token 4 digit unik yang berubah setiap 12 jam (AM/PM) mengikuti waktu WIB.
-    Rumus: Hash(Tanggal + AM/PM + Secret Salt) -> Ambil 4 digit angka
-    """
     secret_salt = "RAHASIA_PERUSAHAAN_2025" 
-    
-    # Ambil waktu WIB saat ini
     now_wib = get_current_time_wib()
-    
-    # Format string kunci: YYYY-MM-DD-AM atau YYYY-MM-DD-PM
     time_key = now_wib.strftime("%Y-%m-%d-%p")
     raw_string = f"{time_key}-{secret_salt}"
     
@@ -365,12 +236,9 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50:
-        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80:
-        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
-    else:
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
+    if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
+    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -396,22 +264,18 @@ def load_data():
     try:
         url_with_ts = f"{url}&t={int(time.time())}"
         df = pd.read_csv(url_with_ts, dtype=str)
-    except Exception as e:
-        return None
+    except Exception as e: return None
     
     df.columns = df.columns.str.strip()
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols):
-        return None
+    if not all(col in df.columns for col in required_cols): return None
     
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-            faktur_col = col
-            break
+            faktur_col = col; break
     
-    if faktur_col:
-        df = df.rename(columns={faktur_col: 'No Faktur'})
+    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
@@ -423,10 +287,8 @@ def load_data():
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-    
     valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
     valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
-    
     df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
     df['Penjualan'] = df['Penjualan'].astype('category')
 
@@ -446,49 +308,35 @@ def load_data():
     def fix_swapped_date(d):
         if pd.isnull(d): return d
         try:
-            if d.day <= 12 and d.day != d.month:
-                return d.replace(day=d.month, month=d.day)
-        except:
-            pass
+            if d.day <= 12 and d.day != d.month: return d.replace(day=d.month, month=d.day)
+        except: pass
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
     for col in cols_to_convert:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
+        if col in df.columns: df[col] = df[col].astype(str).str.strip()
             
     return df
 
 def load_users():
-    try:
-        return pd.read_csv('users.csv')
-    except:
-        return pd.DataFrame()
+    try: return pd.read_csv('users.csv')
+    except: return pd.DataFrame()
 
 def save_user_secret(username, secret_key):
     df = load_users()
-    if 'secret_key' not in df.columns:
-        df['secret_key'] = None
+    if 'secret_key' not in df.columns: df['secret_key'] = None
     df.loc[df['username'] == username, 'secret_key'] = secret_key
     df.to_csv('users.csv', index=False)
 
-# ==========================================
-# Fungsi Tambahan untuk Market Basket Analysis
-# ==========================================
-
 @st.cache_data(ttl=3600, show_spinner=False)
 def compute_association_rules(df):
-    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns:
-        return None
-    
+    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
     total_transactions = df['No Faktur'].nunique()
-    
     pair_df = df.groupby('No Faktur')['Nama Barang'].apply(lambda x: list(combinations(sorted(x.unique()), 2)) if len(x.unique()) > 1 else [])
     pairs = [p for sublist in pair_df for p in sublist]
-    
     pair_support = Counter(pairs)
     
     rules = []
@@ -505,8 +353,7 @@ def compute_association_rules(df):
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_cross_sell_recommendations(df):
     rules_df = compute_association_rules(df)
-    if rules_df is None or rules_df.empty:
-        return None
+    if rules_df is None or rules_df.empty: return None
     
     outlet_purchases = df.groupby('Nama Outlet')['Nama Barang'].apply(set).to_dict()
     recommendations = []
@@ -534,13 +381,10 @@ def get_cross_sell_recommendations(df):
 # ==========================================
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
-    
-    daily_token = generate_daily_token()
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
             st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi</div>", unsafe_allow_html=True)
-            
             if 'login_step' not in st.session_state: st.session_state['login_step'] = 'credentials'
             if 'temp_user_data' not in st.session_state: st.session_state['temp_user_data'] = None
             
@@ -612,41 +456,21 @@ def main_dashboard():
         if role_name != 'direktur':
             st.markdown(f"""
             <style>
-            .watermark-container {{
-                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                z-index: 99999; pointer-events: none; overflow: hidden;
-                display: flex; flex-wrap: wrap; opacity: 0.15;
-            }}
-            .watermark-text {{
-                font-family: 'Arial', sans-serif; font-size: 16px; color: #555;
-                font-weight: 700; transform: rotate(-30deg); white-space: nowrap;
-                margin: 20px; user-select: none;
-            }}
+            .watermark-container {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none; overflow: hidden; display: flex; flex-wrap: wrap; opacity: 0.15; }}
+            .watermark-text {{ font-family: 'Arial', sans-serif; font-size: 16px; color: #555; font-weight: 700; transform: rotate(-30deg); white-space: nowrap; margin: 20px; user-select: none; }}
             </style>
-            <div class="watermark-container">
-                {''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}
-            </div>
+            <div class="watermark-container">{''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}</div>
             <script>
             window.addEventListener('blur', () => {{ document.body.style.filter = 'blur(20px) brightness(0.4)'; document.body.style.backgroundColor = '#000'; }});
             window.addEventListener('focus', () => {{ document.body.style.filter = 'none'; document.body.style.backgroundColor = '#fff'; }});
-            document.addEventListener('keydown', (e) => {{
-                if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{
-                    e.preventDefault(); alert('⚠️ Action Disabled for Security Reasons!');
-                }}
-            }});
+            document.addEventListener('keydown', (e) => {{ if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{ e.preventDefault(); alert('⚠️ Action Disabled for Security Reasons!'); }} }});
             </script>
             """, unsafe_allow_html=True)
     
     add_aggressive_watermark()
 
     if st.session_state['role'] != 'direktur':
-        st.markdown("""
-            <style>
-            @media print { body { display: none !important; } }
-            body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
-            img { pointer-events: none; }
-            </style>
-            """, unsafe_allow_html=True)
+        st.markdown("<style>@media print { body { display: none !important; } } body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } img { pointer-events: none; }</style>", unsafe_allow_html=True)
 
     with st.sidebar:
         st.write("## 👤 User Profile")
@@ -747,8 +571,7 @@ def main_dashboard():
             sub_filter = st.sidebar.selectbox(f"Filter Tim ({target_sales_filter}):", ["SEMUA"] + team_list)
             if sub_filter == "SEMUA": df_scope_all = df_spv_raw
             else: df_scope_all = df_spv_raw[df_spv_raw['Penjualan'] == sub_filter]
-        else:
-            df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
+        else: df_scope_all = df if target_sales_filter == "SEMUA" else df[df['Penjualan'] == target_sales_filter]
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_spv_raw = df[df['Merk'].isin(my_brands)]
@@ -1117,7 +940,6 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian")
         
-        # UI Selection
         list_merk_excel = sorted(df_active['Merk'].dropna().astype(str).unique())
         selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
         
@@ -1126,39 +948,26 @@ def main_dashboard():
         else:
             df_excel = df_active.copy()
 
-        # Proses Pivot jika dataframe tidak kosong
         if not df_excel.empty:
-            # Siapkan Kolom Waktu
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
-            # Identifikasi group_cols agar sesuai dengan yang ada
             group_cols = []
-            if 'Kode Customer' in df_excel.columns: 
-                group_cols.append('Kode Customer')
-            elif 'Kode Costumer' in df_excel.columns: 
-                group_cols.append('Kode Costumer')
-            elif 'Kode Outlet' in df_excel.columns: 
-                group_cols.append('Kode Outlet')
+            if 'Kode Customer' in df_excel.columns: group_cols.append('Kode Customer')
+            elif 'Kode Costumer' in df_excel.columns: group_cols.append('Kode Costumer')
+            elif 'Kode Outlet' in df_excel.columns: group_cols.append('Kode Outlet')
             else:
                 df_excel['Kode Customer'] = "-"
                 group_cols.append('Kode Customer')
                 
             group_cols.append('Nama Outlet') 
             
-            if 'Kota' in df_excel.columns: 
-                group_cols.append('Kota')
+            if 'Kota' in df_excel.columns: group_cols.append('Kota')
             else:
                 df_excel['Kota'] = "-"
                 group_cols.append('Kota')
 
-            # Create the Pivot Table
             master_pivot = pd.pivot_table(
-                df_excel, 
-                values='Jumlah', 
-                index=group_cols, 
-                columns='Bulan Angka', 
-                aggfunc='sum', 
-                fill_value=0
+                df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
             )
 
             bulan_indo = {
@@ -1167,64 +976,73 @@ def main_dashboard():
                 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
             }
 
-            # Ensure all 12 months exist
             for i in range(1, 13):
-                if i not in master_pivot.columns:
-                    master_pivot[i] = 0
+                if i not in master_pivot.columns: master_pivot[i] = 0
 
-            # Reorder columns and rename with Bulan Indo
             master_pivot = master_pivot[list(range(1, 13))]
             master_pivot.columns = [bulan_indo[i] for i in master_pivot.columns]
-            
             master_pivot['Total Penjualan'] = master_pivot.sum(axis=1)
 
-            # Reset index to flatten the pivot table for viewing
             master_pivot = master_pivot.reset_index()
             master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer'})
 
-            # --- MENGAKTIFKAN FILTER KOLOM GLOBAL (AGGRID & STREAMLIT NATIVE) ---
+            # ========================================================
+            # FITUR BARU: FILTER MULTISELECT (MEMILIH APA YANG TERSEDIA)
+            # ========================================================
+            st.markdown("#### 🔎 Filter Spesifik")
+            col_f1, col_f2, col_f3 = st.columns(3)
+            
+            with col_f1:
+                list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
+                filter_kode = st.multiselect("Kode Customer:", list_kode, placeholder="Pilih Kode...")
+                
+            with col_f2:
+                list_nama = sorted([str(x) for x in master_pivot['Nama Customer'].unique() if str(x) != 'nan'])
+                filter_nama = st.multiselect("Nama Customer:", list_nama, placeholder="Pilih Customer...")
+                
+            with col_f3:
+                list_kota = sorted([str(x) for x in master_pivot['Kota'].unique() if str(x) != 'nan'])
+                filter_kota = st.multiselect("Kota:", list_kota, placeholder="Pilih Kota...")
+
+            # Terapkan filter
+            df_filtered = master_pivot.copy()
+            if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
+            if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
+            if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
+            
+            st.caption(f"Menampilkan {len(df_filtered)} data.")
+            # ========================================================
+
             if AGGRID_AVAILABLE:
-                # Modifikasi mulai di sini
-                gb = GridOptionsBuilder.from_dataframe(master_pivot)
+                gb = GridOptionsBuilder.from_dataframe(df_filtered)
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
+                gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'])
                 
-                # MENGAKTIFKAN FILTER EXCEL-LIKE UNTUK SEMUA KOLOM
-                gb.configure_default_column(
-                    filter='agSetColumnFilter', 
-                    sortable=True, 
-                    resizable=True, 
-                    floatingFilter=True,
-                    menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'] # Penambahan kode
-                )
-                
-                # Menerapkan format mata uang Rupiah untuk kolom numerik (Bulan + Total)
                 num_cols = list(bulan_indo.values()) + ['Total Penjualan']
                 for col in num_cols:
                     gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
                 
                 gridOptions = gb.build()
-                # Menampilkan tabel AgGrid yang interaktif
-                AgGrid(master_pivot, gridOptions=gridOptions, enable_enterprise_modules=True, height=500, theme='alpine')
+                AgGrid(df_filtered, gridOptions=gridOptions, enable_enterprise_modules=True, height=500, theme='alpine')
             else:
-                # Fallback untuk native Streamlit dataframe
                 format_dict = {col: "Rp {:,.0f}" for col in list(bulan_indo.values()) + ['Total Penjualan']}
-                st.dataframe(master_pivot.style.format(format_dict), use_container_width=True, hide_index=True)
+                st.dataframe(df_filtered.style.format(format_dict), use_container_width=True, hide_index=True)
         else:
             st.info("Data Kosong.")
 
-        # --- EXCEL EXPORT (TIDAK ADA PERUBAHAN) ---
+        # --- EXCEL EXPORT (Akan mengunduh data sesuai filter yang dipilih!) ---
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'master_pivot' in locals() and not master_pivot.empty:
-                    master_pivot.to_excel(writer, index=False, sheet_name='Master Data')
+                if 'df_filtered' in locals() and not df_filtered.empty:
+                    df_filtered.to_excel(writer, index=False, sheet_name='Master Data')
                 else:
                     df_active.to_excel(writer, index=False, sheet_name='Sales Data')
                 
                 workbook = writer.book
-                worksheet = writer.sheets['Master Data' if 'master_pivot' in locals() else 'Sales Data']
+                worksheet = writer.sheets['Master Data' if 'df_filtered' in locals() else 'Sales Data']
                 
                 user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
                 time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1243,14 +1061,11 @@ def main_dashboard():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         elif role in ['direktur']: 
-             csv = master_pivot.to_csv(index=False).encode('utf-8')
+             csv = df_filtered.to_csv(index=False).encode('utf-8') if 'df_filtered' in locals() else df_active.to_csv(index=False).encode('utf-8')
              file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
              st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
-if st.session_state['logged_in']:
-    main_dashboard()
-else:
-    login_page()
+if st.session_state['logged_in']: main_dashboard()
+else: login_page()
