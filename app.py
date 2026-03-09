@@ -15,7 +15,6 @@ from itertools import combinations
 from collections import Counter
 
 # --- IMPORT KONFIGURASI DARI FILE LAIN (CLEAN CODE) ---
-# Pastikan file config.py berada satu folder dengan file ini
 from config import TARGET_DATABASE, INDIVIDUAL_TARGETS, SUPERVISOR_TOTAL_TARGETS, TARGET_NASIONAL_VAL, BRAND_ALIASES, SALES_MAPPING
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
@@ -233,6 +232,8 @@ def load_users():
 # ==========================================
 # Fungsi Tambahan untuk Market Basket Analysis
 # ==========================================
+# --- OPTIMIZATION (ROADMAP 6): Menambahkan CACHE ---
+@st.cache_data(ttl=3600, show_spinner=False) 
 def compute_association_rules(df):
     if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns:
         return None
@@ -263,6 +264,8 @@ def compute_association_rules(df):
     
     return rules_df
 
+# --- OPTIMIZATION (ROADMAP 6): Menambahkan CACHE ---
+@st.cache_data(ttl=3600, show_spinner=False)
 def get_cross_sell_recommendations(df):
     rules_df = compute_association_rules(df)
     if rules_df is None or rules_df.empty:
