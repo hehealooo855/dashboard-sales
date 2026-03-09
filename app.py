@@ -561,13 +561,13 @@ def main_dashboard():
     target_sales_filter = "SEMUA"
 
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().unique()))
+        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().astype(str).unique()))
         target_sales_filter = st.sidebar.selectbox("Pantau Kinerja Sales:", sales_list)
         if target_sales_filter.upper() in TARGET_DATABASE:
             selected_spv_key = target_sales_filter.upper()
             spv_brands = TARGET_DATABASE[selected_spv_key].keys()
             df_spv_raw = df[df['Merk'].isin(spv_brands)]
-            team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+            team_list = sorted(list(df_spv_raw['Penjualan'].dropna().astype(str).unique()))
             sub_filter = st.sidebar.selectbox(f"Filter Tim ({target_sales_filter}):", ["SEMUA"] + team_list)
             if sub_filter == "SEMUA": df_scope_all = df_spv_raw
             else: df_scope_all = df_spv_raw[df_spv_raw['Penjualan'] == sub_filter]
@@ -575,20 +575,24 @@ def main_dashboard():
     elif is_supervisor_account:
         my_brands = TARGET_DATABASE[my_name_key].keys()
         df_spv_raw = df[df['Merk'].isin(my_brands)]
-        team_list = sorted(list(df_spv_raw['Penjualan'].dropna().unique()))
+        team_list = sorted(list(df_spv_raw['Penjualan'].dropna().astype(str).unique()))
         target_sales_filter = st.sidebar.selectbox("Filter Tim (Brand Anda):", ["SEMUA"] + team_list)
         df_scope_all = df_spv_raw if target_sales_filter == "SEMUA" else df_spv_raw[df_spv_raw['Penjualan'] == target_sales_filter]
     else: 
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
+    # ---------- PERBAIKAN ERROR TYPERROR ADA DI SINI ----------
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
-        unique_brands = sorted(df_scope_all['Merk'].unique())
+        # Menggunakan .dropna().astype(str) agar kebal terhadap sel kosong (NaN)
+        unique_brands = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
         if pilih_merk: df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
-        unique_outlets = sorted(df_scope_all['Nama Outlet'].unique())
+        
+        unique_outlets = sorted(df_scope_all['Nama Outlet'].dropna().astype(str).unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+    # ---------------------------------------------------------
 
     if len(date_range) == 2:
         start_date, end_date = date_range
@@ -944,7 +948,7 @@ def main_dashboard():
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
         # =========================================================================
-        # SUB-TAB 1: PIVOT DATA CUSTOMER (KODE LAMA ANDA YG TIDAK DIUBAH SAMA SEKALI)
+        # SUB-TAB 1: PIVOT DATA CUSTOMER
         # =========================================================================
         with tab_pivot:
             list_merk_excel = sorted(df_active['Merk'].dropna().astype(str).unique())
