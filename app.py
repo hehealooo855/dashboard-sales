@@ -17,7 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
+# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
     from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
     AGGRID_AVAILABLE = True
@@ -29,7 +29,7 @@ from config import TARGET_DATABASE, INDIVIDUAL_TARGETS, SUPERVISOR_TOTAL_TARGETS
 
 # --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
 st.set_page_config(
-    page_title="Dashboard Sales", 
+    page_title="Dashboard Sales Pro", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
@@ -44,18 +44,12 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
-    /* Memastikan text dalam dataframe wrap dengan baik */
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-    /* Security: Hide Menu & Footer */
     [data-testid="stElementToolbar"] { display: none; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
-    /* BARIS DI BAWAH INI ADALAH PENYEBABNYA - HAPUS ATAU KOMENTARI */
-    /* header {visibility: hidden;} */ 
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,10 +57,8 @@ st.markdown("""
 # 3. CORE LOGIC
 # ==========================================
 
-# --- SECURITY FEATURE: AUDIT LOGGING ---
 def log_activity(user, action):
     log_file = 'audit_log.csv'
-    # Menggunakan WIB untuk Log
     timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
     
@@ -74,11 +66,8 @@ def log_activity(user, action):
         new_log.to_csv(log_file, index=False)
     else:
         new_log.to_csv(log_file, mode='a', header=False, index=False)
-# ---------------------------------------
 
-# --- FITUR: HARDCODED TIMEZONE WIB (GMT+7) ---
 def get_current_time_wib():
-    # Memaksa program menggunakan zona waktu Asia/Jakarta (WIB)
     return datetime.datetime.now(pytz.timezone('Asia/Jakarta'))
 
 def format_idr(value):
@@ -87,19 +76,10 @@ def format_idr(value):
     except:
         return "Rp 0"
 
-# --- SECURITY: DAILY TOKEN GENERATOR (12-HOUR ROTATION) ---
 def generate_daily_token():
-    """
-    Membuat token 4 digit unik yang berubah setiap 12 jam (AM/PM) mengikuti waktu WIB.
-    Rumus: Hash(Tanggal + AM/PM + Secret Salt) -> Ambil 4 digit angka
-    """
     secret_salt = "RAHASIA_PERUSAHAAN_2025" 
-    
-    # Ambil waktu WIB saat ini
-    now_wib = get_current_time_wib()
-    
-    # Format string kunci: YYYY-MM-DD-AM atau YYYY-MM-DD-PM
-    time_key = now_wib.strftime("%Y-%m-%d-%p")
+    today_str = get_current_time_wib().strftime("%Y-%m-%d")
+    time_key = get_current_time_wib().strftime("%Y-%m-%d-%p")
     raw_string = f"{time_key}-{secret_salt}"
     
     hash_object = hashlib.sha256(raw_string.encode())
@@ -107,7 +87,6 @@ def generate_daily_token():
     
     numeric_filter = filter(str.isdigit, hex_dig)
     numeric_string = "".join(numeric_filter)
-    
     token = numeric_string[:4].ljust(4, '0')
     return token
 
@@ -116,12 +95,9 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50:
-        bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80:
-        bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
-    else:
-        bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
+    if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
+    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
     <div style="margin-bottom: 20px; background-color: #fcfcfc; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -158,11 +134,8 @@ def load_data():
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-            faktur_col = col
-            break
-    
-    if faktur_col:
-        df = df.rename(columns={faktur_col: 'No Faktur'})
+            faktur_col = col; break
+    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
@@ -174,10 +147,7 @@ def load_data():
         df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
 
     df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-    
-    valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-    valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR", "WILLIAM"]) 
-    
+    valid_sales_names = list(INDIVIDUAL_TARGETS.keys()) + ["MADONG", "LISMAN", "AKBAR", "WILLIAM"]
     df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
     df['Penjualan'] = df['Penjualan'].astype('category')
 
@@ -189,8 +159,7 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[Rp\s]', '', regex=True).str.replace('.', '', regex=False)
-    df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
+    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[Rp\s]', '', regex=True).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
     df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce', format='mixed')
@@ -199,8 +168,7 @@ def load_data():
         try:
             if d.day <= 12 and d.day != d.month:
                 return d.replace(day=d.month, month=d.day)
-        except:
-            pass
+        except: pass
         return d
     df['Tanggal'] = df['Tanggal'].apply(fix_swapped_date)
     df = df.dropna(subset=['Tanggal'])
@@ -212,53 +180,44 @@ def load_data():
             
     return df
 
+USER_DB_FILE = 'users.csv'
 def load_users():
     try:
-        return pd.read_csv('users.csv')
+        df = pd.read_csv(USER_DB_FILE)
+        if 'secret_key' not in df.columns:
+            df['secret_key'] = None
+            df.to_csv(USER_DB_FILE, index=False)
+        return df
     except:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['username', 'password', 'role', 'sales_name', 'secret_key'])
 
 def save_user_secret(username, secret_key):
     df = load_users()
-    if 'secret_key' not in df.columns:
-        df['secret_key'] = None
     df.loc[df['username'] == username, 'secret_key'] = secret_key
-    df.to_csv('users.csv', index=False)
+    df.to_csv(USER_DB_FILE, index=False)
 
-# ==========================================
-# Fungsi Tambahan untuk Market Basket Analysis
-# ==========================================
-
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False) 
 def compute_association_rules(df):
-    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns:
-        return None
-    
+    if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
     total_transactions = df['No Faktur'].nunique()
-    
     pair_df = df.groupby('No Faktur')['Nama Barang'].apply(lambda x: list(combinations(sorted(x.unique()), 2)) if len(x.unique()) > 1 else [])
     pairs = [p for sublist in pair_df for p in sublist]
-    
     pair_support = Counter(pairs)
-    
     rules = []
     for (A, B), supp_ab in pair_support.items():
         conf_ab = supp_ab / item_support[A]
         conf_ba = supp_ab / item_support[B]
         rules.append({'antecedent': A, 'consequent': B, 'support': supp_ab / total_transactions, 'confidence': conf_ab})
         rules.append({'antecedent': B, 'consequent': A, 'support': supp_ab / total_transactions, 'confidence': conf_ba})
-    
     rules_df = pd.DataFrame(rules).drop_duplicates().sort_values('confidence', ascending=False)
-    rules_df = rules_df[rules_df['confidence'] > 0.5]  
+    rules_df = rules_df[rules_df['confidence'] > 0.5] 
     return rules_df
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_cross_sell_recommendations(df):
     rules_df = compute_association_rules(df)
-    if rules_df is None or rules_df.empty:
-        return None
-    
+    if rules_df is None or rules_df.empty: return None
     outlet_purchases = df.groupby('Nama Outlet')['Nama Barang'].apply(set).to_dict()
     recommendations = []
     for outlet, purchased in outlet_purchases.items():
@@ -280,13 +239,11 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
-# ==========================================
-# 4. MAIN DASHBOARD LOGIC
-# ==========================================
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
     daily_token = generate_daily_token()
+    
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
@@ -351,6 +308,7 @@ def login_page():
                         else:
                             st.error("Kode OTP Salah!")
                             log_activity(user_data['sales_name'], "FAILED LOGIN - WRONG OTP")
+                    
                     if st.button("Kembali"):
                         st.session_state['login_step'] = 'credentials'
                         st.rerun()
@@ -435,13 +393,16 @@ def main_dashboard():
         if st.session_state['role'] == 'direktur':
             with st.expander("🛡️ Audit Log (Director Only)"):
                 if os.path.isfile('audit_log.csv'):
-                    audit_df = pd.read_csv('audit_log.csv', names=['Timestamp', 'User', 'Action'])
-                    st.dataframe(audit_df.sort_values('Timestamp', ascending=False), height=200)
-                else: st.write("Belum ada log.")
+                    try:
+                        audit_df = pd.read_csv('audit_log.csv', names=['Timestamp', 'User', 'Action'])
+                        st.dataframe(audit_df.sort_values('Timestamp', ascending=False), height=200)
+                    except: st.write("Format log invalid.")
+                else: st.write("Belum ada data.")
         
         if st.button("🚪 Logout", use_container_width=True):
             log_activity(st.session_state['sales_name'], "LOGOUT")
             st.session_state['logged_in'] = False
+            for key in list(st.session_state.keys()): del st.session_state[key]
             st.rerun()
         st.markdown("---")
         st.caption(f"Waktu Server (WIB): {get_current_time_wib().strftime('%d-%b-%Y %H:%M:%S')}")
@@ -453,6 +414,9 @@ def main_dashboard():
 
     user_role = st.session_state['role']
     user_name = st.session_state['sales_name']
+    role = user_role
+    my_name = user_name
+    my_name_key = my_name.strip().upper()
     
     if user_role not in ['manager', 'direktur', 'supervisor'] and user_name.lower() != 'fauziah':
         df = df[df['Penjualan'] == user_name]
@@ -486,9 +450,6 @@ def main_dashboard():
 
     date_range = st.sidebar.date_input("Rentang Waktu Manual", [st.session_state['start_date'], st.session_state['end_date']])
 
-    role = st.session_state['role']
-    my_name = st.session_state['sales_name']
-    my_name_key = my_name.strip().upper()
     is_supervisor_account = my_name_key in TARGET_DATABASE
     target_sales_filter = "SEMUA"
 
@@ -871,12 +832,8 @@ def main_dashboard():
         else: st.warning("Data belum cukup untuk melakukan prediksi (minimal 10 hari transaksi).")
 
     with t4:
-        # ========================================================
-        # PERUBAHAN T4: FORMAT MASTER DATA BULANAN
-        # ========================================================
         st.subheader("📋 Data Rincian Bulanan per Customer")
         
-        # 1. Filter Merk 
         list_merk_excel = sorted(df_active['Merk'].dropna().astype(str).unique())
         selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
         
@@ -886,33 +843,24 @@ def main_dashboard():
             df_excel = df_active.copy()
 
         if not df_excel.empty:
-            # Siapkan Kolom Waktu
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
-            # Tentukan kolom baris (rows) yang ada di data agar aman
             group_cols = []
             
-            # Pengecekan aman untuk Kode Customer
-            if 'Kode Customer' in df_excel.columns: 
-                group_cols.append('Kode Customer')
-            elif 'Kode Costumer' in df_excel.columns: 
-                group_cols.append('Kode Costumer')
-            elif 'Kode Outlet' in df_excel.columns: 
-                group_cols.append('Kode Outlet')
+            if 'Kode Customer' in df_excel.columns: group_cols.append('Kode Customer')
+            elif 'Kode Costumer' in df_excel.columns: group_cols.append('Kode Costumer')
+            elif 'Kode Outlet' in df_excel.columns: group_cols.append('Kode Outlet')
             else:
-                # Bikin kolom dummy jika tidak ditemukan
                 df_excel['Kode Customer'] = "-"
                 group_cols.append('Kode Customer')
                 
-            group_cols.append('Nama Outlet') # Akan di-rename jadi Nama Customer
+            group_cols.append('Nama Outlet') 
             
-            if 'Kota' in df_excel.columns: 
-                group_cols.append('Kota')
+            if 'Kota' in df_excel.columns: group_cols.append('Kota')
             else:
                 df_excel['Kota'] = "-"
                 group_cols.append('Kota')
 
-            # Buat Pivot
             master_pivot = pd.pivot_table(
                 df_excel, 
                 values='Jumlah', 
@@ -922,33 +870,31 @@ def main_dashboard():
                 fill_value=0
             )
 
-            # Siapkan nama bulan
             bulan_indo = {
                 1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
                 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
                 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
             }
 
-            # Pastikan 12 bulan ada (di-set 0 jika tidak ada transaksi di bulan tersebut)
             for i in range(1, 13):
                 if i not in master_pivot.columns:
                     master_pivot[i] = 0
 
-            # Urutkan dan Ganti Nama Kolom Bulan
             master_pivot = master_pivot[list(range(1, 13))]
             master_pivot.columns = [bulan_indo[i] for i in master_pivot.columns]
             
-            # Opsional: Tambah kolom Total Penjualan 
             master_pivot['Total Penjualan'] = master_pivot.sum(axis=1)
-
             master_pivot = master_pivot.reset_index()
             master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer'})
 
-            # --- RENDER KE UI ---
+            # --- MENGAKTIFKAN FILTER KOLOM GLOBAL (AGGRID & STREAMLIT NATIVE) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(master_pivot)
                 gb.configure_pagination(paginationAutoPageSize=True)
                 gb.configure_side_bar()
+                
+                # FITUR TAMBAHAN: Mengaktifkan Filter secara Global untuk AgGrid
+                gb.configure_default_column(filter=True, sortable=True, resizable=True)
                 
                 num_cols = list(bulan_indo.values()) + ['Total Penjualan']
                 for col in num_cols:
@@ -958,11 +904,11 @@ def main_dashboard():
                 AgGrid(master_pivot, gridOptions=gridOptions, enable_enterprise_modules=True, height=500, theme='alpine')
             else:
                 format_dict = {col: "Rp {:,.0f}" for col in list(bulan_indo.values()) + ['Total Penjualan']}
+                # st.dataframe secara native sudah memiliki filter UI pada versi Streamlit terbaru
                 st.dataframe(master_pivot.style.format(format_dict), use_container_width=True, hide_index=True)
         else:
             st.info("Data Kosong.")
 
-        # --- EXCEL EXPORT ---
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -970,7 +916,6 @@ def main_dashboard():
                 if 'master_pivot' in locals() and not master_pivot.empty:
                     master_pivot.to_excel(writer, index=False, sheet_name='Master Data')
                 else:
-                    # Fallback jika pivot kosong
                     df_active.to_excel(writer, index=False, sheet_name='Sales Data')
                 
                 workbook = writer.book
@@ -984,7 +929,7 @@ def main_dashboard():
                 worksheet.set_footer(f'&RPage &P of &N')
                 
                 format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) # Formatting angka untuk kolom D s.d P
+                worksheet.set_column('D:P', None, format1) 
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX) - DRM Protected",
