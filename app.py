@@ -1241,92 +1241,114 @@ def main_dashboard():
                 st.info("Tidak ada data.")
 
         # =========================================================================
-        # SUB-TAB 3: PENCAPAIAN TARGET BA
+        # SUB-TAB 3: PENCAPAIAN TARGET BA (DIBAGI PER BRAND)
         # =========================================================================
         with tab_ba:
-            st.markdown("### 🎯 Pencapaian Target BA (Tahun 2026)")
-            target_ba_dict = {
-                "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
-                "TOKO DUTA COSMETIK ( BIREUEN )": 50_000_000,
-                "HIJRAH STORE COSMETIK": 50_000_000,
-                "TOKO UNDERPRICE SKIN CARE": 50_000_000,
-                "PT.RADYSA DHARMA ABADI": 50_000_000,
-                "TOKO BEAUTY ART": 30_000_000,
-                "PT.PINMOOD INDONESIA SEJAHTERA": 30_000_000
+            st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
+            
+            # --- STRUKTUR DATA BARU: TARGET BERDASARKAN BRAND ---
+            TARGET_BA_PER_BRAND = {
+                "Careso": {
+                    "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
+                    "TOKO DUTA COSMETIK ( BIREUEN )": 50_000_000,
+                    "HIJRAH STORE COSMETIK": 50_000_000,
+                    "TOKO UNDERPRICE SKIN CARE": 50_000_000,
+                    "PT.RADYSA DHARMA ABADI": 50_000_000,
+                    "TOKO BEAUTY ART": 30_000_000,
+                    "PT.PINMOOD INDONESIA SEJAHTERA": 30_000_000
+                },
+                "Somethinc": {
+                    "PT. PESONA ASIA GROUP ( GM STORE )": 40_000_000,
+                    "TOKO DUTA COSMETIK ( BIREUEN )": 25_000_000,
+                    "TOKO BEAUTY ART": 35_000_000
+                },
+                "Javinci": {
+                    "HIJRAH STORE COSMETIK": 20_000_000,
+                    "TOKO UNDERPRICE SKIN CARE": 25_000_000,
+                    "PT.PINMOOD INDONESIA SEJAHTERA": 15_000_000
+                }
             }
             
-            # Memfilter data hanya untuk Toko BA dan Tahun 2026
-            df_ba_all = df_scope_all[(df_scope_all['Nama Outlet'].isin(target_ba_dict.keys())) & (df_scope_all['Tanggal'].dt.year == 2026)].copy()
+            available_ba_brands = list(TARGET_BA_PER_BRAND.keys())
+            selected_ba_brand = st.selectbox("Pilih Brand untuk melihat Target BA:", available_ba_brands)
             
-            bulan_dict_ba = {1:'Januari', 2:'Februari', 3:'Maret', 4:'April', 5:'Mei', 6:'Juni', 7:'Juli', 8:'Agustus', 9:'September', 10:'Oktober', 11:'November', 12:'Desember'}
-            
-            # Buat kerangka target BA
-            ba_df = pd.DataFrame(list(target_ba_dict.items()), columns=['Costumer', 'Target BA'])
-            
-            if not df_ba_all.empty:
-                df_ba_all['Bulan Angka'] = df_ba_all['Tanggal'].dt.month
-                pivot_ba = pd.pivot_table(df_ba_all, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0)
+            if selected_ba_brand:
+                current_target_dict = TARGET_BA_PER_BRAND[selected_ba_brand]
                 
-                for m in range(1, 13):
-                    if m not in pivot_ba.columns:
-                        pivot_ba[m] = 0
-                        
-                pivot_ba = pivot_ba[list(range(1, 13))]
-                pivot_ba.columns = [bulan_dict_ba[m] for m in pivot_ba.columns]
-                pivot_ba = pivot_ba.reset_index().rename(columns={'Nama Outlet': 'Costumer'})
+                df_ba_all = df_scope_all[
+                    (df_scope_all['Merk'] == selected_ba_brand) & 
+                    (df_scope_all['Nama Outlet'].isin(current_target_dict.keys())) & 
+                    (df_scope_all['Tanggal'].dt.year == 2026)
+                ].copy()
                 
-                merged_ba = pd.merge(ba_df, pivot_ba, on='Costumer', how='left').fillna(0)
-            else:
-                # Jika kosong, siapkan tabel dengan nilai 0
-                merged_ba = ba_df.copy()
-                for m in range(1, 13):
-                    merged_ba[bulan_dict_ba[m]] = 0
-            
-            st.write("**Rekap Keseluruhan Toko BA (2026)**")
-            format_ba = {col: 'Rp {:,.0f}' for col in list(bulan_dict_ba.values()) + ['Target BA']}
-            st.dataframe(merged_ba.style.format(format_ba), use_container_width=True, hide_index=True)
-            
-            st.divider()
-            
-            # Dropdown pemilihan bulan untuk view ala tabel JPG Anda (Target | Pencapaian | ACHV %)
-            selected_month_ba = st.selectbox("Pilih Bulan untuk Detail Achievement:", list(bulan_dict_ba.values()))
-            
-            achv_data = []
-            total_target = 0
-            total_achv = 0
-            
-            for idx, row in merged_ba.iterrows():
-                costumer = row['Costumer']
-                target = row['Target BA']
-                pencapaian = row[selected_month_ba]
-                achv_pct = (pencapaian / target) if target > 0 else 0
+                bulan_dict_ba = {1:'Januari', 2:'Februari', 3:'Maret', 4:'April', 5:'Mei', 6:'Juni', 7:'Juli', 8:'Agustus', 9:'September', 10:'Oktober', 11:'November', 12:'Desember'}
                 
-                total_target += target
-                total_achv += pencapaian
+                ba_df = pd.DataFrame(list(current_target_dict.items()), columns=['Costumer', 'Target BA'])
                 
-                achv_data.append({
-                    'Costumer': costumer,
-                    'Target BA': target,
-                    f'Pencapaian {selected_month_ba}': pencapaian,
-                    'ACHV': achv_pct
-                })
-            
-            df_achv = pd.DataFrame(achv_data)
-            df_achv_total = pd.DataFrame([{
-                'Costumer': 'Total Achievement',
-                'Target BA': total_target,
-                f'Pencapaian {selected_month_ba}': total_achv,
-                'ACHV': (total_achv/total_target) if total_target > 0 else 0
-            }])
-            
-            df_achv_display = pd.concat([df_achv, df_achv_total], ignore_index=True)
-            
-            st.write(f"**Tabel Pencapaian Target BA - {selected_month_ba} 2026**")
-            st.dataframe(df_achv_display.style.format({
-                'Target BA': 'Rp {:,.0f}',
-                f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
-                'ACHV': '{:.0%}'
-            }).apply(lambda x: ['background: lightblue; font-weight: bold' if x.Costumer == 'Total Achievement' else '' for i in x], axis=1), use_container_width=True)
+                if not df_ba_all.empty:
+                    df_ba_all['Bulan Angka'] = df_ba_all['Tanggal'].dt.month
+                    pivot_ba = pd.pivot_table(df_ba_all, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0)
+                    
+                    for m in range(1, 13):
+                        if m not in pivot_ba.columns:
+                            pivot_ba[m] = 0
+                            
+                    pivot_ba = pivot_ba[list(range(1, 13))]
+                    pivot_ba.columns = [bulan_dict_ba[m] for m in pivot_ba.columns]
+                    pivot_ba = pivot_ba.reset_index().rename(columns={'Nama Outlet': 'Costumer'})
+                    
+                    merged_ba = pd.merge(ba_df, pivot_ba, on='Costumer', how='left').fillna(0)
+                else:
+                    merged_ba = ba_df.copy()
+                    for m in range(1, 13):
+                        merged_ba[bulan_dict_ba[m]] = 0
+                
+                st.write(f"**Rekap Keseluruhan Toko BA untuk Brand `{selected_ba_brand}` (2026)**")
+                format_ba = {col: 'Rp {:,.0f}' for col in list(bulan_dict_ba.values()) + ['Target BA']}
+                st.dataframe(merged_ba.style.format(format_ba), use_container_width=True, hide_index=True)
+                
+                st.divider()
+                
+                selected_month_ba = st.selectbox(f"Pilih Bulan untuk Detail Achievement ({selected_ba_brand}):", list(bulan_dict_ba.values()))
+                
+                achv_data = []
+                total_target = 0
+                total_achv = 0
+                
+                for idx, row in merged_ba.iterrows():
+                    costumer = row['Costumer']
+                    target = row['Target BA']
+                    pencapaian = row[selected_month_ba]
+                    achv_pct = (pencapaian / target) if target > 0 else 0
+                    
+                    total_target += target
+                    total_achv += pencapaian
+                    
+                    achv_data.append({
+                        'Costumer': costumer,
+                        'Target BA': target,
+                        f'Pencapaian {selected_month_ba}': pencapaian,
+                        'ACHV': achv_pct
+                    })
+                
+                df_achv = pd.DataFrame(achv_data)
+                
+                df_achv_total = pd.DataFrame([{
+                    'Costumer': 'Total Achievement',
+                    'Target BA': total_target,
+                    f'Pencapaian {selected_month_ba}': total_achv,
+                    'ACHV': (total_achv/total_target) if total_target > 0 else 0
+                }])
+                
+                df_achv_display = pd.concat([df_achv, df_achv_total], ignore_index=True)
+                
+                st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
+                
+                st.dataframe(df_achv_display.style.format({
+                    'Target BA': 'Rp {:,.0f}',
+                    f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
+                    'ACHV': '{:.0%}'
+                }).apply(lambda x: ['background: lightblue; font-weight: bold' if x.Costumer == 'Total Achievement' else '' for i in x], axis=1), use_container_width=True)
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
