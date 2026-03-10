@@ -196,7 +196,6 @@ SALES_MAPPING = {
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
-
 # ==========================================
 # 3. CORE LOGIC
 # ==========================================
@@ -957,7 +956,9 @@ def main_dashboard():
             if not df_excel.empty:
                 df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
                 
+                # --- PERBAIKAN KEYERROR KOLOM ---
                 group_cols = []
+                
                 if 'Kode Customer' in df_excel.columns: group_cols.append('Kode Customer')
                 elif 'Kode Costumer' in df_excel.columns: group_cols.append('Kode Costumer')
                 elif 'Kode Outlet' in df_excel.columns: group_cols.append('Kode Outlet')
@@ -965,7 +966,11 @@ def main_dashboard():
                     df_excel['Kode Customer'] = "-"
                     group_cols.append('Kode Customer')
                     
-                group_cols.append('Nama Outlet') 
+                if 'Nama Customer' in df_excel.columns: group_cols.append('Nama Customer')
+                elif 'Nama Outlet' in df_excel.columns: group_cols.append('Nama Outlet')
+                else:
+                    df_excel['Nama Customer'] = "-"
+                    group_cols.append('Nama Customer')
                 
                 if 'Kota' in df_excel.columns: group_cols.append('Kota')
                 else:
@@ -990,7 +995,23 @@ def main_dashboard():
                 master_pivot['Total Penjualan'] = master_pivot.sum(axis=1)
 
                 master_pivot = master_pivot.reset_index()
-                master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer'})
+                
+                # RENAME AMAN UNTUK PIVOT AGAR MENCEGAH KEYERROR
+                rename_dict = {}
+                for col in master_pivot.columns:
+                    c_low = str(col).lower()
+                    if 'kode' in c_low:
+                        rename_dict[col] = 'Kode Customer'
+                    elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low:
+                        rename_dict[col] = 'Nama Customer'
+                        
+                master_pivot = master_pivot.rename(columns=rename_dict)
+                
+                # Fallback Terakhir
+                if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
+                if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+                if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
+                # --------------------------------
 
                 st.markdown("#### 🔎 Filter Spesifik")
                 col_f1, col_f2, col_f3 = st.columns(3)
