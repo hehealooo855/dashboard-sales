@@ -318,22 +318,29 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    df['Jumlah'] = df['Jumlah'].astype(str).str.replace(r'[Rp\s]', '', regex=True).str.replace('.', '', regex=False)
-    df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
-    df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
+    # --- PERBAIKAN FATAL: SUPER RUPIAH PARSER ---
+    # Fungsi cerdas yang kebal dari perbedaan format Locale (US/Indonesia) di 5 Google Sheet Anda
+    def clean_rupiah(x):
+        x = str(x).upper().replace('RP', '').strip()
+        x = re.sub(r'\s+', '', x) # Buang spasi
+        x = re.sub(r'[,.]\d{2}$', '', x) # Hapus akhiran desimal (.00 atau ,00)
+        x = x.replace(',', '').replace('.', '') # Hapus semua sisa koma/titik ribuan
+        x = re.sub(r'[^\d-]', '', x) # Sisakan hanya angka murni
+        try:
+            return float(x)
+        except:
+            return 0.0
+
+    df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    # --------------------------------------------
     
     # --- PERBAIKAN FATAL TANGGAL (PENCEGAHAN KEBOCORAN Q1) ---
     # Memaksa sistem membaca string dengan format DD/MM/YYYY terlebih dahulu
     tanggal_raw = df['Tanggal'].astype(str).str.strip()
-    
-    # Mencoba format hari/bulan/tahun spesifik (Paling akurat)
     d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
     d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
-    
-    # Fallback/cadangan untuk sisa data yang formatnya berantakan
     d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
     
-    # Menggabungkan hasil filter (prioritas dari d1 -> d2 -> d3)
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
     # ---------------------------------------------------------
@@ -354,7 +361,7 @@ def save_user_secret(username, secret_key):
     df.loc[df['username'] == username, 'secret_key'] = secret_key
     df.to_csv('users.csv', index=False)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False)
 def compute_association_rules(df):
     if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
@@ -1028,7 +1035,6 @@ def main_dashboard():
 
                 master_pivot = master_pivot.reset_index()
                 
-                # RENAME APAPUN NAMA ASLINYA MENJADI 'KODE CUSTOMER' AGAR SCRIPT TIDAK ERROR
                 master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
 
                 st.markdown("#### 🔎 Filter Spesifik")
@@ -1144,7 +1150,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # Gunakan df original untuk mendapatkan riwayat histori RO
                 df_brand_all = df[df['Merk'] == brand_growth].copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1220,14 +1225,14 @@ def main_dashboard():
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
                         
-                        # -- PERBAIKAN FATAL MATH GROWTH AGAR BEBAS DARI BUG INDEX --
+                        # --- PERBAIKAN LOGIKA FUNGSI GET SALES (PENCEGAH BUG MATH) ---
                         df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
                         df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
                         
                         def get_sales(df_yr, m):
-                            """Fungsi super aman untuk menjumlahkan sales bulanan"""
                             res = df_yr[df_yr['Month'] == m]['SALES']
                             return res.sum() if not res.empty else 0
+                        # -------------------------------------------------------------
 
                         tot_2025 = 0
                         tot_2026 = 0
@@ -1283,7 +1288,6 @@ def main_dashboard():
         with tab_ba:
             st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
             
-            # --- STRUKTUR DATA BARU: TARGET BERDASARKAN BRAND ---
             TARGET_BA_PER_BRAND = {
                 "Careso": {
                     "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
