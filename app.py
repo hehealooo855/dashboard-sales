@@ -259,13 +259,12 @@ def render_custom_progress(title, current, target):
 
 @st.cache_data(ttl=60)
 def load_data():
-    # --- MASUKKAN KE-5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv", # Sheet 1
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv", # Sheet 2
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv", # Sheet 3
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", # Sheet 4
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  # Sheet 5
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
     ]
     
     all_dfs = []
@@ -318,24 +317,19 @@ def load_data():
         return raw_brand
     df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
     
-    # --- PERBAIKAN FATAL: SUPER RUPIAH PARSER ---
-    # Fungsi cerdas yang kebal dari perbedaan format Locale (US/Indonesia) di 5 Google Sheet Anda
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
-        x = re.sub(r'\s+', '', x) # Buang spasi
-        x = re.sub(r'[,.]\d{2}$', '', x) # Hapus akhiran desimal (.00 atau ,00)
-        x = x.replace(',', '').replace('.', '') # Hapus semua sisa koma/titik ribuan
-        x = re.sub(r'[^\d-]', '', x) # Sisakan hanya angka murni
+        x = re.sub(r'\s+', '', x) 
+        x = re.sub(r'[,.]\d{2}$', '', x) 
+        x = x.replace(',', '').replace('.', '') 
+        x = re.sub(r'[^\d-]', '', x) 
         try:
             return float(x)
         except:
             return 0.0
 
     df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-    # --------------------------------------------
     
-    # --- PERBAIKAN FATAL TANGGAL (PENCEGAHAN KEBOCORAN Q1) ---
-    # Memaksa sistem membaca string dengan format DD/MM/YYYY terlebih dahulu
     tanggal_raw = df['Tanggal'].astype(str).str.strip()
     d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
     d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
@@ -343,7 +337,6 @@ def load_data():
     
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
-    # ---------------------------------------------------------
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
     for col in cols_to_convert:
@@ -974,6 +967,16 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
         
+        # --- FUNGSI WARNA SMART CONDITIONAL FORMATTING ---
+        def get_color_achv(val):
+            try:
+                if val < 0.50: return '#ffcccc' # Merah (Di bawah 50%)
+                elif val < 0.85: return '#ffffcc' # Kuning (50% sampai 84.9%)
+                else: return '#ccffcc' # Hijau (85% ke atas)
+            except:
+                return ''
+        # --------------------------------------------------
+
         # --- UI: 3 SUB-TAB BARU ---
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
@@ -1218,21 +1221,30 @@ def main_dashboard():
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
+                        # Apply style for Table 1 (AO VS RO %)
+                        def style_tab1(row):
+                            styles = []
+                            for col in row.index:
+                                if col == 'AO VS RO %':
+                                    bg = get_color_achv(row[col])
+                                    styles.append(f'background-color: {bg}; color: black;')
+                                else:
+                                    styles.append('')
+                            return styles
+
                         st.dataframe(pd.DataFrame(display_2026).style.format({
                             'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                        }), use_container_width=True)
+                        }).apply(style_tab1, axis=1), use_container_width=True)
                         
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
                         
-                        # --- PERBAIKAN LOGIKA FUNGSI GET SALES (PENCEGAH BUG MATH) ---
                         df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
                         df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
                         
                         def get_sales(df_yr, m):
                             res = df_yr[df_yr['Month'] == m]['SALES']
                             return res.sum() if not res.empty else 0
-                        # -------------------------------------------------------------
 
                         tot_2025 = 0
                         tot_2026 = 0
@@ -1255,9 +1267,27 @@ def main_dashboard():
                             df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
                             df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
                             
+                            # Apply style for Table 2 (Growth MTM)
+                            def style_tab2(row):
+                                styles = []
+                                for col in row.index:
+                                    if row['MONTH'] == 'Total Sales':
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                                        else:
+                                            styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                                    else:
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(f'background-color: {bg}; color: black;')
+                                        else:
+                                            styles.append('')
+                                return styles
+
                             st.dataframe(df_t2_display.style.format({
                                 'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(lambda x: ['background: lightblue; font-weight: bold' if x.MONTH == 'Total Sales' else '' for i in x], axis=1), use_container_width=True)
+                            }).apply(style_tab2, axis=1), use_container_width=True)
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
@@ -1274,9 +1304,28 @@ def main_dashboard():
                             
                             df_q = pd.DataFrame(q_data)
                             df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
+                            
+                            # Apply style for Table 3 (Growth MTM)
+                            def style_tab3(row):
+                                styles = []
+                                for col in row.index:
+                                    if row['MONTH'] == 'Total Sales':
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                                        else:
+                                            styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                                    else:
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(f'background-color: {bg}; color: black;')
+                                        else:
+                                            styles.append('')
+                                return styles
+
                             st.dataframe(df_q_display.style.format({
                                 'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(lambda x: ['background: lightblue; font-weight: bold' if x.MONTH == 'Total Sales' else '' for i in x], axis=1), use_container_width=True)
+                            }).apply(style_tab3, axis=1), use_container_width=True)
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
             else:
@@ -1385,11 +1434,29 @@ def main_dashboard():
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
                 
+                # Apply style for Table Target BA
+                def style_ba(row):
+                    styles = []
+                    for col in row.index:
+                        if row['Costumer'] == 'Total Achievement':
+                            if col == 'ACHV':
+                                bg = get_color_achv(row[col])
+                                styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                            else:
+                                styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                        else:
+                            if col == 'ACHV':
+                                bg = get_color_achv(row[col])
+                                styles.append(f'background-color: {bg}; color: black;')
+                            else:
+                                styles.append('')
+                    return styles
+                
                 st.dataframe(df_achv_display.style.format({
                     'Target BA': 'Rp {:,.0f}',
                     f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
                     'ACHV': '{:.0%}'
-                }).apply(lambda x: ['background: lightblue; font-weight: bold' if x.Costumer == 'Total Achievement' else '' for i in x], axis=1), use_container_width=True)
+                }).apply(style_ba, axis=1), use_container_width=True)
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
