@@ -322,9 +322,21 @@ def load_data():
     df['Jumlah'] = df['Jumlah'].str.replace(',', '.', regex=False)
     df['Jumlah'] = pd.to_numeric(df['Jumlah'], errors='coerce').fillna(0)
     
-    # PERBAIKAN TANGGAL: Cukup format dayfirst=True yang stabil tanpa fix yang merusak
-    df['Tanggal'] = pd.to_datetime(df['Tanggal'], dayfirst=True, errors='coerce')
+    # --- PERBAIKAN FATAL TANGGAL (PENCEGAHAN KEBOCORAN Q1) ---
+    # Memaksa sistem membaca string dengan format DD/MM/YYYY terlebih dahulu
+    tanggal_raw = df['Tanggal'].astype(str).str.strip()
+    
+    # Mencoba format hari/bulan/tahun spesifik (Paling akurat)
+    d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
+    d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
+    
+    # Fallback/cadangan untuk sisa data yang formatnya berantakan
+    d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
+    
+    # Menggabungkan hasil filter (prioritas dari d1 -> d2 -> d3)
+    df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
+    # ---------------------------------------------------------
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
     for col in cols_to_convert:
@@ -342,7 +354,7 @@ def save_user_secret(username, secret_key):
     df.loc[df['username'] == username, 'secret_key'] = secret_key
     df.to_csv('users.csv', index=False)
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def compute_association_rules(df):
     if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
@@ -893,7 +905,6 @@ def main_dashboard():
         st.divider()
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
-        # PERBAIKAN TYPERROR PADA CROSS SELLING BRAND
         relevant_brands = df_active['Merk'].dropna().astype(str).unique()
         
         if len(relevant_brands) > 1:
@@ -974,9 +985,8 @@ def main_dashboard():
             if not df_excel.empty:
                 df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
                 
-                # --- PERBAIKAN KEYERROR KOLOM ---
                 group_cols = []
-                kode_asal = 'Kode Customer' # Default
+                kode_asal = 'Kode Customer'
                 
                 if 'Kode Customer' in df_excel.columns: 
                     group_cols.append('Kode Customer')
@@ -1134,20 +1144,16 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # Gunakan df original untuk mendapatkan riwayat histori RO paling murni (mengabaikan filter tanggal date_range)
+                # Gunakan df original untuk mendapatkan riwayat histori RO
                 df_brand_all = df[df['Merk'] == brand_growth].copy()
                 
-                # Jika manager/spv filter di sidebar, sesuaikan datanya agar RO relevan
                 if target_sales_filter != "SEMUA":
                     if target_sales_filter.upper() in TARGET_DATABASE:
-                        # Ini filter dari level tim SPV
                         tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
                         df_brand_all = df_brand_all[df_brand_all['Penjualan'].isin(tim_sales_list)]
                     else:
-                        # Ini filter level individu
                         df_brand_all = df_brand_all[df_brand_all['Penjualan'] == target_sales_filter]
                 elif role not in ['manager', 'direktur', 'supervisor'] and my_name.lower() != 'fauziah':
-                    # Fix untuk level non-admin
                     df_brand_all = df_brand_all[df_brand_all['Penjualan'] == my_name]
 
                 if not df_brand_all.empty:
@@ -1160,7 +1166,6 @@ def main_dashboard():
                     growth_data = []
                     seen_outlets = set()
                     
-                    # Looping Kronologis untuk memastikan RO dan NOO akurat
                     for period in all_months:
                         df_period = df_brand_all[df_brand_all['Bulan-Tahun'] == period]
                         current_outlets = set(df_period['Nama Outlet'].dropna().unique())
@@ -1169,7 +1174,6 @@ def main_dashboard():
                         ao = len(current_outlets)
                         noo = len(current_outlets - seen_outlets)
                         
-                        # Update memori historis toko yang pernah beli
                         seen_outlets.update(current_outlets)
                         ro = len(seen_outlets)
                         
@@ -1216,8 +1220,15 @@ def main_dashboard():
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
                         
-                        df_2025 = df_growth_all[df_growth_all['Year'] == 2025].set_index('Month')['SALES']
-                        df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026].set_index('Month')['SALES']
+                        # -- PERBAIKAN FATAL MATH GROWTH AGAR BEBAS DARI BUG INDEX --
+                        df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
+                        df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
+                        
+                        def get_sales(df_yr, m):
+                            """Fungsi super aman untuk menjumlahkan sales bulanan"""
+                            res = df_yr[df_yr['Month'] == m]['SALES']
+                            return res.sum() if not res.empty else 0
+
                         tot_2025 = 0
                         tot_2026 = 0
                         
@@ -1225,8 +1236,8 @@ def main_dashboard():
                             st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
                             yoy_data = []
                             for m in range(1, 13):
-                                s25 = df_2025.get(m, 0)
-                                s26 = df_2026_sales.get(m, 0)
+                                s25 = get_sales(df_2025, m)
+                                s26 = get_sales(df_2026_sales, m)
                                 tot_2025 += s25
                                 tot_2026 += s26
                                 growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
@@ -1248,11 +1259,9 @@ def main_dashboard():
                             q_data = []
                             for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
                                 m_end = m_start + 2
-                                q_2025 = 0
-                                q_2026 = 0
-                                for m in range(m_start, m_end + 1):
-                                    q_2025 += df_2025.get(m, 0)
-                                    q_2026 += df_2026_sales.get(m, 0)
+                                q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
+                                q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
+                                
                                 q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
                                 q_data.append({
                                     'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
