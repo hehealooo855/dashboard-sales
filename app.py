@@ -259,11 +259,30 @@ def render_custom_progress(title, current, target):
 
 @st.cache_data(ttl=60)
 def load_data():
-    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv"
-    try:
-        url_with_ts = f"{url}&t={int(time.time())}"
-        df = pd.read_csv(url_with_ts, dtype=str)
-    except Exception as e: return None
+    # --- MASUKKAN KE-5 LINK PUBLIK CSV ANDA DI SINI ---
+    urls = [
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv", # Sheet 1
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv", # Sheet 2
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv", # Sheet 3
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vResAhuv-3cCB6ymnOxkZ6r7vVXBkVA5NTck5KTDq66ArTP5geFL5prgc2QShSQKTdrqlQXB8A1tGOW/pub?output=csv", # Sheet 4
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  # Sheet 5
+    ]
+    
+    all_dfs = []
+    
+    for url in urls:
+        if url.strip() != "" and url.startswith("http"):
+            try:
+                url_with_ts = f"{url}&t={int(time.time())}"
+                temp_df = pd.read_csv(url_with_ts, dtype=str)
+                all_dfs.append(temp_df)
+            except Exception as e:
+                pass 
+                
+    if not all_dfs:
+        return None
+        
+    df = pd.concat(all_dfs, ignore_index=True)
     
     df.columns = df.columns.str.strip()
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
@@ -575,7 +594,6 @@ def main_dashboard():
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
-    # PERBAIKAN TYPERROR PADA SORTING SIDEBAR FILTER
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
         unique_brands = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
@@ -958,19 +976,23 @@ def main_dashboard():
                 
                 # --- PERBAIKAN KEYERROR KOLOM ---
                 group_cols = []
+                kode_asal = 'Kode Customer' # Default
                 
-                if 'Kode Customer' in df_excel.columns: group_cols.append('Kode Customer')
-                elif 'Kode Costumer' in df_excel.columns: group_cols.append('Kode Costumer')
-                elif 'Kode Outlet' in df_excel.columns: group_cols.append('Kode Outlet')
+                if 'Kode Customer' in df_excel.columns: 
+                    group_cols.append('Kode Customer')
+                    kode_asal = 'Kode Customer'
+                elif 'Kode Costumer' in df_excel.columns: 
+                    group_cols.append('Kode Costumer')
+                    kode_asal = 'Kode Costumer'
+                elif 'Kode Outlet' in df_excel.columns: 
+                    group_cols.append('Kode Outlet')
+                    kode_asal = 'Kode Outlet'
                 else:
                     df_excel['Kode Customer'] = "-"
                     group_cols.append('Kode Customer')
+                    kode_asal = 'Kode Customer'
                     
-                if 'Nama Customer' in df_excel.columns: group_cols.append('Nama Customer')
-                elif 'Nama Outlet' in df_excel.columns: group_cols.append('Nama Outlet')
-                else:
-                    df_excel['Nama Customer'] = "-"
-                    group_cols.append('Nama Customer')
+                group_cols.append('Nama Outlet') 
                 
                 if 'Kota' in df_excel.columns: group_cols.append('Kota')
                 else:
@@ -996,22 +1018,8 @@ def main_dashboard():
 
                 master_pivot = master_pivot.reset_index()
                 
-                # RENAME AMAN UNTUK PIVOT AGAR MENCEGAH KEYERROR
-                rename_dict = {}
-                for col in master_pivot.columns:
-                    c_low = str(col).lower()
-                    if 'kode' in c_low:
-                        rename_dict[col] = 'Kode Customer'
-                    elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low:
-                        rename_dict[col] = 'Nama Customer'
-                        
-                master_pivot = master_pivot.rename(columns=rename_dict)
-                
-                # Fallback Terakhir
-                if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-                if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
-                if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
-                # --------------------------------
+                # RENAME APAPUN NAMA ASLINYA MENJADI 'KODE CUSTOMER' AGAR SCRIPT TIDAK ERROR
+                master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
 
                 st.markdown("#### 🔎 Filter Spesifik")
                 col_f1, col_f2, col_f3 = st.columns(3)
