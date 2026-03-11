@@ -1221,15 +1221,16 @@ def main_dashboard():
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
-                        # Apply style for Table 1 (AO VS RO %)
+                        # Apply style with borders for Table 1
                         def style_tab1(row):
                             styles = []
                             for col in row.index:
+                                base_style = 'border: 1px solid #dcdcdc; '
                                 if col == 'AO VS RO %':
                                     bg = get_color_achv(row[col])
-                                    styles.append(f'background-color: {bg}; color: black;')
+                                    styles.append(base_style + f'background-color: {bg}; color: black;')
                                 else:
-                                    styles.append('')
+                                    styles.append(base_style)
                             return styles
 
                         st.dataframe(pd.DataFrame(display_2026).style.format({
@@ -1267,22 +1268,23 @@ def main_dashboard():
                             df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
                             df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
                             
-                            # Apply style for Table 2 (Growth MTM)
+                            # Apply style with borders for Table 2
                             def style_tab2(row):
                                 styles = []
                                 for col in row.index:
+                                    base_style = 'border: 1px solid #dcdcdc; '
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                                         else:
-                                            styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(f'background-color: {bg}; color: black;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
                                         else:
-                                            styles.append('')
+                                            styles.append(base_style)
                                 return styles
 
                             st.dataframe(df_t2_display.style.format({
@@ -1305,22 +1307,23 @@ def main_dashboard():
                             df_q = pd.DataFrame(q_data)
                             df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
                             
-                            # Apply style for Table 3 (Growth MTM)
+                            # Apply style with borders for Table 3
                             def style_tab3(row):
                                 styles = []
                                 for col in row.index:
+                                    base_style = 'border: 1px solid #dcdcdc; '
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                                         else:
-                                            styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(f'background-color: {bg}; color: black;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
                                         else:
-                                            styles.append('')
+                                            styles.append(base_style)
                                 return styles
 
                             st.dataframe(df_q_display.style.format({
@@ -1434,22 +1437,23 @@ def main_dashboard():
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
                 
-                # Apply style for Table Target BA
+                # Apply style with borders for Table Target BA
                 def style_ba(row):
                     styles = []
                     for col in row.index:
+                        base_style = 'border: 1px solid #dcdcdc; '
                         if row['Costumer'] == 'Total Achievement':
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(f'background-color: {bg}; color: black; font-weight: bold;')
+                                styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                             else:
-                                styles.append('background-color: lightblue; font-weight: bold; color: black;')
+                                styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                         else:
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(f'background-color: {bg}; color: black;')
+                                styles.append(base_style + f'background-color: {bg}; color: black;')
                             else:
-                                styles.append('')
+                                styles.append(base_style)
                     return styles
                 
                 st.dataframe(df_achv_display.style.format({
