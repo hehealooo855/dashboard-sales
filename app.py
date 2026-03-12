@@ -258,10 +258,10 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=300) # Memori sementara untuk me-refresh dashboard (5 Menit)
+@st.cache_data(ttl=300) 
 def load_data():
     PARQUET_FILE = "master_database_penjualan.parquet"
-    CACHE_AGE_LIMIT = 3600 # Waktu simpan file Parquet lokal (1 Jam)
+    CACHE_AGE_LIMIT = 3600 
     
     if os.path.exists(PARQUET_FILE):
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
@@ -972,7 +972,6 @@ def main_dashboard():
         elif recs_df is None: st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
         else: st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
         
-        # --- FITUR BARU: MASTER VISIT PLAN DENGAN RUPIAH ---
         st.divider()
         st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
         st.caption("Tabel interaktif (bisa dicentang/diedit). Terapkan **5 Step Sales Visit**, **Consultative Selling**, dan **Fast Follow Up** pada toko-toko penyumbang 80% omset ini.")
@@ -992,23 +991,22 @@ def main_dashboard():
             top_outlets_mvp['💡 Consultative Action'] = "Cek Stok & Penawaran Baru"
             top_outlets_mvp['🚀 Follow Up Done'] = False
             
-            # Merubah angka ke format Rupiah yang rapi
-            top_outlets_mvp['Omset Historis'] = top_outlets_mvp['Jumlah'].apply(format_idr)
-            
             st.info(f"🎯 Ditemukan **{len(top_outlets_mvp)} Toko Prioritas Utama** yang mewakili 80% omset Anda. Jadikan daftar ini sebagai panduan rute harian!")
             
+            # --- MENGUNCI KOLOM PENTING DAN MEMFORMAT RUPIAH ---
             st.data_editor(
-                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
+                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
                 use_container_width=True,
                 hide_index=True,
-                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis'], # Mencegah edit yang tidak disengaja
+                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah'], 
                 column_config={
+                    "Jumlah": st.column_config.NumberColumn("Omset Historis", format="Rp %d"),
                     "📍 Route Plan (Hari)": st.column_config.SelectboxColumn("Pilih Hari Kunjungan", options=["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], required=True),
                 }
             )
+            # ----------------------------------------------------
         else:
             st.info("Belum ada data transaksi yang cukup untuk membuat Master Visit Plan.")
-        # ------------------------------------------------------
             
     with t_forecast:
         st.subheader("🔮 Prediksi Omset (Forecasting)")
@@ -1050,9 +1048,6 @@ def main_dashboard():
 
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
-        # =========================================================================
-        # SUB-TAB 1: PIVOT DATA CUSTOMER
-        # =========================================================================
         with tab_pivot:
             list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
             list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -1062,47 +1057,64 @@ def main_dashboard():
                 selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
             with col_piv2:
                 selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
-            
-            if selected_merk_excel != "SEMUA":
-                df_excel = df_scope_all[(df_scope_all['Merk'] == selected_merk_excel) & (df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel))].copy()
-            else:
-                df_excel = df_scope_all[df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
 
-            if not df_excel.empty:
-                df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-                
-                group_cols = []
+            df_pivot_source = df_scope_all.copy()
+            if not df_pivot_source.empty:
+                df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
+            
+            group_cols = []
+            kode_asal = 'Kode Customer'
+            if 'Kode Customer' in df_pivot_source.columns: 
+                group_cols.append('Kode Customer')
+                kode_asal = 'Kode Customer'
+            elif 'Kode Costumer' in df_pivot_source.columns: 
+                group_cols.append('Kode Costumer')
+                kode_asal = 'Kode Costumer'
+            elif 'Kode Outlet' in df_pivot_source.columns: 
+                group_cols.append('Kode Outlet')
+                kode_asal = 'Kode Outlet'
+            else:
+                df_pivot_source['Kode Customer'] = "-"
+                group_cols.append('Kode Customer')
                 kode_asal = 'Kode Customer'
                 
-                if 'Kode Customer' in df_excel.columns: 
-                    group_cols.append('Kode Customer')
-                    kode_asal = 'Kode Customer'
-                elif 'Kode Costumer' in df_excel.columns: 
-                    group_cols.append('Kode Costumer')
-                    kode_asal = 'Kode Costumer'
-                elif 'Kode Outlet' in df_excel.columns: 
-                    group_cols.append('Kode Outlet')
-                    kode_asal = 'Kode Outlet'
-                else:
-                    df_excel['Kode Customer'] = "-"
-                    group_cols.append('Kode Customer')
-                    kode_asal = 'Kode Customer'
+            if 'Nama Customer' in df_pivot_source.columns: group_cols.append('Nama Customer')
+            elif 'Nama Outlet' in df_pivot_source.columns: group_cols.append('Nama Outlet')
+            else:
+                df_pivot_source['Nama Customer'] = "-"
+                group_cols.append('Nama Customer')
+            
+            if 'Kota' in df_pivot_source.columns: group_cols.append('Kota')
+            else:
+                df_pivot_source['Kota'] = "-"
+                group_cols.append('Kota')
+
+            master_pivot = pd.DataFrame()
+            
+            if not df_pivot_source.empty:
+                if selected_merk_excel != "SEMUA":
+                    df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
+                    base_customers = df_historical_brand[group_cols].drop_duplicates()
                     
-                if 'Nama Customer' in df_excel.columns: group_cols.append('Nama Customer')
-                elif 'Nama Outlet' in df_excel.columns: group_cols.append('Nama Outlet')
+                    df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
+                    
+                    if not df_excel.empty:
+                        master_pivot = pd.pivot_table(
+                            df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
+                        ).reset_index()
+                        master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
+                    else:
+                        master_pivot = base_customers.copy()
+                        for i in range(1, 13):
+                            master_pivot[i] = 0
                 else:
-                    df_excel['Nama Customer'] = "-"
-                    group_cols.append('Nama Customer')
-                
-                if 'Kota' in df_excel.columns: group_cols.append('Kota')
-                else:
-                    df_excel['Kota'] = "-"
-                    group_cols.append('Kota')
+                    df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
+                    if not df_excel.empty:
+                        master_pivot = pd.pivot_table(
+                            df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
+                        ).reset_index()
 
-                master_pivot = pd.pivot_table(
-                    df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
-                )
-
+            if not master_pivot.empty:
                 bulan_indo = {
                     1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
                     5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
@@ -1112,12 +1124,12 @@ def main_dashboard():
                 for i in range(1, 13):
                     if i not in master_pivot.columns: master_pivot[i] = 0
 
-                master_pivot = master_pivot[list(range(1, 13))]
-                master_pivot.columns = [bulan_indo[i] for i in master_pivot.columns]
-                master_pivot['Total Penjualan'] = master_pivot.sum(axis=1)
-
-                master_pivot = master_pivot.reset_index()
+                cols_to_keep = group_cols + list(range(1, 13))
+                master_pivot = master_pivot[cols_to_keep]
                 
+                master_pivot.columns = group_cols + [bulan_indo[i] for i in range(1, 13)]
+                master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo.values())].sum(axis=1)
+
                 rename_dict = {}
                 for col in master_pivot.columns:
                     c_low = str(col).lower()
@@ -1127,7 +1139,7 @@ def main_dashboard():
                         rename_dict[col] = 'Nama Customer'
                         
                 master_pivot = master_pivot.rename(columns=rename_dict)
-                
+
                 if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
                 if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
                 if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
@@ -1156,13 +1168,10 @@ def main_dashboard():
 
                 if not df_filtered.empty:
                     num_cols = list(bulan_indo.values()) + ['Total Penjualan']
-                    
                     total_dict = {col: "" for col in df_filtered.columns}
                     total_dict['Nama Customer'] = "GRAND TOTAL" 
-                    
                     for col in num_cols:
                         total_dict[col] = df_filtered[col].sum()
-                    
                     df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
                 else:
                     df_display = df_filtered.copy()
@@ -1235,9 +1244,6 @@ def main_dashboard():
                  file_name = f"Laporan_Sales_{datetime.date.today()}.csv"
                  st.download_button("📥 Download Data CSV", data=csv, file_name=file_name, mime="text/csv")
 
-        # =========================================================================
-        # SUB-TAB 2: REKAP GROWTH BRAND (RO, AO, NOO & YoY)
-        # =========================================================================
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand (2025 vs 2026)")
             list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
@@ -1423,9 +1429,6 @@ def main_dashboard():
             else:
                 st.info("Tidak ada data.")
 
-        # =========================================================================
-        # SUB-TAB 3: PENCAPAIAN TARGET BA (DIBAGI PER BRAND)
-        # =========================================================================
         with tab_ba:
             st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
             
