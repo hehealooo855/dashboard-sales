@@ -16,7 +16,7 @@ from calendar import monthrange
 from itertools import combinations
 from collections import Counter
 import calendar
-import concurrent.futures  # LIBRARY BARU UNTUK BOOST KECEPATAN (PARALEL)
+import concurrent.futures
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
 try:
@@ -258,9 +258,19 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# --- FUNGSI DOWNLOAD PARALEL YANG DIPERBARUI ---
-@st.cache_data(ttl=300) # Memperpanjang memori menjadi 5 menit agar aplikasi tidak berat
+@st.cache_data(ttl=300) # Memori sementara untuk me-refresh dashboard (5 Menit)
 def load_data():
+    PARQUET_FILE = "master_database_penjualan.parquet"
+    CACHE_AGE_LIMIT = 3600 # Waktu simpan file Parquet lokal (1 Jam)
+    
+    if os.path.exists(PARQUET_FILE):
+        file_age = time.time() - os.path.getmtime(PARQUET_FILE)
+        if file_age < CACHE_AGE_LIMIT:
+            try:
+                return pd.read_parquet(PARQUET_FILE)
+            except Exception as e:
+                pass 
+
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
@@ -269,7 +279,6 @@ def load_data():
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
     ]
     
-    # Fungsi kecil khusus untuk menangkap 1 link
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http"):
             try:
@@ -281,7 +290,6 @@ def load_data():
 
     all_dfs = []
     
-    # MENGGUNAKAN MULTITHREADING (5 KURIR SEKALIGUS)
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(fetch_url, urls)
         for res in results:
@@ -351,6 +359,11 @@ def load_data():
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
     for col in cols_to_convert:
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
+    
+    try:
+        df.to_parquet(PARQUET_FILE, index=False)
+    except Exception as e:
+        pass 
             
     return df
 
@@ -538,6 +551,16 @@ def main_dashboard():
                     st.warning(f"⚠️ **PENTING:** Foto QR ini dan kirim JAPRI ke {target_sales}. Jangan share di grup!")
                 else: st.error("Username tidak ditemukan di database.")
             else: st.info("Input nama sales diatas untuk memunculkan QR Code.")
+            
+            st.markdown("#### 🚀 Database System")
+            if st.button("🔄 Sync Database Sekarang", use_container_width=True):
+                st.cache_data.clear() 
+                if os.path.exists("master_database_penjualan.parquet"):
+                    os.remove("master_database_penjualan.parquet") 
+                st.success("Database sedang disinkronisasi, halaman akan dimuat ulang...")
+                time.sleep(1)
+                st.rerun()
+            st.caption("Klik tombol di atas jika ada input data terbaru di Google Sheets yang belum masuk ke sistem.")
         
         if st.session_state['role'] == 'direktur':
             with st.expander("🛡️ Audit Log (Director Only)"):
@@ -865,16 +888,20 @@ def main_dashboard():
         if total_omset_pareto > 0:
             pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
             pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
-            top_performers = pareto_df[pareto_df['Cumulative %'] <= 80]
+            
+            # --- FITUR BARU: RANKING PARETO ---
+            top_performers = pareto_df[pareto_df['Cumulative %'] <= 80].copy()
+            top_performers.insert(0, '🏆 Rank', range(1, len(top_performers) + 1))
             
             col_pareto1, col_pareto2 = st.columns(2)
             col_pareto1.metric("Total Produk Unik", len(pareto_df))
             col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
             
             st.dataframe(
-                top_performers[['Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
-                use_container_width=True
+                top_performers[['🏆 Rank', 'Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
+                use_container_width=True, hide_index=True
             )
+            # ----------------------------------
         
         st.divider()
         c1, c2 = st.columns(2)
@@ -915,7 +942,6 @@ def main_dashboard():
         st.divider()
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
-        # PERBAIKAN TYPERROR PADA CROSS SELLING BRAND
         relevant_brands = df_active['Merk'].dropna().astype(str).unique()
         
         if len(relevant_brands) > 1:
@@ -947,6 +973,41 @@ def main_dashboard():
             st.dataframe(recs_df, use_container_width=True)
         elif recs_df is None: st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
         else: st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
+        
+        # --- FITUR BARU: MASTER VISIT PLAN (80/20 & 5-STEP) ---
+        st.divider()
+        st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
+        st.caption("Tabel interaktif (bisa dicentang/diedit). Terapkan **5 Step Sales Visit**, **Consultative Selling**, dan **Fast Follow Up** pada toko-toko penyumbang 80% omset ini.")
+        
+        mvp_df = df_active.groupby(['Nama Outlet'])['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
+        total_mvp_omset = mvp_df['Jumlah'].sum()
+        if total_mvp_omset > 0:
+            mvp_df['Cum %'] = (mvp_df['Jumlah'] / total_mvp_omset).cumsum() * 100
+            top_outlets_mvp = mvp_df[mvp_df['Cum %'] <= 80].copy()
+            
+            sales_dict = df_active.groupby('Nama Outlet')['Penjualan'].first().to_dict()
+            top_outlets_mvp['Salesman'] = top_outlets_mvp['Nama Outlet'].map(sales_dict)
+            
+            top_outlets_mvp.insert(0, 'Prioritas', range(1, len(top_outlets_mvp) + 1))
+            top_outlets_mvp['📍 Route Plan (Hari)'] = ""
+            top_outlets_mvp['📋 5-Step Visit Done'] = False
+            top_outlets_mvp['💡 Consultative Action'] = "Cek Stok & Penawaran Baru"
+            top_outlets_mvp['🚀 Follow Up Done'] = False
+            
+            st.info(f"🎯 Ditemukan **{len(top_outlets_mvp)} Toko Prioritas Utama** yang mewakili 80% omset Anda. Jadikan daftar ini sebagai panduan rute harian!")
+            
+            st.data_editor(
+                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Jumlah": st.column_config.NumberColumn("Omset Historis", format="Rp %d"),
+                    "📍 Route Plan (Hari)": st.column_config.SelectboxColumn("Pilih Hari Kunjungan", options=["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], required=True),
+                }
+            )
+        else:
+            st.info("Belum ada data transaksi yang cukup untuk membuat Master Visit Plan.")
+        # ------------------------------------------------------
             
     with t_forecast:
         st.subheader("🔮 Prediksi Omset (Forecasting)")
@@ -995,13 +1056,21 @@ def main_dashboard():
         # SUB-TAB 1: PIVOT DATA CUSTOMER
         # =========================================================================
         with tab_pivot:
-            list_merk_excel = sorted(df_active['Merk'].dropna().astype(str).unique())
-            selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
+            # --- FITUR BARU: FILTER TAHUN ---
+            list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+            list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
+            
+            col_piv1, col_piv2 = st.columns(2)
+            with col_piv1:
+                selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
+            with col_piv2:
+                selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
             
             if selected_merk_excel != "SEMUA":
-                df_excel = df_active[df_active['Merk'] == selected_merk_excel].copy()
+                df_excel = df_scope_all[(df_scope_all['Merk'] == selected_merk_excel) & (df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel))].copy()
             else:
-                df_excel = df_active.copy()
+                df_excel = df_scope_all[df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
+            # --------------------------------
 
             if not df_excel.empty:
                 df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
@@ -1232,7 +1301,6 @@ def main_dashboard():
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
-                        # Apply style with borders for Table 1
                         def style_tab1(row):
                             styles = []
                             for col in row.index:
@@ -1279,7 +1347,6 @@ def main_dashboard():
                             df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
                             df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
                             
-                            # Apply style with borders for Table 2
                             def style_tab2(row):
                                 styles = []
                                 for col in row.index:
@@ -1318,7 +1385,6 @@ def main_dashboard():
                             df_q = pd.DataFrame(q_data)
                             df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
                             
-                            # Apply style with borders for Table 3
                             def style_tab3(row):
                                 styles = []
                                 for col in row.index:
@@ -1448,7 +1514,6 @@ def main_dashboard():
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
                 
-                # Apply style with borders for Table Target BA
                 def style_ba(row):
                     styles = []
                     for col in row.index:
