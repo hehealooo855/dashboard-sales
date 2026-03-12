@@ -16,6 +16,7 @@ from calendar import monthrange
 from itertools import combinations
 from collections import Counter
 import calendar
+import concurrent.futures  # LIBRARY BARU UNTUK BOOST KECEPATAN (PARALEL)
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
 try:
@@ -257,7 +258,8 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
+# --- FUNGSI DOWNLOAD PARALEL YANG DIPERBARUI ---
+@st.cache_data(ttl=300) # Memperpanjang memori menjadi 5 menit agar aplikasi tidak berat
 def load_data():
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
@@ -267,16 +269,24 @@ def load_data():
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
     ]
     
-    all_dfs = []
-    
-    for url in urls:
+    # Fungsi kecil khusus untuk menangkap 1 link
+    def fetch_url(url):
         if url.strip() != "" and url.startswith("http"):
             try:
                 url_with_ts = f"{url}&t={int(time.time())}"
-                temp_df = pd.read_csv(url_with_ts, dtype=str)
-                all_dfs.append(temp_df)
+                return pd.read_csv(url_with_ts, dtype=str)
             except Exception as e:
-                pass 
+                return None
+        return None
+
+    all_dfs = []
+    
+    # MENGGUNAKAN MULTITHREADING (5 KURIR SEKALIGUS)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = executor.map(fetch_url, urls)
+        for res in results:
+            if res is not None:
+                all_dfs.append(res)
                 
     if not all_dfs:
         return None
@@ -905,6 +915,7 @@ def main_dashboard():
         st.divider()
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
+        # PERBAIKAN TYPERROR PADA CROSS SELLING BRAND
         relevant_brands = df_active['Merk'].dropna().astype(str).unique()
         
         if len(relevant_brands) > 1:
