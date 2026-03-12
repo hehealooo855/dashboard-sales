@@ -889,7 +889,6 @@ def main_dashboard():
             pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
             pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
             
-            # --- FITUR BARU: RANKING PARETO ---
             top_performers = pareto_df[pareto_df['Cumulative %'] <= 80].copy()
             top_performers.insert(0, '🏆 Rank', range(1, len(top_performers) + 1))
             
@@ -901,7 +900,6 @@ def main_dashboard():
                 top_performers[['🏆 Rank', 'Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
                 use_container_width=True, hide_index=True
             )
-            # ----------------------------------
         
         st.divider()
         c1, c2 = st.columns(2)
@@ -974,7 +972,7 @@ def main_dashboard():
         elif recs_df is None: st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
         else: st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
         
-        # --- FITUR BARU: MASTER VISIT PLAN (80/20 & 5-STEP) ---
+        # --- FITUR BARU: MASTER VISIT PLAN DENGAN RUPIAH ---
         st.divider()
         st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
         st.caption("Tabel interaktif (bisa dicentang/diedit). Terapkan **5 Step Sales Visit**, **Consultative Selling**, dan **Fast Follow Up** pada toko-toko penyumbang 80% omset ini.")
@@ -994,14 +992,17 @@ def main_dashboard():
             top_outlets_mvp['💡 Consultative Action'] = "Cek Stok & Penawaran Baru"
             top_outlets_mvp['🚀 Follow Up Done'] = False
             
+            # Merubah angka ke format Rupiah yang rapi
+            top_outlets_mvp['Omset Historis'] = top_outlets_mvp['Jumlah'].apply(format_idr)
+            
             st.info(f"🎯 Ditemukan **{len(top_outlets_mvp)} Toko Prioritas Utama** yang mewakili 80% omset Anda. Jadikan daftar ini sebagai panduan rute harian!")
             
             st.data_editor(
-                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
+                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
                 use_container_width=True,
                 hide_index=True,
+                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis'], # Mencegah edit yang tidak disengaja
                 column_config={
-                    "Jumlah": st.column_config.NumberColumn("Omset Historis", format="Rp %d"),
                     "📍 Route Plan (Hari)": st.column_config.SelectboxColumn("Pilih Hari Kunjungan", options=["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], required=True),
                 }
             )
@@ -1039,24 +1040,20 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
         
-        # --- FUNGSI WARNA SMART CONDITIONAL FORMATTING ---
         def get_color_achv(val):
             try:
-                if val < 0.50: return '#ffcccc' # Merah (Di bawah 50%)
-                elif val < 0.85: return '#ffffcc' # Kuning (50% sampai 84.9%)
-                else: return '#ccffcc' # Hijau (85% ke atas)
+                if val < 0.50: return '#ffcccc' 
+                elif val < 0.85: return '#ffffcc' 
+                else: return '#ccffcc' 
             except:
                 return ''
-        # --------------------------------------------------
 
-        # --- UI: 3 SUB-TAB BARU ---
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
         # =========================================================================
         # SUB-TAB 1: PIVOT DATA CUSTOMER
         # =========================================================================
         with tab_pivot:
-            # --- FITUR BARU: FILTER TAHUN ---
             list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
             list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
             
@@ -1070,7 +1067,6 @@ def main_dashboard():
                 df_excel = df_scope_all[(df_scope_all['Merk'] == selected_merk_excel) & (df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel))].copy()
             else:
                 df_excel = df_scope_all[df_scope_all['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
-            # --------------------------------
 
             if not df_excel.empty:
                 df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
@@ -1092,7 +1088,11 @@ def main_dashboard():
                     group_cols.append('Kode Customer')
                     kode_asal = 'Kode Customer'
                     
-                group_cols.append('Nama Outlet') 
+                if 'Nama Customer' in df_excel.columns: group_cols.append('Nama Customer')
+                elif 'Nama Outlet' in df_excel.columns: group_cols.append('Nama Outlet')
+                else:
+                    df_excel['Nama Customer'] = "-"
+                    group_cols.append('Nama Customer')
                 
                 if 'Kota' in df_excel.columns: group_cols.append('Kota')
                 else:
@@ -1118,7 +1118,19 @@ def main_dashboard():
 
                 master_pivot = master_pivot.reset_index()
                 
-                master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
+                rename_dict = {}
+                for col in master_pivot.columns:
+                    c_low = str(col).lower()
+                    if 'kode' in c_low:
+                        rename_dict[col] = 'Kode Customer'
+                    elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low:
+                        rename_dict[col] = 'Nama Customer'
+                        
+                master_pivot = master_pivot.rename(columns=rename_dict)
+                
+                if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
+                if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+                if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
 
                 st.markdown("#### 🔎 Filter Spesifik")
                 col_f1, col_f2, col_f3 = st.columns(3)
