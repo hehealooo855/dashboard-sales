@@ -17,7 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
-import streamlit.components.v1 as components # LIBRARY BARU: Untuk Injeksi JS Presentasi
+import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -230,10 +230,14 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=300) 
+# =========================================================================
+# CACHE DI-UPGRADE JADI 1 JAM (MENCEGAH STALLING SAAT MEETING)
+# =========================================================================
+@st.cache_data(ttl=3600) 
 def load_data():
     PARQUET_FILE = "master_database_penjualan.parquet"
     CACHE_AGE_LIMIT = 3600 
+    
     if os.path.exists(PARQUET_FILE):
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
         if file_age < CACHE_AGE_LIMIT:
@@ -243,27 +247,12 @@ def load_data():
                 pass 
 
     urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
-
-
-
+       "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-
-
-
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
-
-
-
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-
-
-
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-
-
-
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
     ]
     
     def fetch_url(url):
@@ -282,8 +271,7 @@ def load_data():
             if res is not None and not res.empty:
                 all_dfs.append(res)
                 
-    if not all_dfs:
-        return None
+    if not all_dfs: return None
         
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
@@ -335,7 +323,6 @@ def load_data():
     d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
     d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
     d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-    
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
     
@@ -345,10 +332,12 @@ def load_data():
             df[col] = df[col].fillna("-").astype(str).str.strip()
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
     
-    if 'Kota' in df.columns: df['Provinsi'] = df['Kota'].apply(map_city_to_province)
-    else: df['Provinsi'] = "-"
+    if 'Kota' in df.columns:
+        df['Provinsi'] = df['Kota'].apply(map_city_to_province)
+    else:
+        df['Provinsi'] = "-"
     
-    try: df.toparquet(PARQUET_FILE, index=False)
+    try: df.to_parquet(PARQUET_FILE, index=False)
     except: pass 
             
     return df
@@ -437,207 +426,215 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
-# --- ENGINE ANTI-BUFFERING (MEMOIZATION FRAGMENT) ---
+# =====================================================================
+# ⚡ THE ULTIMATE SPEED BOOSTER: FORM ARCHITECTURE UNTUK PIVOT TABLE
+# =====================================================================
 @st.fragment
-def render_pivot_tab(df_scope_all, role):
+def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
     
-    col_piv1, col_piv2 = st.columns(2)
-    with col_piv1:
-        selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
-    with col_piv2:
-        selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
-
-    df_pivot_source = df_scope_all.copy()
-    if not df_pivot_source.empty:
-        df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
+    # 1. MENYIAPKAN WADAH PIVOT
+    grp_cols = []
+    kd_asal = 'Kode Customer'
+    if 'Kode Outlet' in df_scope_all.columns: 
+        grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
+    elif 'Kode Customer' in df_scope_all.columns: 
+        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
+    elif 'Kode Costumer' in df_scope_all.columns: 
+        grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
+    else:
+        df_scope_all['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
         
-        grp_cols = []
-        kd_asal = 'Kode Customer'
-        if 'Kode Outlet' in df_pivot_source.columns: 
-            grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
-        elif 'Kode Customer' in df_pivot_source.columns: 
-            grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
-        elif 'Kode Costumer' in df_pivot_source.columns: 
-            grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
+    if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
+    elif 'Nama Outlet' in df_scope_all.columns: grp_cols.append('Nama Outlet')
+    else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+    
+    if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
+    else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
+    
+    if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
+    else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
+
+    # 2. BUNGKUS SEMUA FILTER KE DALAM "FORM" AGAR TIDAK LOADING SAAT DI-KLIK
+    with st.form(key='pivot_filter_form'):
+        col_piv1, col_piv2 = st.columns(2)
+        with col_piv1:
+            selected_merk_excel = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_excel)
+        with col_piv2:
+            selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun:", list_tahun, default=list_tahun)
+            
+        st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
+        
+        # Mengambil list unik secara manual sebelum difilter untuk mengisi Pilihan Dropdown
+        list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
+        list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
+        list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
+        list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
+
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
+        with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
+        with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
+        with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
+
+        maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
+        
+        # INI ADALAH TOMBOL AJAIB YANG MEMANGKAS WAKTU LOADING
+        submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
+
+    # 3. HANYA MENGHITUNG PIVOT JIKA TOMBOL DITEKAN ATAU LOAD PERTAMA KALI
+    json_data = df_scope_all.to_json(date_format='iso', orient='split')
+    master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
+
+    if not master_pivot.empty:
+        bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+        for i in range(1, 13):
+            if i not in master_pivot.columns: master_pivot[i] = 0
+        cols_to_keep = grp_cols + list(range(1, 13))
+        master_pivot = master_pivot[cols_to_keep]
+        master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
+        master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
+        
+        ren_dict = {}
+        for col in master_pivot.columns:
+            c_low = str(col).lower()
+            if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
+            elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
+        master_pivot = master_pivot.rename(columns=ren_dict)
+        
+        if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
+        if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+        if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
+        if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
+
+        # Terapkan Filter pada Data Pivot
+        df_filtered = master_pivot.copy()
+        if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
+        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
+        if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
+        if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
+        
+        st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+
+        if maximize_toggle:
+            st.markdown("""
+            <style>
+                iframe[title="streamlit_aggrid.agGrid"] {
+                    position: fixed !important;
+                    top: 0 !important; left: 0 !important;
+                    width: 100vw !important; height: 100vh !important;
+                    z-index: 999999 !important; background-color: white !important;
+                }
+                header {visibility: hidden !important;}
+                [data-testid="stSidebar"] {display: none !important;}
+            </style>
+            """, unsafe_allow_html=True)
+            grid_height = 800 
         else:
-            df_pivot_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
+            grid_height = 450
+
+        if not df_filtered.empty:
+            bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+            num_cols = bulan_indo_list + ['Total Penjualan']
+            total_dict = {col: "" for col in df_filtered.columns}
+            total_dict['Nama Customer'] = "GRAND TOTAL" 
+            for col in num_cols:
+                total_dict[col] = df_filtered[col].sum()
+            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+        else:
+            df_display = df_filtered.copy()
+
+        if AGGRID_AVAILABLE:
+            gb = GridOptionsBuilder.from_dataframe(df_display)
+            gb.configure_pagination(paginationAutoPageSize=True)
+            gb.configure_side_bar()
             
-        if 'Nama Customer' in df_pivot_source.columns: grp_cols.append('Nama Customer')
-        elif 'Nama Outlet' in df_pivot_source.columns: grp_cols.append('Nama Outlet')
-        else: df_pivot_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
-        
-        if 'Provinsi' in df_pivot_source.columns: grp_cols.append('Provinsi')
-        else: df_pivot_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
-        
-        if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
-        else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
-
-        json_data = df_pivot_source.to_json(date_format='iso', orient='split')
-        master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
-
-        if not master_pivot.empty:
-            bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-            for i in range(1, 13):
-                if i not in master_pivot.columns: master_pivot[i] = 0
-            cols_to_keep = grp_cols + list(range(1, 13))
-            master_pivot = master_pivot[cols_to_keep]
-            master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
-            master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
-            ren_dict = {}
-            for col in master_pivot.columns:
-                c_low = str(col).lower()
-                if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
-                elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
-            master_pivot = master_pivot.rename(columns=ren_dict)
-            if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-            if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
-            if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
-            if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
-
-            st.markdown("#### 🔎 Filter Spesifik (Tanpa Loading)")
-            col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-            with col_f1:
-                list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
-                filter_kode = st.multiselect("Kode Customer:", list_kode, placeholder="Pilih Kode...")
-            with col_f2:
-                list_nama = sorted([str(x) for x in master_pivot['Nama Customer'].unique() if str(x) != 'nan'])
-                filter_nama = st.multiselect("Nama Customer:", list_nama, placeholder="Pilih Customer...")
-            with col_f3:
-                list_provinsi = sorted([str(x) for x in master_pivot['Provinsi'].unique() if str(x) != 'nan'])
-                filter_provinsi = st.multiselect("Provinsi:", list_provinsi, placeholder="Pilih Provinsi...")
-            with col_f4:
-                list_kota = sorted([str(x) for x in master_pivot['Kota'].unique() if str(x) != 'nan'])
-                filter_kota = st.multiselect("Kota:", list_kota, placeholder="Pilih Kota...")
-
-            df_filtered = master_pivot.copy()
-            if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-            if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
-            if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
-            if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
+            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
             
-            st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+            for col in num_cols:
+                gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
             
-            maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)")
-            if maximize_toggle:
-                st.markdown("""
-                <style>
-                    iframe[title="streamlit_aggrid.agGrid"] {
-                        position: fixed !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100vw !important;
-                        height: 100vh !important;
-                        z-index: 999999 !important;
-                        background-color: white !important;
-                    }
-                    header {visibility: hidden !important;}
-                    [data-testid="stSidebar"] {display: none !important;}
-                </style>
-                """, unsafe_allow_html=True)
-                grid_height = 800 
-            else:
-                grid_height = 450
-
-            if not df_filtered.empty:
-                bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-                num_cols = bulan_indo_list + ['Total Penjualan']
-                total_dict = {col: "" for col in df_filtered.columns}
-                total_dict['Nama Customer'] = "GRAND TOTAL" 
-                for col in num_cols:
-                    total_dict[col] = df_filtered[col].sum()
-                df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-            else:
-                df_display = df_filtered.copy()
-
-            if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_display)
-                gb.configure_pagination(paginationAutoPageSize=True)
-                gb.configure_side_bar()
-                
-                gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
-                
-                for col in num_cols:
-                    gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
-                
-                jscode = JsCode("""
-                function(params) {
-                    if (params.data['Nama Customer'] === 'GRAND TOTAL') {
-                        return {
-                            'font-weight': 'bold',
-                            'background-color': '#eef2f5',
-                            'border-top': '2px solid #2980b9'
-                        }
+            jscode = JsCode("""
+            function(params) {
+                if (params.data['Nama Customer'] === 'GRAND TOTAL') {
+                    return {
+                        'font-weight': 'bold',
+                        'background-color': '#eef2f5',
+                        'border-top': '2px solid #2980b9'
                     }
                 }
-                """)
-                gb.configure_grid_options(getRowStyle=jscode)
-                gridOptions = gb.build()
-                
-                # CSS GABUNGAN: BORDER + EFEK NEON PRESENTASI
-                grid_css = {
-                    ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
-                    ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
-                    ".ag-row:hover": {
-                        "background-color": "#000000 !important",
-                        "color": "#00f8ff !important",
-                        "box-shadow": "inset 0 0 20px #00f8ff, 0 0 20px #00f8ff !important",
-                        "font-weight": "900 !important",
-                        "transform": "scale(1.002)",
-                        "transition": "all 0.2s",
-                        "z-index": "9999 !important"
-                    }
-                }
-                
-                AgGrid(
-                    df_display, 
-                    gridOptions=gridOptions, 
-                    enable_enterprise_modules=True, 
-                    height=grid_height, 
-                    theme='alpine', 
-                    allow_unsafe_jscode=True,
-                    custom_css=grid_css 
-                )
-            else:
-                def style_fallback(row):
-                    return ['border: 1px solid #dcdcdc;' for _ in row]
-                format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-                st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True, height=grid_height)
-        else:
-            st.info("Data Kosong.")
-
-        user_role_lower = role.lower()
-        if user_role_lower in ['direktur', 'manager', 'supervisor']:
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
-                
-                workbook = writer.book
-                worksheet = writer.sheets['Master Data']
-                
-                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
-                format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) 
-                
-                if 'df_display' in locals() and not df_display.empty:
-                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
-                    worksheet.set_row(last_row_idx, None, bold_format)
+            }
+            """)
+            gb.configure_grid_options(getRowStyle=jscode)
+            gridOptions = gb.build()
             
-            st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                data=output.getvalue(),
-                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            # --- EFEK LASER SPOTLIGHT & NEON HOVER PRESENTASI ---
+            grid_css = {
+                ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
+                ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
+                ".ag-row:hover": {
+                    "background-color": "#000000 !important",
+                    "color": "#00f8ff !important",
+                    "box-shadow": "inset 0 0 20px #00f8ff, 0 0 20px #00f8ff !important",
+                    "font-weight": "900 !important",
+                    "transform": "scale(1.002)",
+                    "transition": "all 0.2s",
+                    "z-index": "9999 !important"
+                }
+            }
+            
+            AgGrid(
+                df_display, 
+                gridOptions=gridOptions, 
+                enable_enterprise_modules=True, 
+                height=grid_height, 
+                theme='alpine', 
+                allow_unsafe_jscode=True,
+                custom_css=grid_css,
+                update_mode='NO_UPDATE', # Mencegah AgGrid mengirim data bolak-balik tanpa henti ke Python
+                data_return_mode='FILTERED_AND_SORTED'
             )
+        else:
+            def style_fallback(row):
+                return ['border: 1px solid #dcdcdc;' for _ in row]
+            format_dict = {col: "Rp {:,.0f}" for col in num_cols}
+            st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True, height=grid_height)
+    else:
+        st.info("Data Kosong.")
+
+    user_role_lower = role.lower()
+    if user_role_lower in ['direktur', 'manager', 'supervisor']:
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            if 'df_display' in locals() and not df_display.empty:
+                df_display.to_excel(writer, index=False, sheet_name='Master Data')
+            
+            workbook = writer.book
+            worksheet = writer.sheets['Master Data']
+            
+            user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
+            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+            
+            worksheet.set_header(f'&C&10{watermark_text}')
+            worksheet.set_footer(f'&RPage &P of &N')
+            
+            format1 = workbook.add_format({'num_format': '#,##0'})
+            worksheet.set_column('D:P', None, format1) 
+            
+            if 'df_display' in locals() and not df_display.empty:
+                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                last_row_idx = len(df_display) 
+                worksheet.set_row(last_row_idx, None, bold_format)
+        
+        st.download_button(
+            label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+            data=output.getvalue(),
+            file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+# =====================================================================
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -744,12 +741,11 @@ def main_dashboard():
         # --- FITUR PRESENTASI SPOTLIGHT (DI SIDEBAR) ---
         st.markdown("---")
         st.write("### 🎬 Mode Presentasi")
-        is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan (Spotlight)", value=False, help="Menggelapkan layar dan memberikan efek senter pada mouse Anda")
+        is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False, help="Menggelapkan layar dan memberikan efek senter pada mouse Anda")
         
         if is_presentation_mode:
             components.html("""
             <script>
-                // Mengambil elemen dari browser parent (karena berjalan di dalam iframe)
                 const overlay = window.parent.document.createElement('div');
                 overlay.id = 'presentation-spotlight';
                 overlay.style.position = 'fixed';
@@ -759,14 +755,14 @@ def main_dashboard():
                 overlay.style.height = '100vh';
                 overlay.style.pointerEvents = 'none';
                 overlay.style.zIndex = '99998';
-                overlay.style.background = 'radial-gradient(circle 200px at 50vw 50vh, transparent 0%, rgba(0, 0, 0, 0.75) 100%)';
+                overlay.style.background = 'radial-gradient(circle 250px at 50vw 50vh, transparent 0%, rgba(0, 0, 0, 0.8) 100%)';
                 
                 const existing = window.parent.document.getElementById('presentation-spotlight');
                 if (existing) existing.remove();
                 window.parent.document.body.appendChild(overlay);
 
                 window.parent.document.addEventListener('mousemove', function(e) {
-                    overlay.style.background = `radial-gradient(circle 200px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0, 0, 0, 0.75) 100%)`;
+                    overlay.style.background = `radial-gradient(circle 250px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0, 0, 0, 0.8) 100%)`;
                 });
             </script>
             """, height=0, width=0)
@@ -1304,166 +1300,6 @@ def main_dashboard():
 
         tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
-        # =====================================================================
-        # ⚡ FRAGMENT BOOSTER: BAGIAN PIVOT DI-LOCK AGAR TIDAK LOAD ULANG HALAMAN
-        # =====================================================================
-        @st.fragment
-        def render_pivot_fragment(df_scope_all, role):
-            list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
-            list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
-            
-            col_piv1, col_piv2 = st.columns(2)
-            with col_piv1:
-                selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel, key="pivot_merk")
-            with col_piv2:
-                selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun, key="pivot_tahun")
-
-            master_pivot = generate_pivot(df_scope_all.to_json(date_format='iso', orient='split'), selected_merk_excel, tuple(selected_tahun_excel), tuple([])) # The tuple([]) is a dummy, logic is inside generate_pivot
-
-            if not master_pivot.empty:
-                st.markdown("#### 🔎 Filter Spesifik (Secepat Kilat ⚡)")
-                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-                with col_f1:
-                    list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
-                    filter_kode = st.multiselect("Kode Customer:", list_kode, placeholder="Pilih Kode...", key="f_kode")
-                with col_f2:
-                    list_nama = sorted([str(x) for x in master_pivot['Nama Customer'].unique() if str(x) != 'nan'])
-                    filter_nama = st.multiselect("Nama Customer:", list_nama, placeholder="Pilih Customer...", key="f_nama")
-                with col_f3:
-                    list_provinsi = sorted([str(x) for x in master_pivot['Provinsi'].unique() if str(x) != 'nan'])
-                    filter_provinsi = st.multiselect("Provinsi:", list_provinsi, placeholder="Pilih Provinsi...", key="f_prov")
-                with col_f4:
-                    list_kota = sorted([str(x) for x in master_pivot['Kota'].unique() if str(x) != 'nan'])
-                    filter_kota = st.multiselect("Kota:", list_kota, placeholder="Pilih Kota...", key="f_kota")
-
-                df_filtered = master_pivot.copy()
-                if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-                if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
-                if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
-                if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
-                
-                st.caption(f"Menampilkan {len(df_filtered)} data customer.")
-                
-                maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)", key="max_toggle")
-                if maximize_toggle:
-                    st.markdown("""
-                    <style>
-                        iframe[title="streamlit_aggrid.agGrid"] {
-                            position: fixed !important;
-                            top: 0 !important;
-                            left: 0 !important;
-                            width: 100vw !important;
-                            height: 100vh !important;
-                            z-index: 999999 !important;
-                            background-color: white !important;
-                        }
-                        header {visibility: hidden !important;}
-                        [data-testid="stSidebar"] {display: none !important;}
-                    </style>
-                    """, unsafe_allow_html=True)
-                    grid_height = 800 
-                else:
-                    grid_height = 450
-
-                if not df_filtered.empty:
-                    bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-                    num_cols = bulan_indo_list + ['Total Penjualan']
-                    total_dict = {col: "" for col in df_filtered.columns}
-                    total_dict['Nama Customer'] = "GRAND TOTAL" 
-                    for col in num_cols:
-                        total_dict[col] = df_filtered[col].sum()
-                    df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-                else:
-                    df_display = df_filtered.copy()
-
-                if AGGRID_AVAILABLE:
-                    gb = GridOptionsBuilder.from_dataframe(df_display)
-                    gb.configure_pagination(paginationAutoPageSize=True)
-                    gb.configure_side_bar()
-                    
-                    gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=150)
-                    
-                    for col in num_cols:
-                        gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
-                    
-                    jscode = JsCode("""
-                    function(params) {
-                        if (params.data['Nama Customer'] === 'GRAND TOTAL') {
-                            return {
-                                'font-weight': 'bold',
-                                'background-color': '#eef2f5',
-                                'border-top': '2px solid #2980b9'
-                            }
-                        }
-                    }
-                    """)
-                    gb.configure_grid_options(getRowStyle=jscode)
-                    gridOptions = gb.build()
-                    
-                    # --- CSS NEON HOVER PRESENTATION MODE ---
-                    grid_css = {
-                        ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
-                        ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
-                        ".ag-row:hover": {
-                            "background-color": "#000000 !important",
-                            "color": "#00f8ff !important",
-                            "box-shadow": "inset 0 0 20px #00f8ff, 0 0 20px #00f8ff !important",
-                            "font-weight": "900 !important",
-                            "transform": "scale(1.002)",
-                            "transition": "all 0.2s",
-                            "z-index": "9999 !important"
-                        }
-                    }
-                    
-                    AgGrid(
-                        df_display, 
-                        gridOptions=gridOptions, 
-                        enable_enterprise_modules=True, 
-                        height=grid_height, 
-                        theme='alpine', 
-                        allow_unsafe_jscode=True,
-                        custom_css=grid_css 
-                    )
-                else:
-                    def style_fallback(row):
-                        return ['border: 1px solid #dcdcdc;' for _ in row]
-                    format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-                    st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True, height=grid_height)
-            else:
-                st.info("Data Kosong.")
-
-            user_role_lower = role.lower()
-            if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    if 'df_display' in locals() and not df_display.empty:
-                        df_display.to_excel(writer, index=False, sheet_name='Master Data')
-                    
-                    workbook = writer.book
-                    worksheet = writer.sheets['Master Data']
-                    
-                    user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
-                    time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                    
-                    worksheet.set_header(f'&C&10{watermark_text}')
-                    worksheet.set_footer(f'&RPage &P of &N')
-                    
-                    format1 = workbook.add_format({'num_format': '#,##0'})
-                    worksheet.set_column('D:P', None, format1) 
-                    
-                    if 'df_display' in locals() and not df_display.empty:
-                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                        last_row_idx = len(df_display) 
-                        worksheet.set_row(last_row_idx, None, bold_format)
-                
-                st.download_button(
-                    label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                    data=output.getvalue(),
-                    file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
         with tab_pivot:
             render_pivot_fragment(df_scope_all, role)
 
@@ -1794,60 +1630,55 @@ def main_dashboard():
                 if api_key_input:
                     try:
                         genai.configure(api_key=api_key_input)
+                        user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
                         
-                        valid_models = []
-                        try:
-                            for m in genai.list_models():
-                                if 'generateContent' in m.supported_generation_methods:
-                                    valid_models.append(m.name.replace('models/', ''))
-                        except Exception as e:
-                            st.error(f"Gagal melacak model dari Google Server: {e}")
-                        
-                        if not valid_models:
-                            st.error("API Key Anda tidak memiliki akses ke model teks Gemini apa pun. Silakan buat API Key baru.")
-                        else:
-                            if 'gemini-1.5-flash' in valid_models:
-                                best_model = 'gemini-1.5-flash'
-                            elif 'gemini-1.5-pro' in valid_models:
-                                best_model = 'gemini-1.5-pro'
-                            else:
-                                best_model = valid_models[0] 
+                        if st.button("💡 Analisis Sekarang"):
+                            with st.spinner("AI sedang membaca ringkasan data Anda..."):
                                 
-                            model = genai.GenerativeModel(best_model)
-                            
-                            user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
-                            
-                            if st.button("💡 Analisis Sekarang"):
-                                with st.spinner(f"AI ({best_model}) sedang membaca ringkasan data Anda..."):
-                                    summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
-                                    summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
-                                    top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
-                                    
-                                    context = f"""
-                                    TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
-                                    JUMLAH TRANSAKSI: {transaksi_count}
-                                    
-                                    TOP 5 BRAND:
-                                    {summary_brand.to_string()}
-                                    
-                                    TOP 5 SALESMAN:
-                                    {summary_sales.to_string()}
-                                    
-                                    TOP 3 PRODUK PALING LAKU:
-                                    {top_produk.to_string()}
-                                    """
-                                    
-                                    final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
-                                    
+                                # Merangkum Data
+                                summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
+                                summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
+                                top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
+                                
+                                context = f"""
+                                TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
+                                JUMLAH TRANSAKSI: {transaksi_count}
+                                
+                                TOP 5 BRAND:
+                                {summary_brand.to_string()}
+                                
+                                TOP 5 SALESMAN:
+                                {summary_sales.to_string()}
+                                
+                                TOP 3 PRODUK PALING LAKU:
+                                {top_produk.to_string()}
+                                """
+                                
+                                final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
+                                
+                                # --- PERBAIKAN FATAL: RANTAI AUTO-FALLBACK MODEL AI ---
+                                models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-pro']
+                                response = None
+                                success_model = ""
+                                
+                                for m_name in models_to_try:
                                     try:
+                                        model = genai.GenerativeModel(m_name)
                                         response = model.generate_content(final_prompt)
-                                        st.success(f"Analisis Selesai! (Powered by {best_model})")
-                                        st.write(response.text)
-                                    except Exception as model_err:
-                                        st.error(f"Terjadi kesalahan pada respon AI: {model_err}")
+                                        success_model = m_name
+                                        break # Jika berhasil, keluar dari loop pencarian
+                                    except Exception:
+                                        continue # Jika model ini gagal/404, lanjut coba model berikutnya
+                                
+                                if response:
+                                    st.success(f"Analisis Selesai! (Powered by {success_model})")
+                                    st.write(response.text)
+                                else:
+                                    st.error("Gagal! API Key Anda tidak memiliki akses ke versi Gemini apa pun. Silakan buat API Key baru di aistudio.google.com")
+                                # ---------------------------------------------------------
                                         
                     except Exception as e:
-                        st.error(f"Gagal memanggil AI. Pastikan API Key Anda benar. Detail: {e}")
+                        st.error(f"Koneksi gagal. Detail: {e}")
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
