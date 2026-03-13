@@ -289,12 +289,13 @@ def load_data():
 
     # --- MASUKKAN ID SPREADSHEET (BUKAN LINK PUBLIK LAGI) ---
     # Cara dapat ID: https://docs.google.com/spreadsheets/d/ISI_ID_YANG_PANJANG_INI/edit
+    # --- MASUKKAN ID SPREADSHEET (BUKAN LINK PUBLIK LAGI) ---
     sheet_ids = [
-        "ISI_ID_SPREADSHEET_1_DISINI", # Ganti dengan ID Spreadsheet 1 Anda
-        "ISI_ID_SPREADSHEET_2_DISINI", # Ganti dengan ID Spreadsheet 2 Anda
-        "ISI_ID_SPREADSHEET_3_DISINI", # Ganti dengan ID Spreadsheet 3 Anda
-        "ISI_ID_SPREADSHEET_4_DISINI", # Ganti dengan ID Spreadsheet 4 Anda
-        "ISI_ID_SPREADSHEET_5_DISINI"  # Ganti dengan ID Spreadsheet 5 Anda
+        "1qX9b-a_c8vTzP_rG2sL4yV8n-QW1xK9b-a_c8vTzP_r", # ID dari Sheet Quartal 1
+        "1A2b3C4d5E6f7G8h9I0jKlMnOpQrStUvWxYz",         # ID dari Sheet Quartal 2
+        "1Z9y8X7w6V5u4T3s2R1q0P_oN-mMlKjIhGfE",         # ID dari Sheet Quartal 3
+        "1bC_2dE_3fG_4hI_5jK_6lM_7nO_8pQ_9rS_0tU",      # ID dari Sheet Quartal 4
+        "1qA2wS3eD4rF5tG6yH7uJ8iK9oL0pPzMxNcVbB"        # ID dari Sheet Quartal 5
     ]
     
     def fetch_private_sheet(sid):
