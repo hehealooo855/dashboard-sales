@@ -6,7 +6,6 @@ pyotp
 qrcode[pil]
 streamlit-aggrid
 xlsxwriter
-gspread
-google-auth
 pyarrow
 fastparquet
+polars
