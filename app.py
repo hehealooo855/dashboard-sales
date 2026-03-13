@@ -60,16 +60,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# KAMUS GEOGRAFIS AI (ANTI-TYPO & PEMBERSIH KATA)
+# KAMUS GEOGRAFIS AI (DUAL-LAYER: KOTA + KECAMATAN)
 # ==========================================
 PROVINCE_MAPPING = {
-    # SUMUT diletakkan paling atas agar lebih cepat diproses
-    "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN"],
-    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI"],
-    "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR"],
-    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI"],
+    "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
+    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
+    "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR", "LUBUK BASUNG", "SIMPANG EMPAT", "UJUNG GADING", "LUBUK SIKAPING", "MUARA LABUH", "PULAU PUNJUNG", "SUNGAI RUMBAI"],
+    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KUANTAN"],
     "KEPULAUAN RIAU": ["BATAM", "TANJUNGPINANG", "BINTAN", "KARIMUN", "NATUNA", "LINGGA", "ANAMBAS"],
-    "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL"],
+    "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL", "RIMBO BUJANG", "SUNGAI BENGKAL"],
     "SUMATERA SELATAN": ["PALEMBANG", "LUBUKLINGGAU", "PRABUMULIH", "PAGAR ALAM", "BANYUASIN", "EMPAT LAWANG", "LAHAT", "MUARA ENIM", "MUSI", "OGAN", "OKU", "OKI", "SEKAYU", "INDRALAYA"],
     "BENGKULU": ["BENGKULU", "KAUR", "KEPAHIANG", "LEBONG", "MUKOMUKO", "REJANG LEBONG", "SELUMA", "BINTUHAN", "CURUP", "ARGA MAKMUR"],
     "LAMPUNG": ["LAMPUNG", "METRO", "PESAWARAN", "PRINGSEWU", "TANGGAMUS", "TULANG BAWANG", "WAY KANAN", "MESUJI", "KALIANDA", "KOTABUMI", "LIWA", "MENGGALA", "GUNUNG SUGIH"],
@@ -84,26 +83,26 @@ PROVINCE_MAPPING = {
 }
 
 def map_city_to_province(city_name):
-    if pd.isna(city_name): return "TIDAK TERDETEKSI"
+    if pd.isna(city_name): return "LAIN-LAIN"
     
     # Konversi ke huruf besar dan hapus spasi berlebih
     c = str(city_name).upper().strip()
     
-    # 1. Bersihkan nilai kosong atau error "0.0", "NAN", dll
+    # 1. Bersihkan nilai kosong, error "0.0", atau karakter aneh
     if c in ["", "-", "NAN", "0.0", "NONE", "NULL", "0"]: 
-        return "TIDAK TERDETEKSI"
+        return "LAIN-LAIN"
         
     # 2. Bersihkan kata pengganggu (Prefix Cleanser)
-    # Menghapus kata "KOTA ", "KABUPATEN ", "KAB. ", "KAB " di awal kalimat
-    c = re.sub(r'^(KABUPATEN|KAB\.|KAB|KOTA)\s+', '', c).strip()
+    c = re.sub(r'^(KECAMATAN|KEC\.|KEC|KABUPATEN|KAB\.|KAB|KOTA)\s+', '', c).strip()
     
-    # 3. Pencocokan ke kamus
+    # 3. Pencocokan Presisi Tinggi (Regex Word Boundary)
+    # Ini memastikan "IDI" tidak terdeteksi di dalam kata "KEDIRI"
     for province, cities in PROVINCE_MAPPING.items():
         for city in cities:
-            if city in c: 
+            if re.search(rf'\b{city}\b', c): 
                 return province
                 
-    return "LAINNYA"
+    return "LAIN-LAIN"
 
 # ==========================================
 # 2. KONFIGURASI DATABASE & TARGET
@@ -258,6 +257,7 @@ def load_data():
             except Exception as e:
                 pass 
 
+    # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
 
@@ -279,7 +279,7 @@ def load_data():
 
 
 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
     ]
     
     def fetch_url(url):
@@ -359,11 +359,10 @@ def load_data():
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer']
     for col in cols_to_convert:
         if col in df.columns: 
-            # Ubah jadi string lalu hapus nilai '0.0' dan 'nan' yang menyebalkan
             df[col] = df[col].fillna("-").astype(str).str.strip()
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
     
-    # --- MENERAPKAN AI GEOCODING PROVINSI ---
+    # --- MENERAPKAN AI GEOCODING PROVINSI (Rencana B - Lapis Ganda) ---
     if 'Kota' in df.columns:
         df['Provinsi'] = df['Kota'].apply(map_city_to_province)
     else:
@@ -376,73 +375,34 @@ def load_data():
 
 # --- FITUR ANTI-BUFFERING PIVOT (DIRECT DATAFRAME CACHING) ---
 @st.cache_data(show_spinner=False)
-def generate_pivot(df_source, selected_merk, selected_tahun_tuple):
-    df_pivot_source = df_source.copy()
+def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
+    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
+    df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
     
-    # --- MEMBANGUN URUTAN KOLOM PIVOT (OPSI B: Kode -> Nama -> Provinsi -> Kota) ---
-    grp_cols = []
+    group_cols = list(group_cols_tuple)
+    master_pivot = pd.DataFrame()
     
-    # 1. Kode
-    kd_asal = 'Kode Customer'
-    if 'Kode Outlet' in df_pivot_source.columns: 
-        grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
-    elif 'Kode Customer' in df_pivot_source.columns: 
-        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
-    elif 'Kode Costumer' in df_pivot_source.columns: 
-        grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
-    else:
-        df_pivot_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
-        
-    # 2. Nama
-    if 'Nama Customer' in df_pivot_source.columns: grp_cols.append('Nama Customer')
-    elif 'Nama Outlet' in df_pivot_source.columns: grp_cols.append('Nama Outlet')
-    else: df_pivot_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
-    
-    # 3. Provinsi (DIURUTKAN SEBELUM KOTA)
-    if 'Provinsi' in df_pivot_source.columns: grp_cols.append('Provinsi')
-    else: df_pivot_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
-
-    # 4. Kota
-    if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
-    else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
-    # --------------------------------------------------------------------------------
-
-    mp = pd.DataFrame()
-    if selected_merk != "SEMUA":
-        df_hist_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk].copy()
-        base_cust = df_hist_brand[grp_cols].drop_duplicates()
-        df_exc = df_hist_brand[df_hist_brand['Tanggal'].dt.year.isin(selected_tahun_tuple)].copy()
-        if not df_exc.empty:
-            mp = pd.pivot_table(df_exc, values='Jumlah', index=grp_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-            mp = pd.merge(base_cust, mp, on=grp_cols, how='left').fillna(0)
+    if not df_pivot_source.empty:
+        if selected_merk_excel != "SEMUA":
+            df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
+            base_customers = df_historical_brand[group_cols].drop_duplicates()
+            
+            df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
+            else:
+                master_pivot = base_customers.copy()
+                for i in range(1, 13):
+                    master_pivot[i] = 0
         else:
-            mp = base_cust.copy()
-            for i in range(1, 13): mp[i] = 0
-    else:
-        df_exc = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_tuple)].copy()
-        if not df_exc.empty:
-            mp = pd.pivot_table(df_exc, values='Jumlah', index=grp_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-    
-    if not mp.empty:
-        bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-        for i in range(1, 13):
-            if i not in mp.columns: mp[i] = 0
-        cols_to_keep = grp_cols + list(range(1, 13))
-        mp = mp[cols_to_keep]
-        mp.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
-        mp['Total Penjualan'] = mp[list(bulan_indo_map.values())].sum(axis=1)
-        ren_dict = {}
-        for col in mp.columns:
-            c_low = str(col).lower()
-            if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
-            elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
-        mp = mp.rename(columns=ren_dict)
-        if 'Kode Customer' not in mp.columns: mp['Kode Customer'] = "-"
-        if 'Nama Customer' not in mp.columns: mp['Nama Customer'] = "-"
-        if 'Kota' not in mp.columns: mp['Kota'] = "-"
-        if 'Provinsi' not in mp.columns: mp['Provinsi'] = "-"
-    return mp
+            df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+
+    return master_pivot
 # -------------------------------------------------------------
 
 def load_users():
@@ -1144,13 +1104,17 @@ def main_dashboard():
                 selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
 
             @st.cache_data(show_spinner="Menyusun Pivot Data (Secepat Kilat)...")
-            def generate_pivot(df_source, selected_merk, selected_tahun_tuple):
-                df_pivot_source = df_source.copy()
+            def generate_pivot(df_json, selected_merk, selected_tahun_tuple):
+                df_pivot_source = pd.read_json(io.StringIO(df_json), orient='split') 
+                df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
+                if df_pivot_source.empty: return pd.DataFrame()
+                
                 df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
                 
+                # ========================================================
+                # OPSI B: STRUKTUR PIVOT = KODE -> NAMA -> PROVINSI -> KOTA
+                # ========================================================
                 grp_cols = []
-                
-                # 1. KODE CUSTOMER
                 kd_asal = 'Kode Customer'
                 if 'Kode Outlet' in df_pivot_source.columns: 
                     grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
@@ -1161,16 +1125,13 @@ def main_dashboard():
                 else:
                     df_pivot_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
                     
-                # 2. NAMA CUSTOMER
                 if 'Nama Customer' in df_pivot_source.columns: grp_cols.append('Nama Customer')
                 elif 'Nama Outlet' in df_pivot_source.columns: grp_cols.append('Nama Outlet')
                 else: df_pivot_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
                 
-                # 3. PROVINSI (Opsi B: Provinsi sebelum Kota)
                 if 'Provinsi' in df_pivot_source.columns: grp_cols.append('Provinsi')
                 else: df_pivot_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
                 
-                # 4. KOTA
                 if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
                 else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
 
@@ -1210,7 +1171,8 @@ def main_dashboard():
                     if 'Kota' not in mp.columns: mp['Kota'] = "-"
                 return mp
 
-            master_pivot = generate_pivot(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel))
+            json_data = df_scope_all.to_json(date_format='iso', orient='split')
+            master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel))
 
             if not master_pivot.empty:
                 st.markdown("#### 🔎 Filter Spesifik")
@@ -1273,7 +1235,7 @@ def main_dashboard():
                     gb.configure_pagination(paginationAutoPageSize=True)
                     gb.configure_side_bar()
                     
-                    gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=150)
+                    gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
                     
                     for col in num_cols:
                         gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
