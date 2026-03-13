@@ -60,52 +60,49 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# KAMUS GEOGRAFIS (AI MAPPING KOTA -> PROVINSI)
+# KAMUS GEOGRAFIS AI (ANTI-TYPO & PEMBERSIH KATA)
 # ==========================================
 PROVINCE_MAPPING = {
-    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI"],
-    "SUMATERA UTARA": ["MEDAN", "BINJAI", "TEBING", "SIANTAR", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN"],
+    # SUMUT diletakkan paling atas agar lebih cepat diproses
+    "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN"],
+    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI"],
     "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR"],
-    "RIAU": ["PEKANBARU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI"],
+    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI"],
     "KEPULAUAN RIAU": ["BATAM", "TANJUNGPINANG", "BINTAN", "KARIMUN", "NATUNA", "LINGGA", "ANAMBAS"],
     "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL"],
     "SUMATERA SELATAN": ["PALEMBANG", "LUBUKLINGGAU", "PRABUMULIH", "PAGAR ALAM", "BANYUASIN", "EMPAT LAWANG", "LAHAT", "MUARA ENIM", "MUSI", "OGAN", "OKU", "OKI", "SEKAYU", "INDRALAYA"],
     "BENGKULU": ["BENGKULU", "KAUR", "KEPAHIANG", "LEBONG", "MUKOMUKO", "REJANG LEBONG", "SELUMA", "BINTUHAN", "CURUP", "ARGA MAKMUR"],
     "LAMPUNG": ["LAMPUNG", "METRO", "PESAWARAN", "PRINGSEWU", "TANGGAMUS", "TULANG BAWANG", "WAY KANAN", "MESUJI", "KALIANDA", "KOTABUMI", "LIWA", "MENGGALA", "GUNUNG SUGIH"],
     "BANGKA BELITUNG": ["PANGKALPINANG", "BANGKA", "BELITUNG", "SUNGAILIAT", "MUNTOK", "KOBA", "TOBOALI", "TANJUNG PANDAN", "MANGGAR"],
-    "DKI JAKARTA": ["JAKARTA"],
+    "DKI JAKARTA": ["JAKARTA", "JKT"],
     "JAWA BARAT": ["BANDUNG", "BEKASI", "BOGOR", "DEPOK", "CIMAHI", "CIREBON", "SUKABUMI", "TASIKMALAYA", "BANJAR", "GARUT", "CIANJUR", "CIAMIS", "KUNINGAN", "MAJALENGKA", "PANGANDARAN", "PURWAKARTA", "SUBANG", "SUMEDANG", "INDRAMAYU", "KARAWANG", "CIBINONG", "CISAAT", "SOREANG", "NGAMPRAH", "TAROGONG", "SINGAPARNA"],
     "BANTEN": ["SERANG", "CILEGON", "TANGERANG", "LEBAK", "PANDEGLANG", "RANGKASBITUNG", "TIGARAKSA"],
     "JAWA TENGAH": ["SEMARANG", "MAGELANG", "PEKALONGAN", "SALATIGA", "SURAKARTA", "SOLO", "TEGAL", "KUDUS", "PURWOKERTO", "DEMAK", "PATI", "BANJARNEGARA", "BANYUMAS", "BATANG", "BLORA", "BOYOLALI", "BREBES", "CILACAP", "GROBOGAN", "JEPARA", "KARANGANYAR", "KEBUMEN", "KENDAL", "KLATEN", "PEMALANG", "PURBALINGGA", "PURWOREJO", "REMBANG", "SRAGEN", "SUKOHARJO", "TEMANGGUNG", "WONOGIRI", "WONOSOBO", "MUNGKID", "KAJEN", "SLAWI", "PURWODADI", "UNGARAN"],
     "DI YOGYAKARTA": ["YOGYAKARTA", "JOGJA", "SLEMAN", "BANTUL", "GUNUNGKIDUL", "KULON PROGO", "WONOSARI", "WATES"],
     "JAWA TIMUR": ["SURABAYA", "KEDIRI", "MADIUN", "MALANG", "MOJOKERTO", "PASURUAN", "PROBOLINGGO", "BATU", "BLITAR", "SIDOARJO", "GRESIK", "JEMBER", "BANYUWANGI", "BOJONEGORO", "BONDOWOSO", "JOMBANG", "LAMONGAN", "LUMAJANG", "MAGETAN", "NGANJUK", "NGAWI", "PACITAN", "PAMEKASAN", "PONOROGO", "SAMPANG", "SITUBONDO", "SUMENEP", "TRENGGALEK", "TUBAN", "TULUNGAGUNG", "BANGKALAN", "KANIGORO", "NGASEM", "CARUBAN", "KEPANJEN", "MOJOSARI", "BANGIL", "KRAKSAAN"],
-    "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"],
-    "NTB": ["MATARAM", "BIMA", "DOMPU", "LOMBOK", "SUMBAWA", "GERUNG", "PRAYA", "SELONG", "TALIWANG", "RABA"],
-    "NTT": ["KUPANG", "ALOR", "BELU", "ENDE", "FLORES", "MANGGARAI", "NAGEKEO", "NGADA", "ROTE", "SABU", "SIKKA", "SUMBA", "TIMOR", "KALABAHI", "ATAMBUA", "LARANTUKA", "RUTENG", "MBAY", "BAJAWA", "BAA", "SEBA", "MAUMERE", "WAIKABUBUK", "WAINGAPU", "TAMBOLAKA", "SOE", "KEFAMENANU"],
-    "KALIMANTAN BARAT": ["PONTIANAK", "SINGKAWANG", "BENGKAYANG", "KAPUAS", "KAYONG", "KETAPANG", "KUBU RAYA", "LANDAK", "MELAWI", "MEMPAWAH", "SAMBAS", "SANGGAU", "SEKADAU", "SINTANG", "PUTUSSIBAU", "SUKADANA", "SUNGAI RAYA", "NGABANG", "NANGA PINOH"],
-    "KALIMANTAN TENGAH": ["PALANGKA RAYA", "BARITO", "GUNUNG MAS", "KATINGAN", "KOTAWARINGIN", "LAMANDAU", "MURUNG RAYA", "PULANG PISAU", "SERUYAN", "SUKAMARA", "BUNTOK", "TAMIANG", "MUARA TEWEH", "KUALA KURUN", "KASONGAN", "PANGKALAN BUN", "SAMPIT", "NANGA BULIK", "PURUK CAHU", "KUALA PEMBUANG"],
-    "KALIMANTAN SELATAN": ["BANJARMASIN", "BANJARBARU", "BALANGAN", "BANJAR", "BARITO", "HULU SUNGAI", "KOTABARU", "TABALONG", "TANAH BUMBU", "TANAH LAUT", "TAPIN", "PARINGIN", "MARTAPURA", "MARABAHAN", "KANDANGAN", "BARABAI", "AMUNTAI", "TANJUNG", "BATULICIN", "PELAIHARI", "RANTAU"],
-    "KALIMANTAN TIMUR": ["BALIKPAPAN", "BONTANG", "SAMARINDA", "BERAU", "KUTAI", "MAHAKAM", "PASER", "PENAJAM", "TANJUNG REDEB", "SENDAWAR", "TENGGARONG", "SANGATTA", "UJOH BILANG"],
-    "KALIMANTAN UTARA": ["TARAKAN", "BULUNGAN", "MALINAU", "NUNUKAN", "TANA TIDUNG", "TANJUNG SELOR", "TIDENG PALE"],
-    "SULAWESI SELATAN": ["MAKASSAR", "PALOPO", "PAREPARE", "BANTAENG", "BARRU", "BONE", "BULUKUMBA", "ENREKANG", "GOWA", "JENEPONTO", "LUWU", "MAROS", "PANGKEP", "PINRANG", "SELAYAR", "SINJAI", "SOPPENG", "TAKALAR", "TANA TORAJA", "WAJO", "WATAMPONE", "SUNGGUMINASA", "BELOPA", "MASAMBA", "MALILI", "PANGKAJENE", "BENTENG", "WATANSOPPENG", "PATTALLASSANG", "MAKALE", "RANTEPAO", "SENGKANG"],
-    "SULAWESI UTARA": ["MANADO", "BITUNG", "KOTAMOBAGU", "TOMOHON", "BOLAANG", "MINAHASA", "SANGIHE", "SITARO", "TALAUD", "LOLAK", "TUTUYAN", "BOROKO", "MOLIBAGU", "TONDANO", "AIRMADIDI", "AMURANG", "RATAHAN", "TAHUNA", "ONDONG SIAU", "MELONGUANE"],
-    "SULAWESI TENGAH": ["PALU", "BANGGAI", "BUOL", "DONGGALA", "MOROWALI", "PARIGI", "POSO", "TOJO", "TOLI-TOLI", "LUWUK", "SALAKAN", "BUNGKU", "KOLONODALE", "AMPANA"],
-    "SULAWESI TENGGARA": ["KENDARI", "BAU-BAU", "BOMBANA", "BUTON", "KOLAKA", "KONAWE", "MUNA", "WAKATOBI", "RUMBIA", "PASARWAJO", "BURANGA", "BATAUGA", "TIRAWUTA", "UNAAHA", "ANDOOLO", "LANGARA", "WANGGUDU", "RAHA", "SAWERIGADI", "WANGI-WANGI"],
-    "GORONTALO": ["GORONTALO", "BOALEMO", "BONE BOLANGO", "POHUWATO", "TILAMUTA", "SUWAWA", "KWANDANG", "MARISA", "BURBONE"],
-    "SULAWESI BARAT": ["MAMUJU", "MAJENE", "MAMASA", "POLEWALI", "PASANGKAYU", "TOPOYO"],
-    "MALUKU": ["AMBON", "TUAL", "BURU", "KEPULAUAN ARU", "MALUKU", "NAMLEA", "NAMROLE", "DOBO", "TIAKUR", "MASOHI", "LANGGUR", "SAUMLAKI", "PIRU", "BULA"],
-    "MALUKU UTARA": ["TERNATE", "TIDORE", "HALMAHERA", "SULA", "MOROTAI", "TALIABU", "JAILOLO", "WEDA", "MABA", "LABUHA", "TOBELO", "SANANA", "DARUBA", "BOBONG"],
-    "PAPUA": ["JAYAPURA", "BIAK", "KEEROM", "MAMBERAMO", "SARMI", "SUPIORI", "WAROPEN", "SENTANI", "SUMOHAI", "BURMESO", "SORONG", "MANOKWARI", "TIMIKA", "MERAUKE", "NABIRE", "ASMAT", "MIMIKA", "PUNCAK", "YAHUKIMO"]
+    "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
 def map_city_to_province(city_name):
-    if pd.isna(city_name) or str(city_name).strip() == "":
-        return "LAINNYA"
-    city_upper = str(city_name).upper().strip()
+    if pd.isna(city_name): return "TIDAK TERDETEKSI"
+    
+    # Konversi ke huruf besar dan hapus spasi berlebih
+    c = str(city_name).upper().strip()
+    
+    # 1. Bersihkan nilai kosong atau error "0.0", "NAN", dll
+    if c in ["", "-", "NAN", "0.0", "NONE", "NULL", "0"]: 
+        return "TIDAK TERDETEKSI"
+        
+    # 2. Bersihkan kata pengganggu (Prefix Cleanser)
+    # Menghapus kata "KOTA ", "KABUPATEN ", "KAB. ", "KAB " di awal kalimat
+    c = re.sub(r'^(KABUPATEN|KAB\.|KAB|KOTA)\s+', '', c).strip()
+    
+    # 3. Pencocokan ke kamus
     for province, cities in PROVINCE_MAPPING.items():
         for city in cities:
-            if city in city_upper: 
+            if city in c: 
                 return province
+                
     return "LAINNYA"
 
 # ==========================================
@@ -261,17 +258,26 @@ def load_data():
             except Exception as e:
                 pass 
 
-    # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
 
+
+
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
+
+
 
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
 
+
+
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
 
+
+
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
+
+
 
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"
     ]
@@ -349,13 +355,13 @@ def load_data():
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
     
-    # --- PEMBERSIHAN DATA KOLOM AGAR STRING AMAN ---
+    # --- PEMBERSIHAN DATA KOLOM KOTA AGAR STRING AMAN & BEBAS "0.0" ---
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer']
     for col in cols_to_convert:
         if col in df.columns: 
-            df[col] = df[col].astype(str).str.strip()
-            # Menghapus '0.0' atau 'nan' palsu yang sering muncul dari Google Sheets
-            df[col] = df[col].replace({'nan': '', 'NaN': '', '0.0': '', 'None': ''})
+            # Ubah jadi string lalu hapus nilai '0.0' dan 'nan' yang menyebalkan
+            df[col] = df[col].fillna("-").astype(str).str.strip()
+            df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
     
     # --- MENERAPKAN AI GEOCODING PROVINSI ---
     if 'Kota' in df.columns:
@@ -371,11 +377,13 @@ def load_data():
 # --- FITUR ANTI-BUFFERING PIVOT (DIRECT DATAFRAME CACHING) ---
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source, selected_merk, selected_tahun_tuple):
-    # Pandas langsung diproses tanpa JSON agar tidak error Length Mismatch
     df_pivot_source = df_source.copy()
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
     
+    # --- MEMBANGUN URUTAN KOLOM PIVOT (OPSI B: Kode -> Nama -> Provinsi -> Kota) ---
     grp_cols = []
+    
+    # 1. Kode
     kd_asal = 'Kode Customer'
     if 'Kode Outlet' in df_pivot_source.columns: 
         grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
@@ -386,15 +394,19 @@ def generate_pivot(df_source, selected_merk, selected_tahun_tuple):
     else:
         df_pivot_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
         
+    # 2. Nama
     if 'Nama Customer' in df_pivot_source.columns: grp_cols.append('Nama Customer')
     elif 'Nama Outlet' in df_pivot_source.columns: grp_cols.append('Nama Outlet')
     else: df_pivot_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
     
-    if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
-    else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
-
+    # 3. Provinsi (DIURUTKAN SEBELUM KOTA)
     if 'Provinsi' in df_pivot_source.columns: grp_cols.append('Provinsi')
     else: df_pivot_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
+
+    # 4. Kota
+    if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
+    else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
+    # --------------------------------------------------------------------------------
 
     mp = pd.DataFrame()
     if selected_merk != "SEMUA":
@@ -1137,6 +1149,8 @@ def main_dashboard():
                 df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
                 
                 grp_cols = []
+                
+                # 1. KODE CUSTOMER
                 kd_asal = 'Kode Customer'
                 if 'Kode Outlet' in df_pivot_source.columns: 
                     grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
@@ -1147,12 +1161,16 @@ def main_dashboard():
                 else:
                     df_pivot_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
                     
+                # 2. NAMA CUSTOMER
                 if 'Nama Customer' in df_pivot_source.columns: grp_cols.append('Nama Customer')
                 elif 'Nama Outlet' in df_pivot_source.columns: grp_cols.append('Nama Outlet')
                 else: df_pivot_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
                 
+                # 3. PROVINSI (Opsi B: Provinsi sebelum Kota)
                 if 'Provinsi' in df_pivot_source.columns: grp_cols.append('Provinsi')
+                else: df_pivot_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
                 
+                # 4. KOTA
                 if 'Kota' in df_pivot_source.columns: grp_cols.append('Kota')
                 else: df_pivot_source['Kota'] = "-"; grp_cols.append('Kota')
 
@@ -1196,8 +1214,6 @@ def main_dashboard():
 
             if not master_pivot.empty:
                 st.markdown("#### 🔎 Filter Spesifik")
-                
-                # --- FILTER PROVINSI DITAMBAHKAN DI SINI ---
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1:
                     list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
@@ -1257,8 +1273,7 @@ def main_dashboard():
                     gb.configure_pagination(paginationAutoPageSize=True)
                     gb.configure_side_bar()
                     
-                    # --- PERBAIKAN: LEBAR MINIMAL & SCROLL BAR HORIZONTAL ---
-                    gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
+                    gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=150)
                     
                     for col in num_cols:
                         gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
@@ -1282,7 +1297,6 @@ def main_dashboard():
                         ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"}
                     }
                     
-                    # Hilangkan ColumnsAutoSizeMode agar kolom tidak tergencet!
                     AgGrid(
                         df_display, 
                         gridOptions=gridOptions, 
@@ -1666,7 +1680,6 @@ def main_dashboard():
                     try:
                         genai.configure(api_key=api_key_input)
                         
-                        # --- PERBAIKAN: AUTO-DETECT MODEL (ANTI ERROR 404) ---
                         valid_models = []
                         try:
                             for m in genai.list_models():
@@ -1678,16 +1691,14 @@ def main_dashboard():
                         if not valid_models:
                             st.error("API Key Anda tidak memiliki akses ke model teks Gemini apa pun. Silakan buat API Key baru.")
                         else:
-                            # Cerdas Memilih Model (Prioritas: 1.5-flash -> 1.5-pro -> 1.0-pro)
                             if 'gemini-1.5-flash' in valid_models:
                                 best_model = 'gemini-1.5-flash'
                             elif 'gemini-1.5-pro' in valid_models:
                                 best_model = 'gemini-1.5-pro'
                             else:
-                                best_model = valid_models[0] # Memilih apa pun yang direstui oleh API Key Anda
+                                best_model = valid_models[0] 
                                 
                             model = genai.GenerativeModel(best_model)
-                            # ----------------------------------------------------
                             
                             user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
                             
