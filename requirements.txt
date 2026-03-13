@@ -1,11 +1,8 @@
 streamlit
 pandas
 plotly
-pytz
 pyotp
-qrcode[pil]
-streamlit-aggrid
+qrcode
 xlsxwriter
-pyarrow
-fastparquet
-polars
+numpy
+openpyxl
