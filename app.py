@@ -17,6 +17,8 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import gspread # LIBRARY BARU: Untuk API Private Google Sheets
+from google.oauth2.service_account import Credentials # LIBRARY BARU: Otentikasi Google
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
 try:
@@ -31,6 +33,16 @@ st.set_page_config(
     layout="wide", 
     initial_sidebar_state="expanded"
 )
+
+# --- AUTO LOGOUT (INACTIVITY TIMEOUT: 15 MENIT) ---
+TIMEOUT_SECONDS = 900 # 900 detik = 15 menit
+if 'last_activity' in st.session_state and st.session_state.get('logged_in', False):
+    if time.time() - st.session_state['last_activity'] > TIMEOUT_SECONDS:
+        st.session_state.clear()
+        st.session_state['logged_out_due_to_inactivity'] = True
+        st.rerun()
+st.session_state['last_activity'] = time.time()
+# ---------------------------------------------------
 
 # Custom CSS
 st.markdown("""
@@ -154,44 +166,30 @@ BRAND_ALIASES = {
 }
 
 SALES_MAPPING = {
-    # 1. WIRA 
+    # (Mapping sama seperti sebelumnya)
     "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
     "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
-    # 2. HAMZAH
     "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
     "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
-    # 3. FERI
     "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
-    # 4. YOGI
     "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
-    # 5. GANI
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
-    # 6. MITHA
     "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA", "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
-    # 7. LYDIA
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA", "LYDIA - KITO": "LYDIA",
-    # 8. NOVI
     "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
-    # 9. ROZY
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
-    # 10. DANI
     "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
-    # 11. MADONG
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
-    # 12. RISKA
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
-    # 13. TIM LISMAN
     "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
     "FANDI - BONAVIE": "FANDI", "DORS- FANDI": "FANDI", "FANDY CRS": "FANDI", "FANDI AFDILLAH": "FANDI", "FANDY WL": "FANDI", "GLOOW - FANDY": "FANDI", "FANDI - GOUTE": "FANDI", "FANDI MG": "FANDI", "FANDI - NEWLAB": "FANDI", "FANDY - YCM": "FANDI", "FANDY YLA": "FANDI", "FANDI JV": "FANDI", "FANDI MLEN": "FANDI",
     "NAUFAL - JAVINCI": "NAUFAL", "NAUFAL JV": "NAUFAL", "NAUFAL SVD": "NAUFAL", "RIZKI JV": "RIZKI", "RIZKI SVD": "RIZKI", 
     "SAHRUL JAVINCI": "SYAHRUL", "SAHRUL TF": "SYAHRUL", "SAHRUL JV": "SYAHRUL", "GLOOW - SAHRUL": "SYAHRUL",
     "SANTI BONAVIE": "SANTI", "SANTI WHITELAB": "SANTI", "SANTI GOUTE": "SANTI", "DWI CRS": "DWI", "DWI NLAB": "DWI", 
     "ASWIN ARTIS": "ASWIN", "ASWIN AI": "ASWIN", "ASWIN Inc": "ASWIN", "ASWIN INC": "ASWIN", "ASWIN - ARTIST INC": "ASWIN",
-    # 14. TIM AKBAR
     "BASTIAN CASANDRA": "BASTIAN", "SSL- BASTIAN": "BASTIAN", "SKIN - BASTIAN": "BASTIAN", "BASTIAN - HONOR": "BASTIAN", "BASTIAN - VG": "BASTIAN", "BASTIAN TH": "BASTIAN", "BASTIAN YL": "BASTIAN", "BASTIAN YL-DIO CAT": "BASTIAN", "BASTIAN SHMP": "BASTIAN", "BASTIAN-DIO 45": "BASTIAN",
     "SSL - DEVI": "DEVI", "SKIN - DEVI": "DEVI", "DEVI Y- DIOSYS CAT": "DEVI", "DEVI YL": "DEVI", "DEVI SHMP": "DEVI", "DEVI-DIO 45": "DEVI", "DEVI YLA": "DEVI",
     "SSL- BAYU": "BAYU", "SKIN - BAYU": "BAYU", "BAYU-DIO 45": "BAYU", "BAYU YL-DIO CAT": "BAYU", "BAYU SHMP": "BAYU", "BAYU YL": "BAYU", 
-    # 16. LAIN-LAIN
     "HABIBI - FZ": "HABIBI", "HABIBI SYB": "HABIBI", "HABIBI TH": "HABIBI", "GLOOW - LISMAN": "LISMAN", "LISMAN - NEWLAB": "LISMAN", 
     "WILLIAM BTC": "WILLIAM", "WILLI - ROS": "WILLIAM", "WILLI - WAL": "WILLIAM", "RINI JV": "RINI", "RINI SYB": "RINI", 
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
@@ -217,7 +215,8 @@ def format_idr(value):
     except: return "Rp 0"
 
 def generate_daily_token():
-    secret_salt = "RAHASIA_PERUSAHAAN_2025" 
+    # Mengambil rahasia dari Streamlit Secrets, jika tidak ada pakai default
+    secret_salt = st.secrets.get("APP_SALT", "RAHASIA_PERUSAHAAN_2025") 
     now_wib = get_current_time_wib()
     time_key = now_wib.strftime("%Y-%m-%d-%p")
     raw_string = f"{time_key}-{secret_salt}"
@@ -258,10 +257,13 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
+# =========================================================================
+# BOOSTER LEVEL 2 (ARMOR EDITION): PARQUET + API PRIVATE + PARALLEL
+# =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
     PARQUET_FILE = "master_database_penjualan.parquet"
-    CACHE_AGE_LIMIT = 3600 
+    CACHE_AGE_LIMIT = 3600 # Waktu simpan file Parquet lokal (1 Jam)
     
     if os.path.exists(PARQUET_FILE):
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
@@ -271,32 +273,54 @@ def load_data():
             except Exception as e:
                 pass 
 
-    urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv" 
+    # --- SETUP KREDENSIAL API PRIVATE GOOGLE SHEETS ---
+    try:
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.readonly'
+        ]
+        # Mengambil kredensial JSON dari st.secrets
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+        client = gspread.authorize(creds)
+    except Exception as e:
+        st.error(f"🔒 Gagal otentikasi Google API. Pastikan Anda sudah mengatur Streamlit Secrets. Detail Error: {e}")
+        return None
+    # --------------------------------------------------
+
+    # --- MASUKKAN ID SPREADSHEET (BUKAN LINK PUBLIK LAGI) ---
+    # Cara dapat ID: https://docs.google.com/spreadsheets/d/ISI_ID_YANG_PANJANG_INI/edit
+    sheet_ids = [
+        "ISI_ID_SPREADSHEET_1_DISINI", # Ganti dengan ID Spreadsheet 1 Anda
+        "ISI_ID_SPREADSHEET_2_DISINI", # Ganti dengan ID Spreadsheet 2 Anda
+        "ISI_ID_SPREADSHEET_3_DISINI", # Ganti dengan ID Spreadsheet 3 Anda
+        "ISI_ID_SPREADSHEET_4_DISINI", # Ganti dengan ID Spreadsheet 4 Anda
+        "ISI_ID_SPREADSHEET_5_DISINI"  # Ganti dengan ID Spreadsheet 5 Anda
     ]
     
-    def fetch_url(url):
-        if url.strip() != "" and url.startswith("http"):
+    def fetch_private_sheet(sid):
+        if sid.strip() != "" and sid != "ISI_ID_SPREADSHEET_1_DISINI":
             try:
-                url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str)
+                # Membuka sheet Private menggunakan Service Account
+                sheet = client.open_by_key(sid).sheet1
+                data = sheet.get_all_values()
+                if data:
+                    headers = data.pop(0)
+                    return pd.DataFrame(data, columns=headers)
             except Exception as e:
                 return None
         return None
 
     all_dfs = []
     
+    # 5 Kurir ditarik menggunakan Multithreading
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(fetch_url, urls)
+        results = executor.map(fetch_private_sheet, sheet_ids)
         for res in results:
-            if res is not None:
+            if res is not None and not res.empty:
                 all_dfs.append(res)
                 
     if not all_dfs:
+        st.warning("Menunggu Anda memasukkan ID Spreadsheet yang benar ke dalam kode...")
         return None
         
     df = pd.concat(all_dfs, ignore_index=True)
@@ -428,10 +452,16 @@ def get_cross_sell_recommendations(df):
 # ==========================================
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
+    
+    # Menampilkan peringatan jika user ditendang karena Auto-Logout
+    if st.session_state.get('logged_out_due_to_inactivity', False):
+        st.warning("⏱️ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali demi keamanan.")
+        st.session_state['logged_out_due_to_inactivity'] = False
+
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
-            st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi (Encrypted)</div>", unsafe_allow_html=True)
             if 'login_step' not in st.session_state: st.session_state['login_step'] = 'credentials'
             if 'temp_user_data' not in st.session_state: st.session_state['temp_user_data'] = None
             
@@ -581,7 +611,7 @@ def main_dashboard():
             
     df = load_data()
     if df is None or df.empty:
-        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link Google Sheet.")
+        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau ID Google Sheet Anda.")
         return
 
     user_role = st.session_state['role']
@@ -991,20 +1021,20 @@ def main_dashboard():
             top_outlets_mvp['💡 Consultative Action'] = "Cek Stok & Penawaran Baru"
             top_outlets_mvp['🚀 Follow Up Done'] = False
             
+            top_outlets_mvp['Omset Historis'] = top_outlets_mvp['Jumlah'].apply(format_idr)
+            
             st.info(f"🎯 Ditemukan **{len(top_outlets_mvp)} Toko Prioritas Utama** yang mewakili 80% omset Anda. Jadikan daftar ini sebagai panduan rute harian!")
             
-            # --- MENGUNCI KOLOM PENTING DAN MEMFORMAT RUPIAH ---
             st.data_editor(
-                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
+                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
                 use_container_width=True,
                 hide_index=True,
-                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Jumlah'], 
+                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis'], 
                 column_config={
                     "Jumlah": st.column_config.NumberColumn("Omset Historis", format="Rp %d"),
                     "📍 Route Plan (Hari)": st.column_config.SelectboxColumn("Pilih Hari Kunjungan", options=["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], required=True),
                 }
             )
-            # ----------------------------------------------------
         else:
             st.info("Belum ada data transaksi yang cukup untuk membuat Master Visit Plan.")
             
