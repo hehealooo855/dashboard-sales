@@ -17,17 +17,15 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
-import gspread # LIBRARY BARU: Untuk API Private Google Sheets
-from google.oauth2.service_account import Credentials # LIBRARY BARU: Otentikasi Google
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
+# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
     from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
     AGGRID_AVAILABLE = True
 except ImportError:
     AGGRID_AVAILABLE = False
 
-# --- 1. KONFIGURASI HALAMAN & CSS PREMIUM ---
+# --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
     layout="wide", 
@@ -35,14 +33,13 @@ st.set_page_config(
 )
 
 # --- AUTO LOGOUT (INACTIVITY TIMEOUT: 15 MENIT) ---
-TIMEOUT_SECONDS = 900 # 900 detik = 15 menit
+TIMEOUT_SECONDS = 900 
 if 'last_activity' in st.session_state and st.session_state.get('logged_in', False):
     if time.time() - st.session_state['last_activity'] > TIMEOUT_SECONDS:
         st.session_state.clear()
         st.session_state['logged_out_due_to_inactivity'] = True
         st.rerun()
 st.session_state['last_activity'] = time.time()
-# ---------------------------------------------------
 
 # Custom CSS
 st.markdown("""
@@ -54,11 +51,9 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
-    /* Memastikan text dalam dataframe wrap dengan baik */
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-    /* Security: Hide Menu & Footer */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -69,54 +64,10 @@ st.markdown("""
 # ==========================================
 
 TARGET_DATABASE = {
-    "MADONG": {
-        "Somethinc": 1_200_000_000, 
-        "SYB": 150_000_000, 
-        "Sekawan": 600_000_000, # AINIE
-        "Avione": 300_000_000, 
-        "Honor": 125_000_000, 
-        "Vlagio": 75_000_000,
-        "Ren & R & L": 20_000_000, 
-        "Mad For Make Up": 25_000_000, 
-        "Satto": 500_000_000,
-        "Mykonos": 20_000_000
-    },
-    "LISMAN": {
-        "Javinci": 1_300_000_000, 
-        "Careso": 400_000_000, 
-        "Newlab": 150_000_000, 
-        "Gloow & Be": 130_000_000, # Glowbe
-        "Dorskin": 20_000_000, 
-        "Whitelab": 150_000_000, 
-        "Bonavie": 50_000_000, 
-        "Goute": 50_000_000, 
-        "Mlen": 100_000_000, 
-        "Artist Inc": 130_000_000
-    },
-    "AKBAR": {
-        "Sociolla": 600_000_000, 
-        "Thai": 300_000_000, 
-        "Inesia": 100_000_000, 
-        "Y2000": 180_000_000, 
-        "Diosys": 520_000_000,
-        "Masami": 40_000_000, 
-        "Cassandra": 50_000_000, 
-        "Clinelle": 80_000_000
-    },
-    "WILLIAM": {
-        "The Face": 600_000_000, 
-        "Yu Chun Mei": 450_000_000, 
-        "Milano": 50_000_000, 
-        "Remar": 0,
-        "Beautica": 100_000_000, 
-        "Walnutt": 30_000_000, 
-        "Elizabeth Rose": 50_000_000, 
-        "Maskit": 30_000_000, 
-        "Claresta": 350_000_000, 
-        "Birth Beyond": 120_000_000, 
-        "OtwooO": 200_000_000, 
-        "Rose All Day": 50_000_000
-    }
+    "MADONG": { "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000 },
+    "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000 },
+    "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000 },
+    "WILLIAM": { "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0, "Beautica": 100_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000, "Maskit": 30_000_000, "Claresta": 350_000_000, "Birth Beyond": 120_000_000, "OtwooO": 200_000_000, "Rose All Day": 50_000_000 }
 }
 
 INDIVIDUAL_TARGETS = {
@@ -166,11 +117,8 @@ BRAND_ALIASES = {
 }
 
 SALES_MAPPING = {
-    # (Mapping sama seperti sebelumnya)
-    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA",
-    "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
-    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH",
-    "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
+    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
+    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
     "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
     "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
@@ -195,15 +143,10 @@ SALES_MAPPING = {
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
-# ==========================================
-# 3. CORE LOGIC
-# ==========================================
-
 def log_activity(user, action):
     log_file = 'audit_log.csv'
     timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
     new_log = pd.DataFrame([[timestamp, user, action]], columns=['Timestamp', 'User', 'Action'])
-    
     if not os.path.isfile(log_file): new_log.to_csv(log_file, index=False)
     else: new_log.to_csv(log_file, mode='a', header=False, index=False)
 
@@ -215,20 +158,16 @@ def format_idr(value):
     except: return "Rp 0"
 
 def generate_daily_token():
-    # Mengambil rahasia dari Streamlit Secrets, jika tidak ada pakai default
-    secret_salt = st.secrets.get("APP_SALT", "RAHASIA_PERUSAHAAN_2025") 
+    try: secret_salt = st.secrets["APP_SALT"]
+    except: secret_salt = "RAHASIA_PERUSAHAAN_2025" 
     now_wib = get_current_time_wib()
     time_key = now_wib.strftime("%Y-%m-%d-%p")
     raw_string = f"{time_key}-{secret_salt}"
-    
     hash_object = hashlib.sha256(raw_string.encode())
     hex_dig = hash_object.hexdigest()
-    
     numeric_filter = filter(str.isdigit, hex_dig)
     numeric_string = "".join(numeric_filter)
-    
-    token = numeric_string[:4].ljust(4, '0')
-    return token
+    return numeric_string[:4].ljust(4, '0')
 
 def render_custom_progress(title, current, target):
     if target == 0: target = 1
@@ -258,12 +197,12 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# BOOSTER LEVEL 2 (ARMOR EDITION): PARQUET + API PRIVATE + PARALLEL
+# BOOSTER LEVEL 2 (REVERT KE PUBLIK LINK TETAPI TETAP PARQUET CACHE)
 # =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
     PARQUET_FILE = "master_database_penjualan.parquet"
-    CACHE_AGE_LIMIT = 3600 # Waktu simpan file Parquet lokal (1 Jam)
+    CACHE_AGE_LIMIT = 3600 
     
     if os.path.exists(PARQUET_FILE):
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
@@ -273,69 +212,54 @@ def load_data():
             except Exception as e:
                 pass 
 
-    # --- SETUP KREDENSIAL API PRIVATE GOOGLE SHEETS ---
-    try:
-        scopes = [
-            'https://www.googleapis.com/auth/spreadsheets.readonly',
-            'https://www.googleapis.com/auth/drive.readonly'
-        ]
-        # Mengambil kredensial JSON dari st.secrets
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-        client = gspread.authorize(creds)
-    except Exception as e:
-        st.error(f"🔒 Gagal otentikasi Google API. Pastikan Anda sudah mengatur Streamlit Secrets. Detail Error: {e}")
-        return None
-    # --------------------------------------------------
-
-    # --- MASUKKAN ID SPREADSHEET (BUKAN LINK PUBLIK LAGI) ---
-    # Cara dapat ID: https://docs.google.com/spreadsheets/d/ISI_ID_YANG_PANJANG_INI/edit
-    # --- MASUKKAN ID SPREADSHEET (BUKAN LINK PUBLIK LAGI) ---
-    sheet_ids = [
-        "1qX9b-a_c8vTzP_rG2sL4yV8n-QW1xK9b-a_c8vTzP_r", # ID dari Sheet Quartal 1
-        "1A2b3C4d5E6f7G8h9I0jKlMnOpQrStUvWxYz",         # ID dari Sheet Quartal 2
-        "1Z9y8X7w6V5u4T3s2R1q0P_oN-mMlKjIhGfE",         # ID dari Sheet Quartal 3
-        "1bC_2dE_3fG_4hI_5jK_6lM_7nO_8pQ_9rS_0tU",      # ID dari Sheet Quartal 4
-        "1qA2wS3eD4rF5tG6yH7uJ8iK9oL0pPzMxNcVbB"        # ID dari Sheet Quartal 5
+    # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
+    urls = [
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv"  
     ]
     
-    def fetch_private_sheet(sid):
-        if sid.strip() != "" and sid != "ISI_ID_SPREADSHEET_1_DISINI":
+    def fetch_url(url):
+        if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
-                # Membuka sheet Private menggunakan Service Account
-                sheet = client.open_by_key(sid).sheet1
-                data = sheet.get_all_values()
-                if data:
-                    headers = data.pop(0)
-                    return pd.DataFrame(data, columns=headers)
+                # Bypass cache dengan menambahkan timestamp unik
+                url_with_ts = f"{url}&t={int(time.time())}"
+                return pd.read_csv(url_with_ts, dtype=str)
             except Exception as e:
                 return None
         return None
 
     all_dfs = []
     
-    # 5 Kurir ditarik menggunakan Multithreading
+    # Menjalankan 5 kurir (Paralel)
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(fetch_private_sheet, sheet_ids)
+        results = executor.map(fetch_url, urls)
         for res in results:
             if res is not None and not res.empty:
                 all_dfs.append(res)
                 
     if not all_dfs:
-        st.warning("Menunggu Anda memasukkan ID Spreadsheet yang benar ke dalam kode...")
         return None
         
     df = pd.concat(all_dfs, ignore_index=True)
     
+    # --- PEMBERSIHAN DATA ---
     df.columns = df.columns.str.strip()
-    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols): return None
     
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
             faktur_col = col; break
-    
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+    
+    # Memastikan kolom penting ada
+    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
+    if not all(col in df.columns for col in required_cols): 
+        # Jika nama kolom berbeda (misal Qty vs Jumlah), abaikan error dengan return None
+        return None
     
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
@@ -366,10 +290,8 @@ def load_data():
         x = re.sub(r'[,.]\d{2}$', '', x) 
         x = x.replace(',', '').replace('.', '') 
         x = re.sub(r'[^\d-]', '', x) 
-        try:
-            return float(x)
-        except:
-            return 0.0
+        try: return float(x)
+        except: return 0.0
 
     df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
     
@@ -381,7 +303,7 @@ def load_data():
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
     
-    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur']
+    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer']
     for col in cols_to_convert:
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
     
@@ -407,7 +329,7 @@ def compute_association_rules(df):
     if 'No Faktur' not in df.columns or 'Nama Barang' not in df.columns: return None
     item_support = df.groupby('Nama Barang')['No Faktur'].nunique()
     total_transactions = df['No Faktur'].nunique()
-    pair_df = df.groupby('No Faktur')['Nama Barang'].apply(lambda x: list(combinations(sorted(x.unique()), 2)) if len(x.unique()) > 1 else [])
+    pair_df = df.groupby('No Faktur')['Nama Barang'].apply(lambda x: list(combinations(sorted(x.dropna().unique()), 2)) if len(x.dropna().unique()) > 1 else [])
     pairs = [p for sublist in pair_df for p in sublist]
     pair_support = Counter(pairs)
     
@@ -418,6 +340,7 @@ def compute_association_rules(df):
         rules.append({'antecedent': A, 'consequent': B, 'support': supp_ab / total_transactions, 'confidence': conf_ab})
         rules.append({'antecedent': B, 'consequent': A, 'support': supp_ab / total_transactions, 'confidence': conf_ba})
     
+    if not rules: return None
     rules_df = pd.DataFrame(rules).drop_duplicates().sort_values('confidence', ascending=False)
     rules_df = rules_df[rules_df['confidence'] > 0.5]  
     return rules_df
@@ -427,11 +350,12 @@ def get_cross_sell_recommendations(df):
     rules_df = compute_association_rules(df)
     if rules_df is None or rules_df.empty: return None
     
-    outlet_purchases = df.groupby('Nama Outlet')['Nama Barang'].apply(set).to_dict()
+    outlet_purchases = df.groupby('Nama Outlet')['Nama Barang'].apply(lambda x: set(x.dropna())).to_dict()
     recommendations = []
     for outlet, purchased in outlet_purchases.items():
         if not purchased: continue
-        sales = df[df['Nama Outlet'] == outlet]['Penjualan'].unique()[0] if not df[df['Nama Outlet'] == outlet].empty else "-"
+        sales_arr = df[df['Nama Outlet'] == outlet]['Penjualan'].unique()
+        sales = sales_arr[0] if len(sales_arr) > 0 else "-"
         possible_recs = {}
         for item in purchased:
             matching_rules = rules_df[rules_df['antecedent'] == item]
@@ -454,7 +378,6 @@ def get_cross_sell_recommendations(df):
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
-    # Menampilkan peringatan jika user ditendang karena Auto-Logout
     if st.session_state.get('logged_out_due_to_inactivity', False):
         st.warning("⏱️ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali demi keamanan.")
         st.session_state['logged_out_due_to_inactivity'] = False
@@ -462,7 +385,7 @@ def login_page():
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
-            st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi (Encrypted)</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; color:#888; font-size:12px;'>Sistem Terproteksi</div>", unsafe_allow_html=True)
             if 'login_step' not in st.session_state: st.session_state['login_step'] = 'credentials'
             if 'temp_user_data' not in st.session_state: st.session_state['temp_user_data'] = None
             
@@ -588,7 +511,7 @@ def main_dashboard():
                 st.cache_data.clear() 
                 if os.path.exists("master_database_penjualan.parquet"):
                     os.remove("master_database_penjualan.parquet") 
-                st.success("Database sedang disinkronisasi, halaman akan dimuat ulang...")
+                st.success("Database disinkronisasi, halaman akan dimuat ulang...")
                 time.sleep(1)
                 st.rerun()
             st.caption("Klik tombol di atas jika ada input data terbaru di Google Sheets yang belum masuk ke sistem.")
@@ -612,7 +535,7 @@ def main_dashboard():
             
     df = load_data()
     if df is None or df.empty:
-        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau ID Google Sheet Anda.")
+        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link CSV Google Sheet Anda.")
         return
 
     user_role = st.session_state['role']
@@ -670,6 +593,7 @@ def main_dashboard():
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
+    # --- PERLINDUNGAN TYPEERROR (DIPASTIKAN AMAN) ---
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
         unique_brands = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
@@ -678,6 +602,7 @@ def main_dashboard():
         unique_outlets = sorted(df_scope_all['Nama Outlet'].dropna().astype(str).unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+    # ------------------------------------------------
 
     if len(date_range) == 2:
         start_date, end_date = date_range
@@ -1079,6 +1004,9 @@ def main_dashboard():
 
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
+        # =========================================================================
+        # SUB-TAB 1: PIVOT DATA CUSTOMER
+        # =========================================================================
         with tab_pivot:
             list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
             list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -1093,17 +1021,20 @@ def main_dashboard():
             if not df_pivot_source.empty:
                 df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
             
+            # --- PENCEGAHAN KEYERROR (Mendeteksi Kolom dari Sheet Anda) ---
             group_cols = []
             kode_asal = 'Kode Customer'
-            if 'Kode Customer' in df_pivot_source.columns: 
+            
+            # Deteksi otomatis kolom Kode Customer/Outlet
+            if 'Kode Outlet' in df_pivot_source.columns: 
+                group_cols.append('Kode Outlet')
+                kode_asal = 'Kode Outlet'
+            elif 'Kode Customer' in df_pivot_source.columns: 
                 group_cols.append('Kode Customer')
                 kode_asal = 'Kode Customer'
             elif 'Kode Costumer' in df_pivot_source.columns: 
                 group_cols.append('Kode Costumer')
                 kode_asal = 'Kode Costumer'
-            elif 'Kode Outlet' in df_pivot_source.columns: 
-                group_cols.append('Kode Outlet')
-                kode_asal = 'Kode Outlet'
             else:
                 df_pivot_source['Kode Customer'] = "-"
                 group_cols.append('Kode Customer')
@@ -1161,15 +1092,8 @@ def main_dashboard():
                 master_pivot.columns = group_cols + [bulan_indo[i] for i in range(1, 13)]
                 master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo.values())].sum(axis=1)
 
-                rename_dict = {}
-                for col in master_pivot.columns:
-                    c_low = str(col).lower()
-                    if 'kode' in c_low:
-                        rename_dict[col] = 'Kode Customer'
-                    elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low:
-                        rename_dict[col] = 'Nama Customer'
-                        
-                master_pivot = master_pivot.rename(columns=rename_dict)
+                # RENAME YANG AMAN (AGAR TIDAK ERROR "KEYERROR")
+                master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
 
                 if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
                 if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
