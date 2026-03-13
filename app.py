@@ -17,7 +17,6 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
-import polars as pl # MESIN BARU: RUST ENGINE BOOSTER
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -198,7 +197,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# BOOSTER LEVEL 1 & 2: RUST ENGINE (POLARS) + PARQUET CACHE LOKAL
+# BOOSTER LEVEL 2: PUBLIK LINK + MULTITHREADING + PARQUET CACHE LOKAL
 # =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
@@ -209,42 +208,38 @@ def load_data():
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
         if file_age < CACHE_AGE_LIMIT:
             try:
-                return pl.read_parquet(PARQUET_FILE).to_pandas()
+                return pd.read_parquet(PARQUET_FILE)
             except Exception as e:
                 pass 
 
-    # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "LINK_SHEET_QUARTAL_2_DISINI", 
-        "LINK_SHEET_QUARTAL_3_DISINI", 
-        "LINK_SHEET_QUARTAL_4_DISINI", 
-        "LINK_SHEET_QUARTAL_5_DISINI"  
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", 
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  
     ]
     
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
                 url_with_ts = f"{url}&t={int(time.time())}"
-                return pl.read_csv(url_with_ts, infer_schema_length=0, ignore_errors=True)
+                return pd.read_csv(url_with_ts, dtype=str)
             except Exception as e:
                 return None
         return None
 
     all_dfs = []
-    
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(fetch_url, urls)
         for res in results:
-            if res is not None and not res.is_empty():
+            if res is not None and not res.empty:
                 all_dfs.append(res)
                 
     if not all_dfs:
         return None
         
-    df_pl = pl.concat(all_dfs, how="diagonal_relaxed")
-    df = df_pl.to_pandas()
-    
+    df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
     faktur_col = None
@@ -254,8 +249,7 @@ def load_data():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols): 
-        return None
+    if not all(col in df.columns for col in required_cols): return None
     
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
@@ -303,12 +297,43 @@ def load_data():
     for col in cols_to_convert:
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
     
-    try:
-        df.to_parquet(PARQUET_FILE, index=False, engine='pyarrow')
-    except Exception as e:
-        pass 
+    try: df.to_parquet(PARQUET_FILE, index=False)
+    except: pass 
             
     return df
+
+# --- FITUR ANTI-BUFFERING: MEMOIZATION UNTUK PIVOT TABLE ---
+@st.cache_data(show_spinner=False)
+def get_pivot_data(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
+    # Merekonstruksi dataframe karena st.cache_data lebih cepat memproses json/dict
+    df_pivot_source = pd.read_json(io.StringIO(df_source_json))
+    df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
+    df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
+    
+    group_cols = list(group_cols_tuple)
+    master_pivot = pd.DataFrame()
+    
+    if not df_pivot_source.empty:
+        if selected_merk_excel != "SEMUA":
+            df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
+            base_customers = df_historical_brand[group_cols].drop_duplicates()
+            
+            df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
+            else:
+                master_pivot = base_customers.copy()
+                for i in range(1, 13):
+                    master_pivot[i] = 0
+        else:
+            df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+
+    return master_pivot
+# -------------------------------------------------------------
 
 def load_users():
     try: return pd.read_csv('users.csv')
@@ -996,7 +1021,7 @@ def main_dashboard():
             except:
                 return ''
 
-        tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
+        tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
         with tab_pivot:
             list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
@@ -1007,97 +1032,83 @@ def main_dashboard():
                 selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
             with col_piv2:
                 selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
-
-            df_pivot_source = df_scope_all.copy()
-            if not df_pivot_source.empty:
-                df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
             
-            group_cols = []
-            kode_asal = 'Kode Customer'
-            
-            if 'Kode Outlet' in df_pivot_source.columns: 
-                group_cols.append('Kode Outlet')
-                kode_asal = 'Kode Outlet'
-            elif 'Kode Customer' in df_pivot_source.columns: 
-                group_cols.append('Kode Customer')
-                kode_asal = 'Kode Customer'
-            elif 'Kode Costumer' in df_pivot_source.columns: 
-                group_cols.append('Kode Costumer')
-                kode_asal = 'Kode Costumer'
-            else:
-                df_pivot_source['Kode Customer'] = "-"
-                group_cols.append('Kode Customer')
-                kode_asal = 'Kode Customer'
+            # --- MEMOIZATION/CACHING UNTUK MENCEGAH BUFFERING ---
+            @st.cache_data(show_spinner="Menyusun Pivot Data (Secepat Kilat)...")
+            def generate_pivot(df_json, selected_merk, selected_tahun_tuple):
+                df_source = pd.read_json(io.StringIO(df_json))
+                df_source['Tanggal'] = pd.to_datetime(df_source['Tanggal'])
+                if df_source.empty: return pd.DataFrame()
                 
-            if 'Nama Customer' in df_pivot_source.columns: group_cols.append('Nama Customer')
-            elif 'Nama Outlet' in df_pivot_source.columns: group_cols.append('Nama Outlet')
-            else:
-                df_pivot_source['Nama Customer'] = "-"
-                group_cols.append('Nama Customer')
-            
-            if 'Kota' in df_pivot_source.columns: group_cols.append('Kota')
-            else:
-                df_pivot_source['Kota'] = "-"
-                group_cols.append('Kota')
-
-            master_pivot = pd.DataFrame()
-            
-            if not df_pivot_source.empty:
-                if selected_merk_excel != "SEMUA":
-                    df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
-                    base_customers = df_historical_brand[group_cols].drop_duplicates()
-                    
-                    df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
-                    
-                    if not df_excel.empty:
-                        master_pivot = pd.pivot_table(
-                            df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
-                        ).reset_index()
-                        master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
-                    else:
-                        master_pivot = base_customers.copy()
-                        for i in range(1, 13):
-                            master_pivot[i] = 0
+                df_source['Bulan Angka'] = df_source['Tanggal'].dt.month
+                
+                grp_cols = []
+                kd_asal = 'Kode Customer'
+                if 'Kode Outlet' in df_source.columns: 
+                    grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
+                elif 'Kode Customer' in df_source.columns: 
+                    grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
+                elif 'Kode Costumer' in df_source.columns: 
+                    grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
                 else:
-                    df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel)].copy()
-                    if not df_excel.empty:
-                        master_pivot = pd.pivot_table(
-                            df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0
-                        ).reset_index()
+                    df_source['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
+                    
+                if 'Nama Customer' in df_source.columns: grp_cols.append('Nama Customer')
+                elif 'Nama Outlet' in df_source.columns: grp_cols.append('Nama Outlet')
+                else: df_source['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+                
+                if 'Kota' in df_source.columns: grp_cols.append('Kota')
+                else: df_source['Kota'] = "-"; grp_cols.append('Kota')
+
+                mp = pd.DataFrame()
+                if selected_merk != "SEMUA":
+                    df_hist_brand = df_source[df_source['Merk'] == selected_merk].copy()
+                    base_cust = df_hist_brand[grp_cols].drop_duplicates()
+                    df_exc = df_hist_brand[df_hist_brand['Tanggal'].dt.year.isin(selected_tahun_tuple)].copy()
+                    if not df_exc.empty:
+                        mp = pd.pivot_table(df_exc, values='Jumlah', index=grp_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                        mp = pd.merge(base_cust, mp, on=grp_cols, how='left').fillna(0)
+                    else:
+                        mp = base_cust.copy()
+                        for i in range(1, 13): mp[i] = 0
+                else:
+                    df_exc = df_source[df_source['Tanggal'].dt.year.isin(selected_tahun_tuple)].copy()
+                    if not df_exc.empty:
+                        mp = pd.pivot_table(df_exc, values='Jumlah', index=grp_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                
+                if not mp.empty:
+                    bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                    for i in range(1, 13):
+                        if i not in mp.columns: mp[i] = 0
+                    cols_to_keep = grp_cols + list(range(1, 13))
+                    mp = mp[cols_to_keep]
+                    mp.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
+                    mp['Total Penjualan'] = mp[list(bulan_indo_map.values())].sum(axis=1)
+                    ren_dict = {}
+                    for col in mp.columns:
+                        c_low = str(col).lower()
+                        if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
+                        elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
+                    mp = mp.rename(columns=ren_dict)
+                    if 'Kode Customer' not in mp.columns: mp['Kode Customer'] = "-"
+                    if 'Nama Customer' not in mp.columns: mp['Nama Customer'] = "-"
+                    if 'Kota' not in mp.columns: mp['Kota'] = "-"
+                return mp
+            # ------------------------------------------------------------------
+
+            # Eksekusi Pivot Super Cepat
+            json_data = df_scope_all.to_json(date_format='iso', orient='split')
+            master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel))
 
             if not master_pivot.empty:
-                bulan_indo = {
-                    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-                    5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-                    9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-                }
-
-                for i in range(1, 13):
-                    if i not in master_pivot.columns: master_pivot[i] = 0
-
-                cols_to_keep = group_cols + list(range(1, 13))
-                master_pivot = master_pivot[cols_to_keep]
-                
-                master_pivot.columns = group_cols + [bulan_indo[i] for i in range(1, 13)]
-                master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo.values())].sum(axis=1)
-
-                master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
-
-                if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-                if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
-                if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
-
                 st.markdown("#### 🔎 Filter Spesifik")
                 col_f1, col_f2, col_f3 = st.columns(3)
-                
                 with col_f1:
                     list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
                     filter_kode = st.multiselect("Kode Customer:", list_kode, placeholder="Pilih Kode...")
-                    
                 with col_f2:
                     list_nama = sorted([str(x) for x in master_pivot['Nama Customer'].unique() if str(x) != 'nan'])
                     filter_nama = st.multiselect("Nama Customer:", list_nama, placeholder="Pilih Customer...")
-                    
                 with col_f3:
                     list_kota = sorted([str(x) for x in master_pivot['Kota'].unique() if str(x) != 'nan'])
                     filter_kota = st.multiselect("Kota:", list_kota, placeholder="Pilih Kota...")
@@ -1108,9 +1119,15 @@ def main_dashboard():
                 if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
                 
                 st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+                
+                # --- TOMBOL MAXIMIZE LAYAR PENUH ---
+                maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)")
+                grid_height = 800 if maximize_toggle else 450
+                # -----------------------------------
 
                 if not df_filtered.empty:
-                    num_cols = list(bulan_indo.values()) + ['Total Penjualan']
+                    bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+                    num_cols = bulan_indo_list + ['Total Penjualan']
                     total_dict = {col: "" for col in df_filtered.columns}
                     total_dict['Nama Customer'] = "GRAND TOTAL" 
                     for col in num_cols:
@@ -1124,9 +1141,7 @@ def main_dashboard():
                     gb.configure_pagination(paginationAutoPageSize=True)
                     gb.configure_side_bar()
                     
-                    # PERBAIKAN: Lebar minimal kolom agar judul dan isi tidak terhimpit
                     gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=150)
-                    
                     for col in num_cols:
                         gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
                     
@@ -1142,10 +1157,8 @@ def main_dashboard():
                     }
                     """)
                     gb.configure_grid_options(getRowStyle=jscode)
-                    
                     gridOptions = gb.build()
                     
-                    # --- PERBAIKAN: CSS UNTUK GARIS PEMBATAS/BORDER AGGRID ---
                     grid_css = {
                         ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
                         ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"}
@@ -1155,17 +1168,17 @@ def main_dashboard():
                         df_display, 
                         gridOptions=gridOptions, 
                         enable_enterprise_modules=True, 
-                        height=550, 
+                        height=grid_height,  # Tinggi Responsif dari Toggle
                         theme='alpine', 
                         allow_unsafe_jscode=True,
                         columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
-                        custom_css=grid_css # <--- Garis diimplementasikan di sini
+                        custom_css=grid_css 
                     )
                 else:
                     def style_fallback(row):
                         return ['border: 1px solid #dcdcdc;' for _ in row]
                     format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-                    st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True)
+                    st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True, height=grid_height)
             else:
                 st.info("Data Kosong.")
 
@@ -1515,6 +1528,64 @@ def main_dashboard():
                     f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
                     'ACHV': '{:.0%}'
                 }).apply(style_ba, axis=1), use_container_width=True)
+
+        # =========================================================================
+        # SUB-TAB 4: AI ASSISTANT (PRIVACY PROTECTED)
+        # =========================================================================
+        with tab_ai:
+            st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
+            st.info("🔒 **Keamanan Aktif:** Sistem HANYA mengirimkan ringkasan angka statistik ke AI. Data mentah dan nama toko rahasia Anda tetap berada di dalam server ini.")
+            
+            try:
+                import google.generativeai as genai
+                GENAI_AVAILABLE = True
+            except ImportError:
+                GENAI_AVAILABLE = False
+                
+            if not GENAI_AVAILABLE:
+                st.error("⚠️ Library AI belum terinstal. Silakan jalankan `pip install google-generativeai` di server/terminal Anda.")
+            else:
+                api_key_input = st.text_input("🔑 Masukkan API Key Gemini Anda:", type="password", help="Dapatkan API Key gratis di aistudio.google.com")
+                
+                if api_key_input:
+                    try:
+                        genai.configure(api_key=api_key_input)
+                        # Menggunakan model Gemini tercepat
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
+                        user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
+                        
+                        if st.button("💡 Analisis Sekarang"):
+                            with st.spinner("AI sedang membaca ringkasan data Anda..."):
+                                # 1. Merangkum data (Data Aggregation) untuk Privasi
+                                summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
+                                summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
+                                top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
+                                
+                                # 2. Menyiapkan konteks AI (Hanya Angka)
+                                context = f"""
+                                TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
+                                JUMLAH TRANSAKSI: {transaksi_count}
+                                
+                                TOP 5 BRAND:
+                                {summary_brand.to_string()}
+                                
+                                TOP 5 SALESMAN:
+                                {summary_sales.to_string()}
+                                
+                                TOP 3 PRODUK PALING LAKU:
+                                {top_produk.to_string()}
+                                """
+                                
+                                # 3. Mengirim ke Gemini
+                                final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
+                                
+                                response = model.generate_content(final_prompt)
+                                
+                                st.success("Analisis Selesai!")
+                                st.write(response.text)
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan pada AI: {e}")
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
