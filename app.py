@@ -17,10 +17,10 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import polars as pl # MESIN BARU: RUST ENGINE BOOSTER
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE (PILIHAN A) ---
+# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
-    # PERBAIKAN: Menambahkan ColumnsAutoSizeMode
     from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
     AGGRID_AVAILABLE = True
 except ImportError:
@@ -52,11 +52,9 @@ st.markdown("""
     .stProgress > div > div > div > div {
         background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
-    /* Memastikan text dalam dataframe wrap dengan baik */
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-    /* Security: Hide Menu & Footer */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -200,7 +198,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# BOOSTER LEVEL 2: PUBLIK LINK + MULTITHREADING + PARQUET CACHE LOKAL
+# BOOSTER LEVEL 1 & 2: RUST ENGINE (POLARS) + PARQUET CACHE LOKAL
 # =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
@@ -211,24 +209,24 @@ def load_data():
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
         if file_age < CACHE_AGE_LIMIT:
             try:
-                return pd.read_parquet(PARQUET_FILE)
+                return pl.read_parquet(PARQUET_FILE).to_pandas()
             except Exception as e:
                 pass 
 
     # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  
+        "LINK_SHEET_QUARTAL_2_DISINI", 
+        "LINK_SHEET_QUARTAL_3_DISINI", 
+        "LINK_SHEET_QUARTAL_4_DISINI", 
+        "LINK_SHEET_QUARTAL_5_DISINI"  
     ]
     
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
                 url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str)
+                return pl.read_csv(url_with_ts, infer_schema_length=0, ignore_errors=True)
             except Exception as e:
                 return None
         return None
@@ -238,15 +236,15 @@ def load_data():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(fetch_url, urls)
         for res in results:
-            if res is not None and not res.empty:
+            if res is not None and not res.is_empty():
                 all_dfs.append(res)
                 
     if not all_dfs:
         return None
         
-    df = pd.concat(all_dfs, ignore_index=True)
+    df_pl = pl.concat(all_dfs, how="diagonal_relaxed")
+    df = df_pl.to_pandas()
     
-    # --- PEMBERSIHAN DATA ---
     df.columns = df.columns.str.strip()
     
     faktur_col = None
@@ -306,7 +304,7 @@ def load_data():
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
     
     try:
-        df.to_parquet(PARQUET_FILE, index=False)
+        df.to_parquet(PARQUET_FILE, index=False, engine='pyarrow')
     except Exception as e:
         pass 
             
@@ -1126,7 +1124,7 @@ def main_dashboard():
                     gb.configure_pagination(paginationAutoPageSize=True)
                     gb.configure_side_bar()
                     
-                    # PERBAIKAN: Lebar otomatis dan batas minimal agar tabel tidak teremas
+                    # PERBAIKAN: Lebar minimal kolom agar judul dan isi tidak terhimpit
                     gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=150)
                     
                     for col in num_cols:
@@ -1147,7 +1145,12 @@ def main_dashboard():
                     
                     gridOptions = gb.build()
                     
-                    # PERBAIKAN: columns_auto_size_mode
+                    # --- PERBAIKAN: CSS UNTUK GARIS PEMBATAS/BORDER AGGRID ---
+                    grid_css = {
+                        ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
+                        ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"}
+                    }
+                    
                     AgGrid(
                         df_display, 
                         gridOptions=gridOptions, 
@@ -1155,11 +1158,14 @@ def main_dashboard():
                         height=550, 
                         theme='alpine', 
                         allow_unsafe_jscode=True,
-                        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS 
+                        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
+                        custom_css=grid_css # <--- Garis diimplementasikan di sini
                     )
                 else:
+                    def style_fallback(row):
+                        return ['border: 1px solid #dcdcdc;' for _ in row]
                     format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-                    st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
+                    st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True)
             else:
                 st.info("Data Kosong.")
 
