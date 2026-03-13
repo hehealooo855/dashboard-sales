@@ -3,10 +3,9 @@ pandas
 plotly
 pytz
 pyotp
-qrcode[pil]
+qrcode
+pillow
 streamlit-aggrid
 xlsxwriter
 pyarrow
-fastparquet
-polars
 google-generativeai
