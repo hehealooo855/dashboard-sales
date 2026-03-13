@@ -305,8 +305,8 @@ def load_data():
 # --- FITUR ANTI-BUFFERING: MEMOIZATION UNTUK PIVOT TABLE ---
 @st.cache_data(show_spinner=False)
 def get_pivot_data(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
-    # Merekonstruksi dataframe karena st.cache_data lebih cepat memproses json/dict
-    df_pivot_source = pd.read_json(io.StringIO(df_source_json))
+    # PERBAIKAN FATAL: Menambahkan orient='split' agar format JSON terbaca sempurna
+    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split')
     df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
     
@@ -1032,11 +1032,12 @@ def main_dashboard():
                 selected_merk_excel = st.selectbox("🎯 Pilih Merk untuk dilihat rinciannya:", ["SEMUA"] + list_merk_excel)
             with col_piv2:
                 selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
-            
-            # --- MEMOIZATION/CACHING UNTUK MENCEGAH BUFFERING ---
+
+            # --- FITUR ANTI-BUFFERING PIVOT (MEMOIZATION BUG FIXED) ---
             @st.cache_data(show_spinner="Menyusun Pivot Data (Secepat Kilat)...")
             def generate_pivot(df_json, selected_merk, selected_tahun_tuple):
-                df_source = pd.read_json(io.StringIO(df_json))
+                # SOLUSI ERROR: Tambahkan orient='split' agar DataFrame terbungkus dan terbuka dengan sempurna
+                df_source = pd.read_json(io.StringIO(df_json), orient='split') 
                 df_source['Tanggal'] = pd.to_datetime(df_source['Tanggal'])
                 if df_source.empty: return pd.DataFrame()
                 
@@ -1096,7 +1097,6 @@ def main_dashboard():
                 return mp
             # ------------------------------------------------------------------
 
-            # Eksekusi Pivot Super Cepat
             json_data = df_scope_all.to_json(date_format='iso', orient='split')
             master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel))
 
@@ -1120,10 +1120,8 @@ def main_dashboard():
                 
                 st.caption(f"Menampilkan {len(df_filtered)} data customer.")
                 
-                # --- TOMBOL MAXIMIZE LAYAR PENUH ---
                 maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)")
                 grid_height = 800 if maximize_toggle else 450
-                # -----------------------------------
 
                 if not df_filtered.empty:
                     bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -1168,7 +1166,7 @@ def main_dashboard():
                         df_display, 
                         gridOptions=gridOptions, 
                         enable_enterprise_modules=True, 
-                        height=grid_height,  # Tinggi Responsif dari Toggle
+                        height=grid_height, 
                         theme='alpine', 
                         allow_unsafe_jscode=True,
                         columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
@@ -1529,9 +1527,6 @@ def main_dashboard():
                     'ACHV': '{:.0%}'
                 }).apply(style_ba, axis=1), use_container_width=True)
 
-        # =========================================================================
-        # SUB-TAB 4: AI ASSISTANT (PRIVACY PROTECTED)
-        # =========================================================================
         with tab_ai:
             st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
             st.info("🔒 **Keamanan Aktif:** Sistem HANYA mengirimkan ringkasan angka statistik ke AI. Data mentah dan nama toko rahasia Anda tetap berada di dalam server ini.")
@@ -1550,19 +1545,16 @@ def main_dashboard():
                 if api_key_input:
                     try:
                         genai.configure(api_key=api_key_input)
-                        # Menggunakan model Gemini tercepat
                         model = genai.GenerativeModel('gemini-1.5-flash')
                         
                         user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
                         
                         if st.button("💡 Analisis Sekarang"):
                             with st.spinner("AI sedang membaca ringkasan data Anda..."):
-                                # 1. Merangkum data (Data Aggregation) untuk Privasi
                                 summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
                                 summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
                                 top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
                                 
-                                # 2. Menyiapkan konteks AI (Hanya Angka)
                                 context = f"""
                                 TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
                                 JUMLAH TRANSAKSI: {transaksi_count}
@@ -1577,7 +1569,6 @@ def main_dashboard():
                                 {top_produk.to_string()}
                                 """
                                 
-                                # 3. Mengirim ke Gemini
                                 final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
                                 
                                 response = model.generate_content(final_prompt)
