@@ -17,6 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import polars as pl 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -41,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS
+# Custom CSS Default
 st.markdown("""
 <style>
     .metric-card {
@@ -197,7 +198,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# BOOSTER LEVEL 2: PUBLIK LINK + MULTITHREADING + PARQUET CACHE LOKAL
+# BOOSTER LEVEL 1 & 2: RUST ENGINE (POLARS) + PARQUET CACHE LOKAL
 # =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
@@ -208,23 +209,23 @@ def load_data():
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
         if file_age < CACHE_AGE_LIMIT:
             try:
-                return pd.read_parquet(PARQUET_FILE)
+                return pl.read_parquet(PARQUET_FILE).to_pandas()
             except Exception as e:
                 pass 
 
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  
+        "LINK_SHEET_QUARTAL_2_DISINI", 
+        "LINK_SHEET_QUARTAL_3_DISINI", 
+        "LINK_SHEET_QUARTAL_4_DISINI", 
+        "LINK_SHEET_QUARTAL_5_DISINI"  
     ]
     
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
                 url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str)
+                return pl.read_csv(url_with_ts, infer_schema_length=0, ignore_errors=True)
             except Exception as e:
                 return None
         return None
@@ -233,13 +234,15 @@ def load_data():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(fetch_url, urls)
         for res in results:
-            if res is not None and not res.empty:
+            if res is not None and not res.is_empty():
                 all_dfs.append(res)
                 
     if not all_dfs:
         return None
         
-    df = pd.concat(all_dfs, ignore_index=True)
+    df_pl = pl.concat(all_dfs, how="diagonal_relaxed")
+    df = df_pl.to_pandas()
+    
     df.columns = df.columns.str.strip()
     
     faktur_col = None
@@ -249,7 +252,8 @@ def load_data():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols): return None
+    if not all(col in df.columns for col in required_cols): 
+        return None
     
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
@@ -297,16 +301,17 @@ def load_data():
     for col in cols_to_convert:
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
     
-    try: df.to_parquet(PARQUET_FILE, index=False)
-    except: pass 
+    try:
+        df.to_parquet(PARQUET_FILE, index=False, engine='pyarrow')
+    except Exception as e:
+        pass 
             
     return df
 
-# --- FITUR ANTI-BUFFERING: MEMOIZATION UNTUK PIVOT TABLE ---
+# --- FITUR ANTI-BUFFERING PIVOT (MEMOIZATION BUG FIXED) ---
 @st.cache_data(show_spinner=False)
 def get_pivot_data(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
-    # PERBAIKAN FATAL: Menambahkan orient='split' agar format JSON terbaca sempurna
-    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split')
+    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
     df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
     
@@ -1033,10 +1038,8 @@ def main_dashboard():
             with col_piv2:
                 selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun (Multi-Select):", list_tahun, default=list_tahun)
 
-            # --- FITUR ANTI-BUFFERING PIVOT (MEMOIZATION BUG FIXED) ---
             @st.cache_data(show_spinner="Menyusun Pivot Data (Secepat Kilat)...")
             def generate_pivot(df_json, selected_merk, selected_tahun_tuple):
-                # SOLUSI ERROR: Tambahkan orient='split' agar DataFrame terbungkus dan terbuka dengan sempurna
                 df_source = pd.read_json(io.StringIO(df_json), orient='split') 
                 df_source['Tanggal'] = pd.to_datetime(df_source['Tanggal'])
                 if df_source.empty: return pd.DataFrame()
@@ -1095,7 +1098,6 @@ def main_dashboard():
                     if 'Nama Customer' not in mp.columns: mp['Nama Customer'] = "-"
                     if 'Kota' not in mp.columns: mp['Kota'] = "-"
                 return mp
-            # ------------------------------------------------------------------
 
             json_data = df_scope_all.to_json(date_format='iso', orient='split')
             master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel))
@@ -1120,8 +1122,30 @@ def main_dashboard():
                 
                 st.caption(f"Menampilkan {len(df_filtered)} data customer.")
                 
+                # --- FITUR BARU: TRUE FULL SCREEN UNTUK AGGRID ---
                 maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)")
-                grid_height = 800 if maximize_toggle else 450
+                if maximize_toggle:
+                    st.markdown("""
+                    <style>
+                        /* Memaksa Iframe AgGrid menjadi memenuhi seluruh layar monitor */
+                        iframe[title="streamlit_aggrid.agGrid"] {
+                            position: fixed !important;
+                            top: 0 !important;
+                            left: 0 !important;
+                            width: 100vw !important;
+                            height: 100vh !important;
+                            z-index: 99999 !important;
+                            background-color: white !important;
+                        }
+                        /* Menyembunyikan elemen Streamlit lainnya saat Full Screen */
+                        header {visibility: hidden !important;}
+                        [data-testid="stSidebar"] {display: none !important;}
+                    </style>
+                    """, unsafe_allow_html=True)
+                    grid_height = 800 # Ukuran aman fallback
+                else:
+                    grid_height = 450
+                # -------------------------------------------------
 
                 if not df_filtered.empty:
                     bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -1538,7 +1562,7 @@ def main_dashboard():
                 GENAI_AVAILABLE = False
                 
             if not GENAI_AVAILABLE:
-                st.error("⚠️ Library AI belum terinstal. Silakan jalankan `pip install google-generativeai` di server/terminal Anda.")
+                st.error("⚠️ Library AI belum terinstal di Server. Pastikan Anda telah menambahkan 'google-generativeai' ke dalam file requirements.txt di Github Anda.")
             else:
                 api_key_input = st.text_input("🔑 Masukkan API Key Gemini Anda:", type="password", help="Dapatkan API Key gratis di aistudio.google.com")
                 
