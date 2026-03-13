@@ -6,3 +6,6 @@ qrcode
 xlsxwriter
 numpy
 openpyxl
+gspread==6.1.0
+google-auth==2.28.1
+pyarrow==15.0.0
