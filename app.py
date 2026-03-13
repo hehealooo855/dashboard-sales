@@ -17,6 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import polars as pl # MESIN BARU: RUST ENGINE BOOSTER
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -143,6 +144,10 @@ SALES_MAPPING = {
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
 
+# ==========================================
+# 3. CORE LOGIC
+# ==========================================
+
 def log_activity(user, action):
     log_file = 'audit_log.csv'
     timestamp = get_current_time_wib().strftime("%Y-%m-%d %H:%M:%S")
@@ -197,56 +202,63 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# BOOSTER LEVEL 2 (REVERT KE PUBLIK LINK TETAPI TETAP PARQUET CACHE)
+# BOOSTER LEVEL 1 & 2: RUST ENGINE (POLARS) + PARQUET CACHE LOKAL
 # =========================================================================
 @st.cache_data(ttl=300) 
 def load_data():
     PARQUET_FILE = "master_database_penjualan.parquet"
     CACHE_AGE_LIMIT = 3600 
     
+    # 1. Cek Caching Lokal: Membaca file parquet dalam milidetik (Secepat kilat)
     if os.path.exists(PARQUET_FILE):
         file_age = time.time() - os.path.getmtime(PARQUET_FILE)
         if file_age < CACHE_AGE_LIMIT:
             try:
-                return pd.read_parquet(PARQUET_FILE)
+                # Polars membaca file lokal secepat kedipan mata
+                return pl.read_parquet(PARQUET_FILE).to_pandas()
             except Exception as e:
                 pass 
 
     # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv", 
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv"  
+        "LINK_SHEET_QUARTAL_2_DISINI", 
+        "LINK_SHEET_QUARTAL_3_DISINI", 
+        "LINK_SHEET_QUARTAL_4_DISINI", 
+        "LINK_SHEET_QUARTAL_5_DISINI"  
     ]
     
+    # Fungsi kurir menggunakan Polars (C & Rust Backend)
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
-                # Bypass cache dengan menambahkan timestamp unik
                 url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str)
+                # Polars membaca file CSV dari internet jauh lebih cepat dari pandas
+                return pl.read_csv(url_with_ts, infer_schema_length=0, ignore_errors=True)
             except Exception as e:
                 return None
         return None
 
     all_dfs = []
     
-    # Menjalankan 5 kurir (Paralel)
+    # Tetap gunakan 5 kurir (Multithreading) untuk bypass Limit Kecepatan Internet
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = executor.map(fetch_url, urls)
         for res in results:
-            if res is not None and not res.empty:
+            if res is not None and not res.is_empty():
                 all_dfs.append(res)
                 
     if not all_dfs:
         return None
         
-    df = pd.concat(all_dfs, ignore_index=True)
+    # 2. Penggabungan data (Concatenation) dilakukan oleh mesin Polars secara instan
+    df_pl = pl.concat(all_dfs, how="diagonal_relaxed")
     
-    # --- PEMBERSIHAN DATA ---
+    # 3. Konversi kembali ke format standar Pandas 
+    # (Agar UI Streamlit dan Grafik Plotly Anda di bawah tidak error)
+    df = df_pl.to_pandas()
+    
+    # --- PEMBERSIHAN DATA (Vektor Teroptimasi) ---
     df.columns = df.columns.str.strip()
     
     faktur_col = None
@@ -255,10 +267,8 @@ def load_data():
             faktur_col = col; break
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    # Memastikan kolom penting ada
     required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
     if not all(col in df.columns for col in required_cols): 
-        # Jika nama kolom berbeda (misal Qty vs Jumlah), abaikan error dengan return None
         return None
     
     if 'Nama Outlet' in df.columns:
@@ -307,8 +317,9 @@ def load_data():
     for col in cols_to_convert:
         if col in df.columns: df[col] = df[col].astype(str).str.strip()
     
+    # 4. Simpan ke sistem memori rahasia (Parquet) agar buka berikutnya langsung 1 detik
     try:
-        df.to_parquet(PARQUET_FILE, index=False)
+        df.to_parquet(PARQUET_FILE, index=False, engine='pyarrow')
     except Exception as e:
         pass 
             
@@ -593,7 +604,6 @@ def main_dashboard():
         target_sales_filter = my_name 
         df_scope_all = df[df['Penjualan'] == my_name]
 
-    # --- PERLINDUNGAN TYPEERROR (DIPASTIKAN AMAN) ---
     with st.sidebar.expander("🔍 Filter Lanjutan", expanded=False):
         unique_brands = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
         pilih_merk = st.multiselect("Pilih Merk", unique_brands)
@@ -602,7 +612,6 @@ def main_dashboard():
         unique_outlets = sorted(df_scope_all['Nama Outlet'].dropna().astype(str).unique())
         pilih_outlet = st.multiselect("Pilih Outlet", unique_outlets)
         if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
-    # ------------------------------------------------
 
     if len(date_range) == 2:
         start_date, end_date = date_range
@@ -1004,9 +1013,6 @@ def main_dashboard():
 
         tab_pivot, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
-        # =========================================================================
-        # SUB-TAB 1: PIVOT DATA CUSTOMER
-        # =========================================================================
         with tab_pivot:
             list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
             list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -1021,11 +1027,9 @@ def main_dashboard():
             if not df_pivot_source.empty:
                 df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
             
-            # --- PENCEGAHAN KEYERROR (Mendeteksi Kolom dari Sheet Anda) ---
             group_cols = []
             kode_asal = 'Kode Customer'
             
-            # Deteksi otomatis kolom Kode Customer/Outlet
             if 'Kode Outlet' in df_pivot_source.columns: 
                 group_cols.append('Kode Outlet')
                 kode_asal = 'Kode Outlet'
@@ -1092,7 +1096,6 @@ def main_dashboard():
                 master_pivot.columns = group_cols + [bulan_indo[i] for i in range(1, 13)]
                 master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo.values())].sum(axis=1)
 
-                # RENAME YANG AMAN (AGAR TIDAK ERROR "KEYERROR")
                 master_pivot = master_pivot.rename(columns={'Nama Outlet': 'Nama Customer', kode_asal: 'Kode Customer'})
 
                 if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
