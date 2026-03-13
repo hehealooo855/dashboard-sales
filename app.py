@@ -212,6 +212,7 @@ def load_data():
             except Exception as e:
                 pass 
 
+    # --- MASUKKAN 5 LINK PUBLIK CSV ANDA DI SINI ---
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
 
@@ -224,7 +225,7 @@ def load_data():
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
 
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"
-        ]
+    ]
     
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
@@ -311,7 +312,6 @@ def load_data():
 # --- FITUR ANTI-BUFFERING PIVOT (MEMOIZATION BUG FIXED) ---
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
-    # PERBAIKAN: orient='split' WAJIB ADA AGAR TIDAK ERROR "ValueError: All arrays must be of the same length"
     df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
     df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
@@ -1065,7 +1065,6 @@ def main_dashboard():
                 if 'Kota' in df_source.columns: grp_cols.append('Kota')
                 else: df_source['Kota'] = "-"; grp_cols.append('Kota')
                 
-                # --- PERBAIKAN: Menambahkan kolom Provinsi ke grup ---
                 if 'Provinsi' in df_source.columns: grp_cols.append('Provinsi')
                 else: df_source['Provinsi'] = "-"; grp_cols.append('Provinsi')
 
@@ -1110,8 +1109,6 @@ def main_dashboard():
 
             if not master_pivot.empty:
                 st.markdown("#### 🔎 Filter Spesifik")
-                
-                # --- PERBAIKAN: Menjadi 4 Kolom Filter ---
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1:
                     list_kode = sorted([str(x) for x in master_pivot['Kode Customer'].unique() if str(x) != 'nan'])
@@ -1134,7 +1131,6 @@ def main_dashboard():
                 
                 st.caption(f"Menampilkan {len(df_filtered)} data customer.")
                 
-                # --- FITUR TRUE FULL SCREEN (SESUAI DEVICE) ---
                 maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Perbesar Tabel)")
                 if maximize_toggle:
                     st.markdown("""
@@ -1155,7 +1151,6 @@ def main_dashboard():
                     grid_height = 800 
                 else:
                     grid_height = 450
-                # ----------------------------------------------------
 
                 if not df_filtered.empty:
                     bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -1581,44 +1576,62 @@ def main_dashboard():
                     try:
                         genai.configure(api_key=api_key_input)
                         
-                        # --- PERBAIKAN GEMINI AI MODEL ---
-                        model = genai.GenerativeModel('gemini-1.5-flash')
-                        # ---------------------------------
-                            
                         user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
                         
                         if st.button("💡 Analisis Sekarang"):
                             with st.spinner("AI sedang membaca ringkasan data Anda..."):
-                                summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
-                                summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
-                                top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
                                 
-                                context = f"""
-                                TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
-                                JUMLAH TRANSAKSI: {transaksi_count}
-                                
-                                TOP 5 BRAND:
-                                {summary_brand.to_string()}
-                                
-                                TOP 5 SALESMAN:
-                                {summary_sales.to_string()}
-                                
-                                TOP 3 PRODUK PALING LAKU:
-                                {top_produk.to_string()}
-                                """
-                                
-                                final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
-                                
+                                # --- FITUR BARU: AUTO-DETECT MODEL (ANTI ERROR 404) ---
+                                valid_models = []
                                 try:
-                                    response = model.generate_content(final_prompt)
-                                    st.success("Analisis Selesai!")
-                                    st.write(response.text)
-                                except Exception as model_err:
-                                    # Fall-back ke model 1.5 Pro jika flash mengalami limit
-                                    model_fallback = genai.GenerativeModel('gemini-1.5-pro')
-                                    res_fallback = model_fallback.generate_content(final_prompt)
-                                    st.success("Analisis Selesai (Pro Mode)!")
-                                    st.write(res_fallback.text)
+                                    for m in genai.list_models():
+                                        if 'generateContent' in m.supported_generation_methods:
+                                            valid_models.append(m.name.replace('models/', ''))
+                                except Exception as e:
+                                    st.error(f"Gagal melacak model dari Google Server: {e}")
+                                
+                                if not valid_models:
+                                    st.error("API Key Anda tidak memiliki akses ke model teks Gemini apa pun. Silakan buat API Key baru.")
+                                else:
+                                    # Cerdas Memilih Model (Prioritas: 1.5-flash -> 1.5-pro -> 1.0-pro)
+                                    if 'gemini-1.5-flash' in valid_models:
+                                        best_model = 'gemini-1.5-flash'
+                                    elif 'gemini-1.5-pro' in valid_models:
+                                        best_model = 'gemini-1.5-pro'
+                                    elif 'gemini-pro' in valid_models:
+                                        best_model = 'gemini-pro'
+                                    else:
+                                        best_model = valid_models[0]
+                                        
+                                    model = genai.GenerativeModel(best_model)
+                                    # ----------------------------------------------------
+                                    
+                                    summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
+                                    summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
+                                    top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
+                                    
+                                    context = f"""
+                                    TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
+                                    JUMLAH TRANSAKSI: {transaksi_count}
+                                    
+                                    TOP 5 BRAND:
+                                    {summary_brand.to_string()}
+                                    
+                                    TOP 5 SALESMAN:
+                                    {summary_sales.to_string()}
+                                    
+                                    TOP 3 PRODUK PALING LAKU:
+                                    {top_produk.to_string()}
+                                    """
+                                    
+                                    final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
+                                    
+                                    try:
+                                        response = model.generate_content(final_prompt)
+                                        st.success(f"Analisis Selesai! (Powered by {best_model})")
+                                        st.write(response.text)
+                                    except Exception as model_err:
+                                        st.error(f"Terjadi kesalahan pada respon AI: {model_err}")
                                         
                     except Exception as e:
                         st.error(f"Gagal memanggil AI. Pastikan API Key Anda benar. Detail: {e}")
