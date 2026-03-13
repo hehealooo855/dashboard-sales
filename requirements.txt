@@ -1,8 +1,12 @@
 streamlit
 pandas
 plotly
+pytz
 pyotp
-qrcode
+qrcode[pil]
+streamlit-aggrid
 xlsxwriter
-numpy
-openpyxl
+pyarrow
+fastparquet
+polars
+google-generativeai
