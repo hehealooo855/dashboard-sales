@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS Corporate Professional & Anti-Red Hover
+# Custom CSS Corporate (Blue Hover & Enlarge Fonts)
 st.markdown("""
 <style>
     .metric-card {
@@ -947,7 +947,7 @@ def main_dashboard():
             prev_m_start = ref_date.replace(month=ref_date.month-1, day=1)
             last_day_prev_m = calendar.monthrange(ref_date.year, ref_date.month-1)[1]
             
-        target_day = ref_date.day if ref_date.day <= last_day_prev_m else last_day_prev_m
+        target_day = min(ref_date.day, last_day_prev_m)
         prev_m_end = prev_m_start.replace(day=target_day)
         
         val_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= mtd_start) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Jumlah'].sum()
@@ -966,11 +966,24 @@ def main_dashboard():
             </div>
             """, unsafe_allow_html=True)
     else:
-        delta_val = current_omset_total - (df_scope_all[(df_scope_all['Tanggal'].dt.date >= (ref_date - datetime.timedelta(days=(ref_date - mtd_start).days + 1))) & (df_scope_all['Tanggal'].dt.date <= (ref_date - datetime.timedelta(days=1)))]['Jumlah'].sum())
+        if len(date_range) == 2:
+            start, end = date_range
+            delta_days = (end - start).days + 1
+            prev_end = start - datetime.timedelta(days=1)
+            prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
+            omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
+            delta_val = current_omset_total - omset_prev_period
+            delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
+        else:
+            prev_date = ref_date - datetime.timedelta(days=1)
+            omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+            delta_val = current_omset_total - omset_prev_period
+            delta_label = f"vs {prev_date.strftime('%d %b')}"
+
         delta_str = format_idr(delta_val)
         if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
         elif delta_val > 0: delta_str = f"+ {delta_str}"
-        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str}")
+        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
 
     c2.metric("Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
@@ -1017,32 +1030,31 @@ def main_dashboard():
         st.markdown("---")
 
     # =========================================================================
-    # FILTER IJL GLOBAL UNTUK TABS
+    # FILTER GLOBAL IJL UNTUK TABS RAPOR BRAND & TREN HARIAN
     # =========================================================================
-    st.markdown("### 📊 Parameter Analisis Terpadu")
-    ijl_filter = "SEMUA"
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+        ijl_filter = st.selectbox("🔍 Filter Data Rapor & Tren Harian (Hierarki IJL):", ["SEMUA", "Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+    else:
+        ijl_filter = "SEMUA"
         
     df_ijl = df_active.copy()
-    if ijl_filter != "SEMUA" and ijl_filter != "Total Indah Jaya Lestari (IJL)":
-        nama_spv = ijl_filter.upper()
-        if nama_spv in TARGET_DATABASE:
-            df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
-            loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
-        else: loop_source = None
-    else:
-        semua_tim = []
-        for spv in ["LISMAN", "AKBAR", "MADONG"]:
-            if spv in TARGET_DATABASE:
-                semua_tim.extend(TARGET_DATABASE[spv].keys())
+    loop_source = None
+    if ijl_filter != "SEMUA":
         if ijl_filter == "Total Indah Jaya Lestari (IJL)":
+            semua_tim = []
+            for spv in ["LISMAN", "AKBAR", "MADONG"]:
+                if spv in TARGET_DATABASE:
+                    semua_tim.extend(TARGET_DATABASE[spv].keys())
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
-            if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
-            elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-            else: loop_source = None
+            nama_spv = ijl_filter.upper()
+            if nama_spv in TARGET_DATABASE:
+                df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
+                loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+    else:
+        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
+        elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
 
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
