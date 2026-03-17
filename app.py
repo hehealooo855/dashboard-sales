@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS Corporate Professional
+# Custom CSS - Corporate Clean & Blue Theme
 st.markdown("""
 <style>
     .metric-card {
@@ -60,16 +60,17 @@ st.markdown("""
     
     /* Memperbesar Font Metric Utama */
     [data-testid="stMetricValue"] {
-        font-size: 38px !important;
+        font-size: 45px !important;
         font-weight: 800 !important;
         color: #2c3e50 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: 600 !important;
         color: #7f8c8d !important;
     }
-    /* Warna Biru Korporat untuk Hover / Focus */
+    
+    /* Ganti efek hover merah menjadi biru profesional */
     a:hover, button:hover {
         color: #2980b9 !important;
         text-decoration: none !important;
@@ -166,13 +167,6 @@ BRAND_ALIASES = {
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
 }
-
-def normalize_brand(raw_brand):
-    raw_upper = str(raw_brand).upper()
-    for target_brand, keywords in BRAND_ALIASES.items():
-        for keyword in keywords:
-            if keyword in raw_upper: return target_brand
-    return raw_brand
 
 SALES_MAPPING = {
     "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
@@ -936,20 +930,19 @@ def main_dashboard():
     
     c1, c2, c3 = st.columns(3)
     
-    # MTD CALCULATION (OTOMATIS MENGIKUTI HARI INI)
+    # METRIK PERBANDINGAN MTD (TANGGAL KALENDER HARI INI BERJALAN)
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
         mtd_start = ref_date.replace(day=1)
         if ref_date.month == 1:
             prev_m_start = ref_date.replace(year=ref_date.year-1, month=12, day=1)
-            try: prev_m_end = ref_date.replace(year=ref_date.year-1, month=12, day=ref_date.day)
-            except ValueError: prev_m_end = ref_date.replace(year=ref_date.year-1, month=12, day=31)
+            last_day_prev_m = 31
         else:
             prev_m_start = ref_date.replace(month=ref_date.month-1, day=1)
-            try: prev_m_end = ref_date.replace(month=ref_date.month-1, day=ref_date.day)
-            except ValueError: 
-                last_day = calendar.monthrange(ref_date.year, ref_date.month-1)[1]
-                prev_m_end = ref_date.replace(month=ref_date.month-1, day=last_day)
-                
+            last_day_prev_m = calendar.monthrange(ref_date.year, ref_date.month-1)[1]
+            
+        target_day = ref_date.day if ref_date.day <= last_day_prev_m else last_day_prev_m
+        prev_m_end = prev_m_start.replace(day=target_day)
+        
         val_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= mtd_start) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Jumlah'].sum()
         val_prev_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_m_start) & (df_scope_all['Tanggal'].dt.date <= prev_m_end)]['Jumlah'].sum()
         delta_mtd = val_mtd - val_prev_mtd
@@ -961,7 +954,7 @@ def main_dashboard():
             st.markdown(f"""
             <div style="border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <p style="margin:0; font-size:18px; font-weight:600; color:#7f8c8d;">Total Omset (Periode MTD)</p>
-                <h1 style="margin:0; font-size:42px; font-weight:800; color:#2c3e50;">{format_idr(val_mtd)}</h1>
+                <h1 style="margin:0; font-size:45px; font-weight:800; color:#2c3e50;">{format_idr(val_mtd)}</h1>
                 <p style="margin:0; font-size:16px; font-weight:bold; color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))} (vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</p>
             </div>
             """, unsafe_allow_html=True)
@@ -1020,11 +1013,11 @@ def main_dashboard():
     # ROMBAK LAYOUT VERTIKAL SEPENUHNYA (NO TABS UNTUK REPORT UTAMA)
     # =========================================================================
 
-    st.markdown("## 📊 Laporan Performa Brand & Tren Harian")
+    st.markdown("## 📊 Evaluasi Kinerja (Rapor Brand & Tren Harian)")
     
     ijl_filter = "SEMUA"
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ["Total Indah Jaya Lestari (IJL)", "Tim Lisman", "Tim Akbar", "Tim Madong"])
+        ijl_filter = st.selectbox("Tinjauan Evaluasi Berdasarkan:", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
         
     df_ijl = df_active.copy()
     if ijl_filter != "SEMUA":
@@ -1036,7 +1029,7 @@ def main_dashboard():
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
-            nama_spv = ijl_filter.replace("Tim ", "").upper()
+            nama_spv = ijl_filter.upper()
             if nama_spv in TARGET_DATABASE:
                 df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
                 loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
@@ -1144,26 +1137,42 @@ def main_dashboard():
             yesterday = ref_date - datetime.timedelta(days=1)
             mtd_start_date = ref_date.replace(day=1)
             
+            # Waktu sisa kerja untuk catch-up
+            holidays_id = [
+                '2024-01-01', '2024-02-08', '2024-02-10', '2024-03-11', '2024-03-29', '2024-04-10', '2024-04-11', '2024-05-01', '2024-05-09', '2024-05-23', '2024-06-01', '2024-06-17', '2024-07-07', '2024-08-17', '2024-09-16', '2024-12-25', 
+                '2025-01-01', '2025-01-27', '2025-03-29', '2025-03-31', '2025-04-18', '2025-04-20', '2025-05-01', '2025-05-12', '2025-05-29', '2025-06-01', '2025-06-06', '2025-06-27', '2025-08-17', '2025-09-05', '2025-10-20', '2025-12-25',
+                '2026-01-01', '2026-02-17', '2026-03-19', '2026-03-20', '2026-04-03', '2026-04-05', '2026-05-01', '2026-05-14', '2026-05-24', '2026-06-01', '2026-06-16', '2026-07-07', '2026-08-17', '2026-08-25', '2026-12-25' 
+            ]
+            next_month = ref_date.replace(day=28) + datetime.timedelta(days=4)
+            last_day_month = next_month - datetime.timedelta(days=next_month.day)
+            date_range_rest = pd.date_range(start=ref_date, end=last_day_month)
+            remaining_workdays = sum(1 for d in date_range_rest if d.weekday() != 6 and d.strftime('%Y-%m-%d') not in holidays_id)
+            
             for sales_name, targets in INDIVIDUAL_TARGETS.items():
                 if selected_brand_detail in targets:
                     t_pribadi = targets[selected_brand_detail]
                     real_sales = df_active[(df_active['Penjualan'] == sales_name) & (df_active['Merk'] == selected_brand_detail)]['Jumlah'].sum()
                     
-                    # Data H-1
+                    # Data H-1 (Kemarin dari Tanggal Filter)
                     omset_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Jumlah'].sum()
                     toko_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Nama Outlet'].nunique()
                     
                     # Data MTD berjalan
                     toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Nama Outlet'].nunique()
 
+                    target_remaining = t_pribadi - real_sales
+                    if target_remaining > 0 and remaining_workdays > 0: catch_up_needed = target_remaining / remaining_workdays
+                    else: catch_up_needed = 0 
+
                     sales_stats.append({
                         "Nama Sales": sales_name, 
                         "Target Pribadi": format_idr(t_pribadi), 
                         "Realisasi (MTD)": format_idr(real_sales),
+                        "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
                         "Omset (H-1)": format_idr(omset_h1),
                         "Toko (H-1)": toko_h1,
-                        "Toko Total (MTD)": toko_mtd,
-                        "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
+                        "Total Toko (MTD)": toko_mtd,
+                        "Catch-up (Per Hari)": format_idr(catch_up_needed),
                         "_real": real_sales, "_target": t_pribadi
                     })
                     total_brand_sales += real_sales; total_brand_target += t_pribadi
@@ -1252,16 +1261,13 @@ def main_dashboard():
                     
                     sales = df_period['Jumlah'].sum()
                     
-                    # LOGIKA RO & AO BARU (Sesuai Permintaan)
-                    # RO: Tarik dari file Toko Awal
+                    # LOGIKA RO & AO BARU (YTD & Toko Awal)
                     ro = toko_awal_dict.get(brand_growth, 0)
                     
-                    # AO: YTD (Kumulatif aktif dari Januari sampai bulan ini berjalan)
                     df_ytd = df_brand_all[(df_brand_all['Tahun'] == period.year) & (df_brand_all['Bulan'] <= period.month)]
                     ytd_outlets = set(df_ytd['Nama Outlet'].dropna().unique())
                     ao = len(ytd_outlets)
                     
-                    # NOO = Toko aktif bulan ini yang belum pernah belanja sebelumnya
                     noo = len(current_outlets - seen_outlets)
                     seen_outlets.update(current_outlets)
                     
@@ -1314,7 +1320,7 @@ def main_dashboard():
 
                     st.dataframe(pd.DataFrame(display_2026).style.format({
                         'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                    }).apply(style_tab1, axis=1), use_container_width=True)
+                    }).apply(style_tab1, axis=1), use_container_width=True, hide_index=True)
                     
                     st.divider()
                     col_g1, col_g2 = st.columns(2)
@@ -1367,7 +1373,7 @@ def main_dashboard():
 
                         st.dataframe(df_t2_display.style.format({
                             'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                        }).apply(style_tab2, axis=1), use_container_width=True)
+                        }).apply(style_tab2, axis=1), use_container_width=True, hide_index=True)
                     
                     with col_g2:
                         st.write(f"#### **Tabel 3: Quarterly Growth**")
@@ -1405,7 +1411,7 @@ def main_dashboard():
 
                         st.dataframe(df_q_display.style.format({
                             'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                        }).apply(style_tab3, axis=1), use_container_width=True)
+                        }).apply(style_tab3, axis=1), use_container_width=True, hide_index=True)
             else:
                 st.info(f"Belum ada data untuk brand {brand_growth}.")
         else:
@@ -1533,7 +1539,7 @@ def main_dashboard():
                 'Target BA': 'Rp {:,.0f}',
                 f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
                 'ACHV': '{:.0%}'
-            }).apply(style_ba, axis=1), use_container_width=True)
+            }).apply(style_ba, axis=1), use_container_width=True, hide_index=True)
 
     with tab_ai:
         st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
