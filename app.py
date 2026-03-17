@@ -152,7 +152,7 @@ TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], "Y2000": ["Y2000", "Y 2000", "Y-2000"],
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
-    "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "VLAGIO": ["VLAGIO"],
+    "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"], "Oimio": ["OIMIO"],
     "Clinelle": ["CLINELLE", "CLIN"], "Ren & R & L": ["REN", "R & L", "R&L"], "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], "Avione": ["AVIONE"],
@@ -265,7 +265,6 @@ def load_toko_awal():
         df.columns = df.columns.str.strip()
         if 'Merk' in df.columns and 'Nama Outlet' in df.columns:
             df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
-            # Menghitung jumlah toko unik per Merk sebagai RO Baseline
             return df.groupby('Merk')['Nama Outlet'].nunique().to_dict()
     except Exception as e:
         return {}
@@ -572,7 +571,7 @@ def render_pivot_fragment(df_scope_all, role):
 
         if AGGRID_AVAILABLE:
             gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_pagination(enabled=False) # Disable pagination = Tampil semua ke bawah
+            gb.configure_pagination(enabled=False) 
             gb.configure_side_bar()
             
             gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
@@ -591,14 +590,14 @@ def render_pivot_fragment(df_scope_all, role):
                 }
             }
             """)
-            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight') # Autoheight menyesuaikan jumlah baris
+            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight') 
             gridOptions = gb.build()
             
             grid_css = {
                 ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
                 ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
                 ".ag-row:hover": {
-                    "background-color": "#e8f4f8 !important", # Biru profesional
+                    "background-color": "#e8f4f8 !important", 
                     "color": "#2980b9 !important",
                     "font-weight": "800 !important",
                     "transition": "all 0.1s"
@@ -758,6 +757,7 @@ def main_dashboard():
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
+        # --- FITUR PRESENTASI SPOTLIGHT (DI SIDEBAR) ---
         st.markdown("---")
         st.write("### 🎬 Mode Presentasi")
         is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False, help="Menggelapkan layar dan memberikan efek senter pada mouse Anda")
@@ -792,6 +792,7 @@ def main_dashboard():
                 if (existing) existing.remove();
             </script>
             """, height=0, width=0)
+        # -----------------------------------------------
 
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
@@ -933,27 +934,45 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    if len(date_range) == 2:
-        start, end = date_range
-        delta_days = (end - start).days + 1
-        prev_end = start - datetime.timedelta(days=1)
-        prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
-        omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
-        delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
-    else:
-        prev_date = ref_date - datetime.timedelta(days=1)
-        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
-        delta_label = f"vs {prev_date.strftime('%d %b')}"
-
     c1, c2, c3 = st.columns(3)
-    delta_str = format_idr(delta_val)
-    if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
-    elif delta_val > 0: delta_str = f"+ {delta_str}"
+    
+    # MTD CALCULATION (OTOMATIS MENGIKUTI HARI INI)
+    if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
+        mtd_start = ref_date.replace(day=1)
+        if ref_date.month == 1:
+            prev_m_start = ref_date.replace(year=ref_date.year-1, month=12, day=1)
+            try: prev_m_end = ref_date.replace(year=ref_date.year-1, month=12, day=ref_date.day)
+            except ValueError: prev_m_end = ref_date.replace(year=ref_date.year-1, month=12, day=31)
+        else:
+            prev_m_start = ref_date.replace(month=ref_date.month-1, day=1)
+            try: prev_m_end = ref_date.replace(month=ref_date.month-1, day=ref_date.day)
+            except ValueError: 
+                last_day = calendar.monthrange(ref_date.year, ref_date.month-1)[1]
+                prev_m_end = ref_date.replace(month=ref_date.month-1, day=last_day)
+                
+        val_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= mtd_start) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Jumlah'].sum()
+        val_prev_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_m_start) & (df_scope_all['Tanggal'].dt.date <= prev_m_end)]['Jumlah'].sum()
+        delta_mtd = val_mtd - val_prev_mtd
+        
+        mtd_color = "#f1c40f" if delta_mtd < 0 else "#2ecc71" # KUNING JIKA TURUN
+        mtd_symbol = "▼" if delta_mtd < 0 else "▲"
+        
+        with c1:
+            st.markdown(f"""
+            <div style="border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <p style="margin:0; font-size:18px; font-weight:600; color:#7f8c8d;">Total Omset (Periode MTD)</p>
+                <h1 style="margin:0; font-size:42px; font-weight:800; color:#2c3e50;">{format_idr(val_mtd)}</h1>
+                <p style="margin:0; font-size:16px; font-weight:bold; color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))} (vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</p>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        delta_val = current_omset_total - (df_scope_all[(df_scope_all['Tanggal'].dt.date >= (ref_date - datetime.timedelta(days=(ref_date - mtd_start).days + 1))) & (df_scope_all['Tanggal'].dt.date <= (ref_date - datetime.timedelta(days=1)))]['Jumlah'].sum())
+        delta_str = format_idr(delta_val)
+        if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
+        elif delta_val > 0: delta_str = f"+ {delta_str}"
+        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str}")
 
-    c1.metric(label="💰 Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
-    c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
+    c2.metric("Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
     if 'No Faktur' in df_active.columns:
         valid_faktur = df_active['No Faktur'].astype(str)
@@ -962,34 +981,16 @@ def main_dashboard():
         transaksi_count = valid_faktur.nunique()
     else: transaksi_count = len(df_active)
         
-    c3.metric("🧾 Transaksi", f"{transaksi_count}")
+    c3.metric("Transaksi", f"{transaksi_count}")
 
-    # METRIK PERBANDINGAN MTD (TANGGAL KALENDER HARI INI BERJALAN)
-    if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        mtd_start = today.replace(day=1)
-        if today.month == 1:
-            prev_m_start = today.replace(year=today.year-1, month=12, day=1)
-            try: prev_m_end = today.replace(year=today.year-1, month=12, day=today.day)
-            except ValueError: prev_m_end = today.replace(year=today.year-1, month=12, day=28) 
-        else:
-            prev_m_start = today.replace(month=today.month-1, day=1)
-            try: prev_m_end = today.replace(month=today.month-1, day=today.day)
-            except ValueError:
-                last_day = calendar.monthrange(today.year, today.month-1)[1]
-                prev_m_end = today.replace(month=today.month-1, day=last_day)
-        
-        val_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= mtd_start) & (df_scope_all['Tanggal'].dt.date <= today)]['Jumlah'].sum()
-        val_prev_mtd = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_m_start) & (df_scope_all['Tanggal'].dt.date <= prev_m_end)]['Jumlah'].sum()
-        
-        mtd_color = "#f1c40f" if val_mtd < val_prev_mtd else "#2ecc71" # Kuning jika turun
-        mtd_bg = "#fff9e6" if val_mtd < val_prev_mtd else "#eafaf1"
-        
-        st.markdown(f"""
-        <div style="background-color: {mtd_bg}; padding: 15px; border-radius: 8px; border-left: 5px solid {mtd_color}; margin-bottom: 20px;">
-            <p style="margin:0; font-size: 14px; color: #555; font-weight: bold;">Perbandingan MTD IJL (Bulan Ini vs Bulan Lalu s/d Tgl {today.day})</p>
-            <h3 style="margin:0; color: {mtd_color}; font-weight: 800;">{format_idr(val_mtd)} <span style="font-size:16px; color: #7f8c8d;">vs {format_idr(val_prev_mtd)}</span></h3>
-        </div>
-        """, unsafe_allow_html=True)
+    try:
+        if len(date_range) == 2 and (date_range[1].month == today.month and date_range[1].year == today.year):
+            days_in_month = monthrange(today.year, today.month)[1]
+            day_current = today.day
+            if day_current > 0:
+                run_rate = (current_omset_total / day_current) * days_in_month
+                st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
+    except Exception as e: pass
 
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
@@ -1016,11 +1017,10 @@ def main_dashboard():
         st.markdown("---")
 
     # =========================================================================
-    # ROMBAK LAYOUT VERTIKAL SEPENUHNYA (NO TABS)
+    # ROMBAK LAYOUT VERTIKAL SEPENUHNYA (NO TABS UNTUK REPORT UTAMA)
     # =========================================================================
 
-    # --- BAGIAN 1: RAPOR BRAND & TREND HARIAN (DENGAN FILTER HIERARKI IJL) ---
-    st.markdown("## 📊 Evaluasi Kinerja (Rapor Brand & Tren Harian)")
+    st.markdown("## 📊 Laporan Performa Brand & Tren Harian")
     
     ijl_filter = "SEMUA"
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
@@ -1031,13 +1031,16 @@ def main_dashboard():
         if ijl_filter == "Total Indah Jaya Lestari (IJL)":
             semua_tim = []
             for spv in ["LISMAN", "AKBAR", "MADONG"]:
-                semua_tim.extend(TARGET_DATABASE[spv].keys())
+                if spv in TARGET_DATABASE:
+                    semua_tim.extend(TARGET_DATABASE[spv].keys())
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
             nama_spv = ijl_filter.replace("Tim ", "").upper()
-            df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
-            loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+            if nama_spv in TARGET_DATABASE:
+                df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
+                loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+            else: loop_source = None
     else:
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
         elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
@@ -1138,8 +1141,8 @@ def main_dashboard():
             total_brand_sales = 0
             total_brand_target = 0
             
-            yesterday = today - datetime.timedelta(days=1)
-            mtd_start_date = today.replace(day=1)
+            yesterday = ref_date - datetime.timedelta(days=1)
+            mtd_start_date = ref_date.replace(day=1)
             
             for sales_name, targets in INDIVIDUAL_TARGETS.items():
                 if selected_brand_detail in targets:
@@ -1151,7 +1154,7 @@ def main_dashboard():
                     toko_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Nama Outlet'].nunique()
                     
                     # Data MTD berjalan
-                    toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= today)]['Nama Outlet'].nunique()
+                    toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Nama Outlet'].nunique()
 
                     sales_stats.append({
                         "Nama Sales": sales_name, 
@@ -1252,8 +1255,11 @@ def main_dashboard():
                     # LOGIKA RO & AO BARU (Sesuai Permintaan)
                     # RO: Tarik dari file Toko Awal
                     ro = toko_awal_dict.get(brand_growth, 0)
-                    # AO: Toko aktif Murni Bulan berjalan (Bukan Kumulatif)
-                    ao = len(current_outlets)
+                    
+                    # AO: YTD (Kumulatif aktif dari Januari sampai bulan ini berjalan)
+                    df_ytd = df_brand_all[(df_brand_all['Tahun'] == period.year) & (df_brand_all['Bulan'] <= period.month)]
+                    ytd_outlets = set(df_ytd['Nama Outlet'].dropna().unique())
+                    ao = len(ytd_outlets)
                     
                     # NOO = Toko aktif bulan ini yang belum pernah belanja sebelumnya
                     noo = len(current_outlets - seen_outlets)
