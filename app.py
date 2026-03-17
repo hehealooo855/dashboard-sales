@@ -261,7 +261,6 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    # PERBAIKAN WARNA TARGET BAR (Merah, Kuning, Hijau)
     if pct < 50: bar_color = "linear-gradient(90deg, #ff4b4b, #e74c3c)" 
     elif 50 <= pct < 85: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
@@ -510,7 +509,7 @@ def render_pivot_fragment(df_scope_all, role):
     if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
     else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
 
-    # 2. BUNGKUS SEMUA FILTER KE DALAM "FORM" AGAR TIDAK LOADING SAAT DI-KLIK
+    # 2. BUNGKUS SEMUA FILTER KE DALAM "FORM"
     with st.form(key='pivot_filter_form'):
         col_piv1, col_piv2 = st.columns(2)
         with col_piv1:
@@ -520,7 +519,6 @@ def render_pivot_fragment(df_scope_all, role):
             
         st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
         
-        # Mengambil list unik secara manual sebelum difilter untuk mengisi Pilihan Dropdown
         list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
         list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
         list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
@@ -536,7 +534,7 @@ def render_pivot_fragment(df_scope_all, role):
         
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-    # 3. HANYA MENGHITUNG PIVOT JIKA TOMBOL DITEKAN ATAU LOAD PERTAMA KALI
+    # 3. KALKULASI DATA
     json_data = df_scope_all.to_json(date_format='iso', orient='split')
     master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
 
@@ -561,13 +559,12 @@ def render_pivot_fragment(df_scope_all, role):
         if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
         if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
 
-        # Terapkan Filter pada Data Pivot
         df_filtered = master_pivot.copy()
         if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
         if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
         if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
         if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
-        
+
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
         if maximize_toggle:
@@ -599,8 +596,7 @@ def render_pivot_fragment(df_scope_all, role):
             gb = GridOptionsBuilder.from_dataframe(df_display)
             gb.configure_pagination(enabled=False)
             gb.configure_side_bar()
-            
-            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
+            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, minWidth=160)
             
             for col in num_cols:
                 gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
@@ -610,7 +606,7 @@ def render_pivot_fragment(df_scope_all, role):
                 if (params.data['Nama Customer'] === 'GRAND TOTAL') {
                     return {
                         'font-weight': 'bold',
-                        'background-color': '#eef2f5',
+                        'background-color': '#f8f9fa',
                         'border-top': '2px solid #2980b9'
                     }
                 }
@@ -619,18 +615,25 @@ def render_pivot_fragment(df_scope_all, role):
             gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
             gridOptions = gb.build()
             
+            # --- UPDATE UI: CORPORATE HEADER & CLEAN HOVER ---
             grid_css = {
-                ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
-                ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
-                ".ag-row:hover": {
-                    "background-color": "#000000 !important",
-                    "color": "#00f8ff !important",
-                    "box-shadow": "inset 0 0 20px #00f8ff, 0 0 20px #00f8ff !important",
-                    "font-weight": "900 !important",
-                    "transform": "scale(1.002)",
-                    "transition": "all 0.2s",
-                    "z-index": "9999 !important"
-                }
+                # Header Styling (Corporate Blue)
+                ".ag-header": {"background-color": "#2980b9 !important"},
+                ".ag-header-cell": {"border-right": "1px solid #ffffff44 !important"},
+                ".ag-header-cell-label": {"color": "#ffffff !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                ".ag-header-icon": {"color": "#ffffff !important"},
+                
+                # Baris & Cell
+                ".ag-cell": {"border-right": "1px solid #e2e8f0 !important", "display": "flex", "align-items": "center"},
+                
+                # Professional Hover Effect
+                ".ag-row-hover": {
+                    "background-color": "#e3f2fd !important", # Light Blue Professional
+                    "transition": "background-color 0.15s ease-in-out !important"
+                },
+                
+                # Filter bar styling
+                ".ag-floating-filter-button": {"filter": "brightness(0) invert(1)"}
             }
             
             AgGrid(
@@ -644,10 +647,8 @@ def render_pivot_fragment(df_scope_all, role):
                 data_return_mode='FILTERED_AND_SORTED'
             )
         else:
-            def style_fallback(row):
-                return ['border: 1px solid #dcdcdc;' for _ in row]
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-            st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True)
+            st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
     else:
         st.info("Data Kosong.")
 
@@ -994,7 +995,6 @@ def main_dashboard():
     elif delta_val > 0: delta_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_str} ({delta_label})</span>"
     else: delta_html = f"<span style='color: #95a5a6; font-weight: bold; font-size: 14px;'>▬ {delta_str} ({delta_label})</span>"
 
-    # ========================== PERBAIKAN TOTAL OMSET FONT SIZE & WARNA ADAPTIF ==========================
     c1.markdown(f"""
     <div style="padding: 0px 0px;">
         <p style="margin:0; font-size: 18px; font-weight: 600; color: inherit; padding-bottom: 0.25rem;">💰 Total Omset (Periode)</p>
