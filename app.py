@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS Corporate (Blue Hover & Enlarge Fonts)
+# Custom CSS Corporate Professional & Anti-Red Hover
 st.markdown("""
 <style>
     .metric-card {
@@ -60,17 +60,17 @@ st.markdown("""
     
     /* Memperbesar Font Metric Utama */
     [data-testid="stMetricValue"] {
-        font-size: 40px !important;
+        font-size: 45px !important;
         font-weight: 800 !important;
         color: #2c3e50 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: 600 !important;
         color: #7f8c8d !important;
     }
     
-    /* Warna Biru Profesional untuk Link/Tombol */
+    /* Warna Biru Profesional untuk Hover / Focus */
     a:hover, button:hover {
         color: #2980b9 !important;
         text-decoration: none !important;
@@ -935,9 +935,10 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # METRIK PERBANDINGAN MTD (TANGGAL KALENDER HARI INI BERJALAN)
+    c1, c2, c3 = st.columns(3)
+    
+    # METRIK PERBANDINGAN MTD KUNING (TANGGAL FILTER SIDEBAR)
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        c1, c2, c3 = st.columns(3)
         mtd_start = ref_date.replace(day=1)
         if ref_date.month == 1:
             prev_m_start = ref_date.replace(year=ref_date.year-1, month=12, day=1)
@@ -965,25 +966,11 @@ def main_dashboard():
             </div>
             """, unsafe_allow_html=True)
     else:
-        if len(date_range) == 2:
-            start, end = date_range
-            delta_days = (end - start).days + 1
-            prev_end = start - datetime.timedelta(days=1)
-            prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
-            omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
-            delta_val = current_omset_total - omset_prev_period
-            delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
-        else:
-            prev_date = ref_date - datetime.timedelta(days=1)
-            omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-            delta_val = current_omset_total - omset_prev_period
-            delta_label = f"vs {prev_date.strftime('%d %b')}"
-
-        c1, c2, c3 = st.columns(3)
+        delta_val = current_omset_total - (df_scope_all[(df_scope_all['Tanggal'].dt.date >= (ref_date - datetime.timedelta(days=(ref_date - mtd_start).days + 1))) & (df_scope_all['Tanggal'].dt.date <= (ref_date - datetime.timedelta(days=1)))]['Jumlah'].sum())
         delta_str = format_idr(delta_val)
         if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
         elif delta_val > 0: delta_str = f"+ {delta_str}"
-        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
+        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str}")
 
     c2.metric("Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
@@ -1610,136 +1597,136 @@ def main_dashboard():
                             'AO VS RO %': ao_vs_ro,
                             'NOO': noo
                         })
+                
+                df_growth_all = pd.DataFrame(growth_data)
+                
+                if not df_growth_all.empty:
+                    bulan_dict_short = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'May', 6:'Jun', 7:'Jul', 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec'}
                     
-                    df_growth_all = pd.DataFrame(growth_data)
+                    st.divider()
+                    st.markdown(f"<h4 style='text-align: center;'>Tabel 1: Aktivitas Outlet {brand_growth} (Tahun 2026)</h4>", unsafe_allow_html=True)
+                    df_2026 = df_growth_all[df_growth_all['Year'] == 2026].copy()
                     
-                    if not df_growth_all.empty:
-                        bulan_dict_short = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'May', 6:'Jun', 7:'Jul', 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec'}
-                        
-                        st.divider()
-                        st.markdown(f"<h4 style='text-align: center;'>Tabel 1: Aktivitas Outlet {brand_growth} (Tahun 2026)</h4>", unsafe_allow_html=True)
-                        df_2026 = df_growth_all[df_growth_all['Year'] == 2026].copy()
-                        
-                        display_2026 = []
-                        for m in range(1, 13):
-                            row = df_2026[df_2026['Month'] == m]
-                            if not row.empty:
-                                r = row.iloc[0]
-                                display_2026.append({
-                                    'MONTH': f"{bulan_dict_short[m]}-26",
-                                    'SALES': r['SALES'],
-                                    'RO': int(r['RO']), 'AO': int(r['AO']),
-                                    'AO VS RO %': r['AO VS RO %'],
-                                    'NOO': int(r['NOO'])
-                                })
+                    display_2026 = []
+                    for m in range(1, 13):
+                        row = df_2026[df_2026['Month'] == m]
+                        if not row.empty:
+                            r = row.iloc[0]
+                            display_2026.append({
+                                'MONTH': f"{bulan_dict_short[m]}-26",
+                                'SALES': r['SALES'],
+                                'RO': int(r['RO']), 'AO': int(r['AO']),
+                                'AO VS RO %': r['AO VS RO %'],
+                                'NOO': int(r['NOO'])
+                            })
+                        else:
+                            display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                    
+                    def style_tab1(row):
+                        styles = []
+                        for col in row.index:
+                            base_style = 'border: 1px solid #dcdcdc; '
+                            if col == 'AO VS RO %':
+                                bg = get_color_achv(row[col])
+                                styles.append(base_style + f'background-color: {bg}; color: black;')
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                                styles.append(base_style)
+                        return styles
+
+                    st.dataframe(pd.DataFrame(display_2026).style.format({
+                        'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
+                    }).apply(style_tab1, axis=1), use_container_width=True, hide_index=True)
+                    
+                    st.divider()
+                    col_g1, col_g2 = st.columns(2)
+                    
+                    df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
+                    df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
+                    
+                    def get_sales(df_yr, m):
+                        res = df_yr[df_yr['Month'] == m]['SALES']
+                        return res.sum() if not res.empty else 0
+
+                    tot_2025 = 0
+                    tot_2026 = 0
+                    
+                    with col_g1:
+                        st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
+                        yoy_data = []
+                        for m in range(1, 13):
+                            s25 = get_sales(df_2025, m)
+                            s26 = get_sales(df_2026_sales, m)
+                            tot_2025 += s25
+                            tot_2026 += s26
+                            growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
+                            yoy_data.append({
+                                'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
+                            })
                         
-                        def style_tab1(row):
+                        df_t2 = pd.DataFrame(yoy_data)
+                        tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
+                        df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
+                        df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
+                        
+                        def style_tab2(row):
                             styles = []
                             for col in row.index:
                                 base_style = 'border: 1px solid #dcdcdc; '
-                                if col == 'AO VS RO %':
-                                    bg = get_color_achv(row[col])
-                                    styles.append(base_style + f'background-color: {bg}; color: black;')
+                                if row['MONTH'] == 'Total Sales':
+                                    if col == 'Growth MTM':
+                                        bg = get_color_achv(row[col])
+                                        styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                    else:
+                                        styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                 else:
-                                    styles.append(base_style)
+                                    if col == 'Growth MTM':
+                                        bg = get_color_achv(row[col])
+                                        styles.append(base_style + f'background-color: {bg}; color: black;')
+                                    else:
+                                        styles.append(base_style)
                             return styles
 
-                        st.dataframe(pd.DataFrame(display_2026).style.format({
-                            'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                        }).apply(style_tab1, axis=1), use_container_width=True, hide_index=True)
-                        
-                        st.divider()
-                        col_g1, col_g2 = st.columns(2)
-                        
-                        df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
-                        df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
-                        
-                        def get_sales(df_yr, m):
-                            res = df_yr[df_yr['Month'] == m]['SALES']
-                            return res.sum() if not res.empty else 0
-
-                        tot_2025 = 0
-                        tot_2026 = 0
-                        
-                        with col_g1:
-                            st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
-                            yoy_data = []
-                            for m in range(1, 13):
-                                s25 = get_sales(df_2025, m)
-                                s26 = get_sales(df_2026_sales, m)
-                                tot_2025 += s25
-                                tot_2026 += s26
-                                growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
-                                yoy_data.append({
-                                    'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
-                                })
+                        st.dataframe(df_t2_display.style.format({
+                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                        }).apply(style_tab2, axis=1), use_container_width=True, hide_index=True)
+                    
+                    with col_g2:
+                        st.write(f"#### **Tabel 3: Quarterly Growth**")
+                        q_data = []
+                        for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
+                            m_end = m_start + 2
+                            q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
+                            q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
                             
-                            df_t2 = pd.DataFrame(yoy_data)
-                            tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
-                            df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
-                            
-                            def style_tab2(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                            q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
+                            q_data.append({
+                                'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
+                            })
+                        
+                        df_q = pd.DataFrame(q_data)
+                        df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
+                        
+                        def style_tab3(row):
+                            styles = []
+                            for col in row.index:
+                                base_style = 'border: 1px solid #dcdcdc; '
+                                if row['MONTH'] == 'Total Sales':
+                                    if col == 'Growth MTM':
+                                        bg = get_color_achv(row[col])
+                                        styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                                     else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
-
-                            st.dataframe(df_t2_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab2, axis=1), use_container_width=True, hide_index=True)
-                        
-                        with col_g2:
-                            st.write(f"#### **Tabel 3: Quarterly Growth**")
-                            q_data = []
-                            for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
-                                m_end = m_start + 2
-                                q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
-                                q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
-                                
-                                q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
-                                q_data.append({
-                                    'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
-                                })
-                            
-                            df_q = pd.DataFrame(q_data)
-                            df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
-                            
-                            def style_tab3(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                        styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                else:
+                                    if col == 'Growth MTM':
+                                        bg = get_color_achv(row[col])
+                                        styles.append(base_style + f'background-color: {bg}; color: black;')
                                     else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
+                                        styles.append(base_style)
+                            return styles
 
-                            st.dataframe(df_q_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab3, axis=1), use_container_width=True, hide_index=True)
+                        st.dataframe(df_q_display.style.format({
+                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                        }).apply(style_tab3, axis=1), use_container_width=True, hide_index=True)
             else:
                 st.info(f"Belum ada data untuk brand {brand_growth}.")
         else:
