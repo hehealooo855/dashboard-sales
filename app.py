@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS
+# Custom CSS & Perbaikan Metrik Label Size
 st.markdown("""
 <style>
     .metric-card {
@@ -57,6 +57,16 @@ st.markdown("""
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    
+    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
+    [data-testid="stMetricLabel"] p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"] div {
+        font-size: 36px !important;
+        font-weight: bold !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -251,8 +261,9 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50: bar_color = "linear-gradient(90deg, #3498db, #2980b9)" 
-    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    # PERBAIKAN WARNA TARGET BAR (Merah, Kuning, Hijau)
+    if pct < 50: bar_color = "linear-gradient(90deg, #ff4b4b, #e74c3c)" 
+    elif 50 <= pct < 85: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
@@ -983,11 +994,11 @@ def main_dashboard():
     elif delta_val > 0: delta_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_str} ({delta_label})</span>"
     else: delta_html = f"<span style='color: #95a5a6; font-weight: bold; font-size: 14px;'>▬ {delta_str} ({delta_label})</span>"
 
-    # ========================== PERBAIKAN TOTAL OMSET BACKGROUND ==========================
+    # ========================== PERBAIKAN TOTAL OMSET FONT SIZE & WARNA ADAPTIF ==========================
     c1.markdown(f"""
-    <div style="padding: 10px 0px;">
-        <p style="margin:0; font-size: 14px; color: #555;">💰 Total Omset (Periode)</p>
-        <h2 style="margin: 5px 0 5px 0; color: #333;">{format_idr(current_omset_total)}</h2>
+    <div style="padding: 0px 0px;">
+        <p style="margin:0; font-size: 18px; font-weight: 600; color: inherit; padding-bottom: 0.25rem;">💰 Total Omset (Periode)</p>
+        <div style="font-size: 36px; font-weight: bold; color: inherit; line-height: 1.2;">{format_idr(current_omset_total)}</div>
         {delta_html}
     </div>
     """, unsafe_allow_html=True)
@@ -1077,7 +1088,7 @@ def main_dashboard():
                                 "Rank": "", "Item": f"   └─ {s_name}", "Supervisor": "", 
                                 "Target": format_idr(t_indiv), "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%", "Bar": pct_indiv / 100,
-                                "Progress (Detail %)": pct_indiv / 100 # Warna akurat sesuai baris anak
+                                "Progress (Detail %)": pct_indiv / 100 
                             })
                     temp_grouped_data.append({"parent": brand_row, "children": sales_rows_list, "sort_val": realisasi_brand})
 
@@ -1093,7 +1104,6 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # ========================== PERBAIKAN WARNA ACHV % DI TABEL RAPOR ==========================
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
@@ -1125,7 +1135,6 @@ def main_dashboard():
                     pct = (real/target)*100
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
             if indiv_data: 
-                # ========================== PERBAIKAN WARNA ACHV % DI TARGET BAWAH ==========================
                 df_indiv = pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False)
                 def style_indiv(row):
                     val = row['Pencapaian']
@@ -1185,7 +1194,6 @@ def main_dashboard():
                         total_brand_sales += real_sales; total_brand_target += t_pribadi
                 
                 if sales_stats:
-                    # ========================== PERBAIKAN WARNA ACHV % DI DETAIL SALES ==========================
                     df_sales_stats = pd.DataFrame(sales_stats).drop(columns=["_real", "_target"])
                     def style_sales_stats(row):
                         try: val = float(row['Ach %'].replace('%', '')) / 100
@@ -1366,7 +1374,6 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
 
-        # ========================== PERBAIKAN NAMA TAB GROWTH ==========================
         tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
         with tab_pivot:
@@ -1397,7 +1404,6 @@ def main_dashboard():
                     
                     all_months = sorted(df_brand_all['Bulan-Tahun'].dropna().unique())
                     
-                    # ========================== PERBAIKAN LOGIKA RO DARI TOKO AWAL ==========================
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     kd_col = 'Kode Customer' if 'Kode Customer' in df_scope_all.columns else ('Kode Outlet' if 'Kode Outlet' in df_scope_all.columns else None)
                     
@@ -1422,7 +1428,6 @@ def main_dashboard():
                         
                         sales = df_period['Jumlah'].sum()
                         
-                        # RO Murni menggunakan data paten Master (Toko Awal / Registrasi)
                         ro = ro_master_value
                         
                         seen_outlets_ytd.update(current_outlets)
