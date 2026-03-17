@@ -21,7 +21,7 @@ import streamlit.components.v1 as components
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
     AGGRID_AVAILABLE = True
 except ImportError:
     AGGRID_AVAILABLE = False
@@ -71,7 +71,7 @@ st.markdown("""
     }
     
     /* Warna Biru Profesional untuk Hover / Focus */
-    a:hover, button:hover, .st-emotion-cache-1wmy9hl:hover {
+    a:hover, button:hover {
         color: #2980b9 !important;
         text-decoration: none !important;
         border-color: #2980b9 !important;
@@ -115,6 +115,7 @@ def map_city_to_province(city_name):
 # ==========================================
 # 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
+
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000, "Maskit": 30_000_000, "Birth Beyond": 120_000_000},
@@ -653,6 +654,7 @@ def render_pivot_fragment(df_scope_all, role):
             file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 # =====================================================================
 
 def login_page():
@@ -934,10 +936,9 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    c1, c2, c3 = st.columns(3)
-    
     # METRIK PERBANDINGAN MTD KUNING (TANGGAL FILTER SIDEBAR)
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
+        c1, c2, c3 = st.columns(3)
         mtd_start = ref_date.replace(day=1)
         if ref_date.month == 1:
             prev_m_start = ref_date.replace(year=ref_date.year-1, month=12, day=1)
@@ -961,7 +962,10 @@ def main_dashboard():
             <div style="border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <p style="margin:0; font-size:18px; font-weight:600; color:#7f8c8d;">Total Omset (Periode MTD)</p>
                 <h1 style="margin:0; font-size:45px; font-weight:800; color:#2c3e50;">{format_idr(val_mtd)}</h1>
-                <p style="margin:0; font-size:16px; font-weight:bold; color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))} <span style="color:#7f8c8d; font-weight:normal;">(vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</span></p>
+                <p style="margin:0; font-size:16px; font-weight:bold; color:#7f8c8d;">
+                    <span style="color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))}</span> 
+                    <span style="font-weight:normal;">(vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</span>
+                </p>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -979,6 +983,7 @@ def main_dashboard():
             delta_val = current_omset_total - omset_prev_period
             delta_label = f"vs {prev_date.strftime('%d %b')}"
 
+        c1, c2, c3 = st.columns(3)
         delta_str = format_idr(delta_val)
         if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
         elif delta_val > 0: delta_str = f"+ {delta_str}"
@@ -1032,29 +1037,35 @@ def main_dashboard():
     # FILTER GLOBAL IJL UNTUK TABS RAPOR BRAND & TREN HARIAN
     # =========================================================================
     st.markdown("### 📊 Parameter Analisis Terpadu")
-    ijl_filter = "SEMUA"
+    ijl_options = ["SEMUA", "Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"]
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ijl_options)
+    else:
+        ijl_filter = "SEMUA"
         
     df_ijl = df_active.copy()
-    if ijl_filter != "SEMUA" and ijl_filter != "Total Indah Jaya Lestari (IJL)":
-        nama_spv = ijl_filter.upper()
-        if nama_spv in TARGET_DATABASE:
-            df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
-            loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
-        else: loop_source = None
-    else:
-        semua_tim = []
-        for spv in ["LISMAN", "AKBAR", "MADONG"]:
-            if spv in TARGET_DATABASE:
-                semua_tim.extend(TARGET_DATABASE[spv].keys())
+    if ijl_filter != "SEMUA":
         if ijl_filter == "Total Indah Jaya Lestari (IJL)":
+            semua_tim = []
+            for spv in ["LISMAN", "AKBAR", "MADONG"]:
+                if spv in TARGET_DATABASE:
+                    semua_tim.extend(TARGET_DATABASE[spv].keys())
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
-            if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
-            elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-            else: loop_source = None
+            nama_spv = ijl_filter.upper()
+            if nama_spv in TARGET_DATABASE:
+                df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
+                loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+            else:
+                loop_source = None
+    else:
+        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': 
+            loop_source = TARGET_DATABASE.items()
+        elif is_supervisor_account: 
+            loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
+        else:
+            loop_source = None
 
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
@@ -1188,6 +1199,26 @@ def main_dashboard():
         else: st.info("Menu ini khusus untuk melihat detail tim sales per brand.")
 
     with t3:
+        st.subheader("📦 Top Produk & Outlet")
+        top_prod_brand = st.selectbox("Filter Brand SKU & Outlet:", ["SEMUA"] + sorted(list(df_active['Merk'].dropna().astype(str).unique())))
+        if top_prod_brand != "SEMUA": df_top_prod = df_active[df_active['Merk'] == top_prod_brand]
+        else: df_top_prod = df_active
+
+        c_top1, c_top2 = st.columns(2)
+        with c_top1:
+            st.write("#### Top 10 Produk")
+            top_prod = df_top_prod.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
+            fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s', color_discrete_sequence=['#2980b9'])
+            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_bar, use_container_width=True)
+        with c_top2:
+            st.write("#### Top 10 Outlet")
+            top_out = df_top_prod.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
+            fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#27ae60'])
+            fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_out, use_container_width=True)
+
+        st.divider()
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
         st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
@@ -1209,25 +1240,6 @@ def main_dashboard():
                 top_performers[['🏆 Rank', 'Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
                 use_container_width=True, hide_index=True
             )
-        
-        st.divider()
-        c1, c2 = st.columns(2)
-        with c1:
-            st.subheader("📦 Top 10 Produk")
-            top_prod_brand = st.selectbox("Filter Brand SKU:", ["SEMUA"] + sorted(list(df_active['Merk'].dropna().astype(str).unique())))
-            if top_prod_brand != "SEMUA": df_top_prod = df_active[df_active['Merk'] == top_prod_brand]
-            else: df_top_prod = df_active
-            
-            top_prod = df_top_prod.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
-            fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s', color_discrete_sequence=['#2980b9'])
-            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_bar, use_container_width=True)
-        with c2:
-            st.subheader("🏪 Top 10 Outlet")
-            top_out = df_top_prod.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
-            fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#27ae60'])
-            fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_out, use_container_width=True)
             
     with t5:
         st.subheader("🚀 Kejar Omset (Actionable Insights)")
