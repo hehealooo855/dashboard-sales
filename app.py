@@ -71,6 +71,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
+# MASTER KALENDER LIBUR NASIONAL 2026 (INDONESIA)
+# ==========================================
+HOLIDAYS_2026 = [
+    '2026-01-01', # Tahun Baru Masehi
+    '2026-02-14', # Isra Mikraj (Estimasi)
+    '2026-02-17', # Tahun Baru Imlek
+    '2026-03-19', # Hari Raya Idul Fitri
+    '2026-03-20', # Hari Raya Idul Fitri
+    '2026-04-03', # Wafat Yesus Kristus (Jumat Agung)
+    '2026-05-01', # Hari Buruh Internasional
+    '2026-05-14', # Kenaikan Yesus Kristus
+    '2026-05-26', # Hari Raya Idul Adha (Estimasi)
+    '2026-06-01', # Hari Lahir Pancasila
+    '2026-06-16', # Tahun Baru Islam
+    '2026-08-17', # Hari Kemerdekaan RI
+    '2026-08-25', # Maulid Nabi Muhammad SAW
+    '2026-12-25'  # Hari Raya Natal
+]
+
+# ==========================================
 # KAMUS GEOGRAFIS AI (DUAL-LAYER: KOTA + KECAMATAN)
 # ==========================================
 PROVINCE_MAPPING = {
@@ -615,24 +635,16 @@ def render_pivot_fragment(df_scope_all, role):
             gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
             gridOptions = gb.build()
             
-            # --- UPDATE UI: CORPORATE HEADER & CLEAN HOVER ---
             grid_css = {
-                # Header Styling (Corporate Blue)
                 ".ag-header": {"background-color": "#2980b9 !important"},
                 ".ag-header-cell": {"border-right": "1px solid #ffffff44 !important"},
                 ".ag-header-cell-label": {"color": "#ffffff !important", "font-weight": "bold !important", "font-size": "14px !important"},
                 ".ag-header-icon": {"color": "#ffffff !important"},
-                
-                # Baris & Cell
                 ".ag-cell": {"border-right": "1px solid #e2e8f0 !important", "display": "flex", "align-items": "center"},
-                
-                # Professional Hover Effect
                 ".ag-row-hover": {
-                    "background-color": "#e3f2fd !important", # Light Blue Professional
+                    "background-color": "#e3f2fd !important", 
                     "transition": "background-color 0.15s ease-in-out !important"
                 },
-                
-                # Filter bar styling
                 ".ag-floating-filter-button": {"filter": "brightness(0) invert(1)"}
             }
             
@@ -1173,6 +1185,16 @@ def main_dashboard():
                 
                 h_1_date = end_d - datetime.timedelta(days=1)
                 
+                # ========================== PERBAIKAN: LOGIKA SISA HARI KERJA ==========================
+                last_day_of_month = calendar.monthrange(end_d.year, end_d.month)[1]
+                remaining_workdays = 0
+                for day_int in range(end_d.day, last_day_of_month + 1):
+                    c_date = datetime.date(end_d.year, end_d.month, day_int)
+                    if c_date.weekday() != 6 and c_date.strftime('%Y-%m-%d') not in HOLIDAYS_2026:
+                        remaining_workdays += 1
+                        
+                safe_remaining_days = remaining_workdays if remaining_workdays > 0 else 1
+                
                 for sales_name, targets in INDIVIDUAL_TARGETS.items():
                     if selected_brand_detail in targets:
                         t_pribadi = targets[selected_brand_detail]
@@ -1183,9 +1205,20 @@ def main_dashboard():
                         toko_h1 = df_h1['Nama Outlet'].nunique()
                         total_toko_mtd = df_active_tab[(df_active_tab['Penjualan'] == sales_name) & (df_active_tab['Merk'] == selected_brand_detail)]['Nama Outlet'].nunique()
                         
+                        # Hitung Gap Sales & Target Harian
+                        gap_sales = t_pribadi - real_sales
+                        if gap_sales < 0:
+                            gap_sales = 0
+                            
+                        target_harian = gap_sales / safe_remaining_days
+                        
                         sales_stats.append({
-                            "Nama Sales": sales_name, "Target Pribadi": format_idr(t_pribadi), "Realisasi": format_idr(real_sales),
+                            "Nama Sales": sales_name, 
+                            "Target Pribadi": format_idr(t_pribadi), 
+                            "Realisasi": format_idr(real_sales),
                             "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
+                            "Gap Sales": format_idr(gap_sales),
+                            "Target Harian": format_idr(target_harian),
                             "Omset H-1": format_idr(omset_h1),
                             "Toko H-1": toko_h1, 
                             "Total Toko MTD": total_toko_mtd,
