@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS - Corporate Clean & Blue Theme
+# Custom CSS Corporate Professional & Anti-Red Hover
 st.markdown("""
 <style>
     .metric-card {
@@ -168,6 +168,13 @@ BRAND_ALIASES = {
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
 }
 
+def normalize_brand(raw_brand):
+    raw_upper = str(raw_brand).upper()
+    for target_brand, keywords in BRAND_ALIASES.items():
+        for keyword in keywords:
+            if keyword in raw_upper: return target_brand
+    return raw_brand
+
 SALES_MAPPING = {
     "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
     "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
@@ -249,7 +256,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# EKSTRAKSI TOKO AWAL (RO BASELINE)
+# EKSTRAKSI TOKO AWAL (RO BASELINE) DARI LINK SHEET KHUSUS
 # =========================================================================
 @st.cache_data(ttl=3600)
 def load_toko_awal():
@@ -259,6 +266,7 @@ def load_toko_awal():
         df.columns = df.columns.str.strip()
         if 'Merk' in df.columns and 'Nama Outlet' in df.columns:
             df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
+            # Menghitung jumlah toko unik per Merk sebagai RO Baseline
             return df.groupby('Merk')['Nama Outlet'].nunique().to_dict()
     except Exception as e:
         return {}
@@ -1137,32 +1145,17 @@ def main_dashboard():
             yesterday = ref_date - datetime.timedelta(days=1)
             mtd_start_date = ref_date.replace(day=1)
             
-            # Waktu sisa kerja untuk catch-up
-            holidays_id = [
-                '2024-01-01', '2024-02-08', '2024-02-10', '2024-03-11', '2024-03-29', '2024-04-10', '2024-04-11', '2024-05-01', '2024-05-09', '2024-05-23', '2024-06-01', '2024-06-17', '2024-07-07', '2024-08-17', '2024-09-16', '2024-12-25', 
-                '2025-01-01', '2025-01-27', '2025-03-29', '2025-03-31', '2025-04-18', '2025-04-20', '2025-05-01', '2025-05-12', '2025-05-29', '2025-06-01', '2025-06-06', '2025-06-27', '2025-08-17', '2025-09-05', '2025-10-20', '2025-12-25',
-                '2026-01-01', '2026-02-17', '2026-03-19', '2026-03-20', '2026-04-03', '2026-04-05', '2026-05-01', '2026-05-14', '2026-05-24', '2026-06-01', '2026-06-16', '2026-07-07', '2026-08-17', '2026-08-25', '2026-12-25' 
-            ]
-            next_month = ref_date.replace(day=28) + datetime.timedelta(days=4)
-            last_day_month = next_month - datetime.timedelta(days=next_month.day)
-            date_range_rest = pd.date_range(start=ref_date, end=last_day_month)
-            remaining_workdays = sum(1 for d in date_range_rest if d.weekday() != 6 and d.strftime('%Y-%m-%d') not in holidays_id)
-            
             for sales_name, targets in INDIVIDUAL_TARGETS.items():
                 if selected_brand_detail in targets:
                     t_pribadi = targets[selected_brand_detail]
                     real_sales = df_active[(df_active['Penjualan'] == sales_name) & (df_active['Merk'] == selected_brand_detail)]['Jumlah'].sum()
                     
-                    # Data H-1 (Kemarin dari Tanggal Filter)
+                    # Data H-1
                     omset_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Jumlah'].sum()
                     toko_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Nama Outlet'].nunique()
                     
                     # Data MTD berjalan
                     toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Nama Outlet'].nunique()
-
-                    target_remaining = t_pribadi - real_sales
-                    if target_remaining > 0 and remaining_workdays > 0: catch_up_needed = target_remaining / remaining_workdays
-                    else: catch_up_needed = 0 
 
                     sales_stats.append({
                         "Nama Sales": sales_name, 
@@ -1172,7 +1165,6 @@ def main_dashboard():
                         "Omset (H-1)": format_idr(omset_h1),
                         "Toko (H-1)": toko_h1,
                         "Total Toko (MTD)": toko_mtd,
-                        "Catch-up (Per Hari)": format_idr(catch_up_needed),
                         "_real": real_sales, "_target": t_pribadi
                     })
                     total_brand_sales += real_sales; total_brand_target += t_pribadi
