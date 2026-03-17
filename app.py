@@ -83,6 +83,50 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
+# ==========================================
+# DICTIONARY GLOBAL PREFIX KODE CUSTOMER (UNTUK RO TOKO AWAL)
+# ==========================================
+BRAND_PREFIXES = {
+    "Javinci": ["JV"],
+    "Careso": ["EPS", "CRS"],
+    "Somethinc": ["SMT", "SOM"],
+    "Newlab": ["NL", "NEW"],
+    "Gloow & Be": ["GB", "GLO"],
+    "Dorskin": ["DRS", "DOR"],
+    "Whitelab": ["WL", "WHI"],
+    "Bonavie": ["BNV", "BON"],
+    "Goute": ["GT", "GOU"],
+    "Mlen": ["MLN", "MLE"],
+    "Artist Inc": ["ART", "AI"],
+    "Maskit": ["MSK", "MAS"],
+    "Birth Beyond": ["BB", "BIR"],
+    "Sociolla": ["SOC", "SCL"],
+    "Thai": ["TH", "THA"],
+    "Inesia": ["INS", "INE"],
+    "Y2000": ["Y2K", "Y20"],
+    "Diosys": ["DIO", "DS"],
+    "Masami": ["MSM", "MAS"],
+    "Cassandra": ["CAS", "CSD"],
+    "Clinelle": ["CLN", "CLI"],
+    "Beautica": ["BTC", "BEA"],
+    "Claresta": ["CLA", "CLR"],
+    "Rose All Day": ["RAD", "ROS"],
+    "OtwooO": ["OTO", "OTW"],
+    "Sekawan": ["SKW", "SEK"],
+    "Avione": ["AVI", "AVN"],
+    "Honor": ["HNR", "HON"],
+    "Vlagio": ["VLG", "VLA"],
+    "Ren & R & L": ["REN", "RRL"],
+    "Mad For Make Up": ["MFM", "MAD"],
+    "Satto": ["STT", "SAT"],
+    "Mykonos": ["MYK", "MYC"],
+    "The Face": ["TF", "TFC"],
+    "Yu Chun Mei": ["YCM", "YUC"],
+    "Milano": ["MIL", "MLN"],
+    "Walnutt": ["WAL", "WLN"],
+    "Elizabeth Rose": ["ELZ", "ELI"]
+}
+
 def map_city_to_province(city_name):
     if pd.isna(city_name): return "LAIN-LAIN"
     c = str(city_name).upper().strip()
@@ -207,7 +251,7 @@ def render_custom_progress(title, current, target):
     pct = (current / target) * 100
     visual_pct = min(pct, 100)
     
-    if pct < 50: bar_color = "linear-gradient(90deg, #3498db, #2980b9)" # Corporate Blue
+    if pct < 50: bar_color = "linear-gradient(90deg, #3498db, #2980b9)" 
     elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
@@ -479,7 +523,6 @@ def render_pivot_fragment(df_scope_all, role):
 
         maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
         
-        # INI ADALAH TOMBOL AJAIB YANG MEMANGKAS WAKTU LOADING
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
     # 3. HANYA MENGHITUNG PIVOT JIKA TOMBOL DITEKAN ATAU LOAD PERTAMA KALI
@@ -543,7 +586,7 @@ def render_pivot_fragment(df_scope_all, role):
 
         if AGGRID_AVAILABLE:
             gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_pagination(enabled=False) # DIUBAH: Nonaktifkan paginasi
+            gb.configure_pagination(enabled=False)
             gb.configure_side_bar()
             
             gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
@@ -562,10 +605,9 @@ def render_pivot_fragment(df_scope_all, role):
                 }
             }
             """)
-            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight') # DIUBAH: Tambah domLayout untuk Auto-Height
+            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
             gridOptions = gb.build()
             
-            # --- EFEK LASER SPOTLIGHT & NEON HOVER PRESENTASI ---
             grid_css = {
                 ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
                 ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
@@ -629,6 +671,7 @@ def render_pivot_fragment(df_scope_all, role):
             file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 # =====================================================================
 
 def login_page():
@@ -706,6 +749,15 @@ def login_page():
                         st.rerun()
 
 def main_dashboard():
+    # --- FUNGSI GLOBAL WARNA ACHV % ---
+    def get_color_achv(val):
+        try:
+            if val < 0.50: return '#ffcccc' # Merah
+            elif val < 0.85: return '#fff2cc' # Kuning
+            else: return '#d1e7dd' # Hijau
+        except:
+            return ''
+
     def add_aggressive_watermark():
         user_name = st.session_state.get('sales_name', 'User')
         role_name = st.session_state.get('role', 'staff')
@@ -733,7 +785,6 @@ def main_dashboard():
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
-        # --- FITUR PRESENTASI SPOTLIGHT (DI SIDEBAR) ---
         st.markdown("---")
         st.write("### 🎬 Mode Presentasi")
         is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False, help="Menggelapkan layar dan memberikan efek senter pada mouse Anda")
@@ -768,7 +819,6 @@ def main_dashboard():
                 if (existing) existing.remove();
             </script>
             """, height=0, width=0)
-        # -----------------------------------------------
 
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
@@ -908,7 +958,6 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    # DIUBAH: Metrik MTD Cerdas untuk mencari Omset (Bulan Lalu di Tanggal yang Sama)
     if len(date_range) == 2:
         start, end = date_range
         try:
@@ -929,14 +978,14 @@ def main_dashboard():
 
     c1, c2, c3 = st.columns(3)
     
-    # DIUBAH: Smart UI Warning - Angka minus glow kuning di box omset tanpa memerahkan kotak
     delta_str = format_idr(abs(delta_val))
     if delta_val < 0: delta_html = f"<span style='color: #f39c12; font-weight: bold; font-size: 14px;'>▼ - {delta_str} ({delta_label})</span>"
     elif delta_val > 0: delta_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_str} ({delta_label})</span>"
     else: delta_html = f"<span style='color: #95a5a6; font-weight: bold; font-size: 14px;'>▬ {delta_str} ({delta_label})</span>"
 
+    # ========================== PERBAIKAN TOTAL OMSET BACKGROUND ==========================
     c1.markdown(f"""
-    <div style="padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fff; box-shadow: 0px 1px 3px rgba(0,0,0,0.1);">
+    <div style="padding: 10px 0px;">
         <p style="margin:0; font-size: 14px; color: #555;">💰 Total Omset (Periode)</p>
         <h2 style="margin: 5px 0 5px 0; color: #333;">{format_idr(current_omset_total)}</h2>
         {delta_html}
@@ -987,12 +1036,10 @@ def main_dashboard():
         else: st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         st.markdown("---")
 
-    # DIUBAH: Tambahan Filter IJL Global Di atas Tab
     st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
     list_ijl = ["SEMUA", "MADONG", "LISMAN", "AKBAR"]
     selected_ijl = st.selectbox("Pilih Ruang Lingkup untuk Dashboard Bawah:", list_ijl, index=0)
 
-    # Aplikasikan Filter IJL sebelum merender Tab
     df_active_tab = df_active.copy()
     if selected_ijl != "SEMUA":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
@@ -1009,7 +1056,6 @@ def main_dashboard():
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'SEMUA' else ''}")
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
-                # Filter tambahan kalau IJL dipilih
                 if selected_ijl != "SEMUA" and spv != selected_ijl:
                     continue
                     
@@ -1019,7 +1065,7 @@ def main_dashboard():
                     brand_row = {
                         "Rank": 0, "Item": brand, "Supervisor": spv, "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
-                        "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand 
+                        "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand / 100 
                     }
                     sales_rows_list = []
                     for s_name, s_targets in INDIVIDUAL_TARGETS.items():
@@ -1031,7 +1077,7 @@ def main_dashboard():
                                 "Rank": "", "Item": f"   └─ {s_name}", "Supervisor": "", 
                                 "Target": format_idr(t_indiv), "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%", "Bar": pct_indiv / 100,
-                                "Progress (Detail %)": pct_brand 
+                                "Progress (Detail %)": pct_indiv / 100 # Warna akurat sesuai baris anak
                             })
                     temp_grouped_data.append({"parent": brand_row, "children": sales_rows_list, "sort_val": realisasi_brand})
 
@@ -1046,14 +1092,16 @@ def main_dashboard():
             if not df_summ.empty:
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
-                # DIUBAH: Corporate Blue UI
+                
+                # ========================== PERBAIKAN WARNA ACHV % DI TABEL RAPOR ==========================
                 def style_rows(row):
-                    pct = row['Progress (Detail %)']
-                    if pct >= 80: bg_color = '#d1e7dd' 
-                    elif pct >= 50: bg_color = '#fff3cd' 
-                    else: bg_color = '#d0e8f2' # Corporate Blue pengganti Merah
-                    if row["Supervisor"]: return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
-                    else: return ['background-color: white; color: #555'] * len(row)
+                    val = row['Progress (Detail %)']
+                    bg_color = get_color_achv(val)
+                    if row["Supervisor"]: 
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
+                    else: 
+                        return [f'background-color: {bg_color}; color: #333; opacity: 0.9; border-bottom: 1px solid #eee'] * len(row)
+                        
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
                     use_container_width=True, hide_index=True,
@@ -1076,7 +1124,14 @@ def main_dashboard():
                     real = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
                     pct = (real/target)*100
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
-            if indiv_data: st.dataframe(pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
+            if indiv_data: 
+                # ========================== PERBAIKAN WARNA ACHV % DI TARGET BAWAH ==========================
+                df_indiv = pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False)
+                def style_indiv(row):
+                    val = row['Pencapaian']
+                    bg = get_color_achv(val)
+                    return [f'background-color: {bg}; color: black;' if col == 'Ach (%)' else '' for col in row.index]
+                st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
     with t2:
@@ -1094,7 +1149,6 @@ def main_dashboard():
             for spv_brands in TARGET_DATABASE.values(): allowed_brands.extend(spv_brands.keys())
         elif is_supervisor_account: allowed_brands = list(TARGET_DATABASE[my_name_key].keys())
         
-        # Saring allowed_brands berdasarkan filter IJL jika diperlukan
         if selected_ijl != "SEMUA":
             allowed_brands = [b for b in allowed_brands if b in TARGET_DATABASE[selected_ijl].keys()]
             
@@ -1105,7 +1159,6 @@ def main_dashboard():
                 total_brand_sales = 0
                 total_brand_target = 0
                 
-                # DIUBAH: Menarik Data H-1 dan MTD yang sinkron dengan Filter Waktu
                 if len(date_range) == 2: start_d, end_d = date_range
                 else: start_d = df_active_tab['Tanggal'].min().date() if not df_active_tab.empty else today; end_d = df_active_tab['Tanggal'].max().date() if not df_active_tab.empty else today
                 
@@ -1132,7 +1185,16 @@ def main_dashboard():
                         total_brand_sales += real_sales; total_brand_target += t_pribadi
                 
                 if sales_stats:
-                    st.dataframe(pd.DataFrame(sales_stats).drop(columns=["_real", "_target"]), use_container_width=True)
+                    # ========================== PERBAIKAN WARNA ACHV % DI DETAIL SALES ==========================
+                    df_sales_stats = pd.DataFrame(sales_stats).drop(columns=["_real", "_target"])
+                    def style_sales_stats(row):
+                        try: val = float(row['Ach %'].replace('%', '')) / 100
+                        except: val = 0
+                        bg = get_color_achv(val)
+                        return [f'background-color: {bg}; color: black;' if col == 'Ach %' else '' for col in row.index]
+                    
+                    st.dataframe(df_sales_stats.style.apply(style_sales_stats, axis=1), use_container_width=True)
+                    
                     m1, m2, m3 = st.columns(3)
                     m1.metric(f"Total Target {selected_brand_detail}", format_idr(total_brand_target))
                     m2.metric(f"Total Omset {selected_brand_detail}", format_idr(total_brand_sales))
@@ -1143,7 +1205,6 @@ def main_dashboard():
 
     with t3:
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
-        # DIUBAH: Tambahan Dropdown Filter Brand Khusus di Tab Top Produk
         selected_brand_t3 = st.selectbox("Pilih Brand (Filter Top Produk & Outlet):", ["SEMUA"] + sorted(df_active_tab['Merk'].dropna().astype(str).unique()))
         df_t3 = df_active_tab if selected_brand_t3 == "SEMUA" else df_active_tab[df_active_tab['Merk'] == selected_brand_t3]
 
@@ -1304,23 +1365,15 @@ def main_dashboard():
 
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
-        
-        # DIUBAH: Corporate Blue Replace Red Warning di Tabel Target
-        def get_color_achv(val):
-            try:
-                if val < 0.50: return '#d0e8f2' # Menggunakan Corporate Blue
-                elif val < 0.85: return '#ffffcc' 
-                else: return '#ccffcc' 
-            except:
-                return ''
 
+        # ========================== PERBAIKAN NAMA TAB GROWTH ==========================
         tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
         with tab_pivot:
             render_pivot_fragment(df_scope_all, role)
 
         with tab_growth:
-            st.markdown("### 📈 Rekap Growth Brand (2025 vs 2026)")
+            st.markdown("### 📈 Rekap Growth Brand")
             list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
             
             if list_merk_growth:
@@ -1344,30 +1397,37 @@ def main_dashboard():
                     
                     all_months = sorted(df_brand_all['Bulan-Tahun'].dropna().unique())
                     
+                    # ========================== PERBAIKAN LOGIKA RO DARI TOKO AWAL ==========================
+                    prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
+                    kd_col = 'Kode Customer' if 'Kode Customer' in df_scope_all.columns else ('Kode Outlet' if 'Kode Outlet' in df_scope_all.columns else None)
+                    
+                    ro_master_value = 0
+                    if kd_col:
+                        mask = df_scope_all[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefixes))
+                        ro_master_value = df_scope_all[mask]['Nama Outlet'].nunique()
+                    
                     growth_data = []
                     seen_outlets_all_time = set()
                     
-                    # DIUBAH: Logika RO ditarik murni dari "Toko Awal" dan AO YTD
                     current_year = None
                     seen_outlets_ytd = set()
 
                     for period in all_months:
                         if current_year != period.year:
                             current_year = period.year
-                            seen_outlets_ytd = set() # Reset YTD di awal tahun
+                            seen_outlets_ytd = set() 
                             
                         df_period = df_brand_all[df_brand_all['Bulan-Tahun'] == period]
                         current_outlets = set(df_period['Nama Outlet'].dropna().unique())
                         
                         sales = df_period['Jumlah'].sum()
                         
-                        # RO murni dari Toko Awal (toko yang sudah ada sebelum bulan ini di tahun berjalan)
-                        ro = len(seen_outlets_ytd) 
+                        # RO Murni menggunakan data paten Master (Toko Awal / Registrasi)
+                        ro = ro_master_value
+                        
                         seen_outlets_ytd.update(current_outlets)
-                        # AO bersifat YTD
                         ao = len(seen_outlets_ytd)
                         
-                        # NOO adalah Outlet yang sama sekali belum pernah transaksi All Time
                         noo = len(current_outlets - seen_outlets_all_time)
                         seen_outlets_all_time.update(current_outlets)
                         
@@ -1405,7 +1465,7 @@ def main_dashboard():
                                     'NOO': int(r['NOO'])
                                 })
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': ro_master_value, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
                         def style_tab1(row):
                             styles = []
