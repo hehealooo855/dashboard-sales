@@ -21,7 +21,7 @@ import streamlit.components.v1 as components
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
     AGGRID_AVAILABLE = True
 except ImportError:
     AGGRID_AVAILABLE = False
@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS Corporate (Blue Hover & Enlarge Fonts)
+# Custom CSS - Corporate Clean & Blue Theme
 st.markdown("""
 <style>
     .metric-card {
@@ -70,7 +70,7 @@ st.markdown("""
         color: #7f8c8d !important;
     }
     
-    /* Warna Biru Profesional untuk Hover / Focus */
+    /* Ganti efek hover merah menjadi biru profesional */
     a:hover, button:hover {
         color: #2980b9 !important;
         text-decoration: none !important;
@@ -654,6 +654,7 @@ def render_pivot_fragment(df_scope_all, role):
             file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 # =====================================================================
 
 def login_page():
@@ -1032,30 +1033,29 @@ def main_dashboard():
     # =========================================================================
     # FILTER GLOBAL IJL UNTUK TABS RAPOR BRAND & TREN HARIAN
     # =========================================================================
-    st.markdown("### 📊 Parameter Analisis Terpadu")
-    ijl_filter = "SEMUA"
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+        ijl_filter = st.selectbox("🔍 Filter Data Rapor & Tren Harian (Hierarki IJL):", ["SEMUA", "Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+    else:
+        ijl_filter = "SEMUA"
         
     df_ijl = df_active.copy()
-    if ijl_filter != "SEMUA" and ijl_filter != "Total Indah Jaya Lestari (IJL)":
-        nama_spv = ijl_filter.upper()
-        if nama_spv in TARGET_DATABASE:
-            df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
-            loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
-        else: loop_source = None
-    else:
-        semua_tim = []
-        for spv in ["LISMAN", "AKBAR", "MADONG"]:
-            if spv in TARGET_DATABASE:
-                semua_tim.extend(TARGET_DATABASE[spv].keys())
+    loop_source = None
+    if ijl_filter != "SEMUA":
         if ijl_filter == "Total Indah Jaya Lestari (IJL)":
+            semua_tim = []
+            for spv in ["LISMAN", "AKBAR", "MADONG"]:
+                if spv in TARGET_DATABASE:
+                    semua_tim.extend(TARGET_DATABASE[spv].keys())
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
-            if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
-            elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-            else: loop_source = None
+            nama_spv = ijl_filter.upper()
+            if nama_spv in TARGET_DATABASE:
+                df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
+                loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+    else:
+        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
+        elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
 
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
