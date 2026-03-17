@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS Corporate Professional & Anti-Red Hover
+# Custom CSS Corporate (Blue Hover & Enlarge Fonts)
 st.markdown("""
 <style>
     .metric-card {
@@ -60,17 +60,17 @@ st.markdown("""
     
     /* Memperbesar Font Metric Utama */
     [data-testid="stMetricValue"] {
-        font-size: 45px !important;
+        font-size: 40px !important;
         font-weight: 800 !important;
         color: #2c3e50 !important;
     }
     [data-testid="stMetricLabel"] {
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: 600 !important;
         color: #7f8c8d !important;
     }
     
-    /* Ganti efek hover merah menjadi biru profesional */
+    /* Warna Biru Profesional untuk Link/Tombol */
     a:hover, button:hover {
         color: #2980b9 !important;
         text-decoration: none !important;
@@ -256,7 +256,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# EKSTRAKSI TOKO AWAL (RO BASELINE) DARI LINK SHEET KHUSUS
+# EKSTRAKSI TOKO AWAL (RO BASELINE)
 # =========================================================================
 @st.cache_data(ttl=3600)
 def load_toko_awal():
@@ -266,7 +266,6 @@ def load_toko_awal():
         df.columns = df.columns.str.strip()
         if 'Merk' in df.columns and 'Nama Outlet' in df.columns:
             df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
-            # Menghitung jumlah toko unik per Merk sebagai RO Baseline
             return df.groupby('Merk')['Nama Outlet'].nunique().to_dict()
     except Exception as e:
         return {}
@@ -936,10 +935,9 @@ def main_dashboard():
     
     current_omset_total = df_active['Jumlah'].sum()
     
-    c1, c2, c3 = st.columns(3)
-    
     # METRIK PERBANDINGAN MTD (TANGGAL KALENDER HARI INI BERJALAN)
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
+        c1, c2, c3 = st.columns(3)
         mtd_start = ref_date.replace(day=1)
         if ref_date.month == 1:
             prev_m_start = ref_date.replace(year=ref_date.year-1, month=12, day=1)
@@ -963,15 +961,29 @@ def main_dashboard():
             <div style="border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <p style="margin:0; font-size:18px; font-weight:600; color:#7f8c8d;">Total Omset (Periode MTD)</p>
                 <h1 style="margin:0; font-size:45px; font-weight:800; color:#2c3e50;">{format_idr(val_mtd)}</h1>
-                <p style="margin:0; font-size:16px; font-weight:bold; color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))} (vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</p>
+                <p style="margin:0; font-size:16px; font-weight:bold; color:{mtd_color};">{mtd_symbol} {format_idr(abs(delta_mtd))} <span style="color:#7f8c8d; font-weight:normal;">(vs {prev_m_start.strftime('%d %b')} - {prev_m_end.strftime('%d %b')})</span></p>
             </div>
             """, unsafe_allow_html=True)
     else:
-        delta_val = current_omset_total - (df_scope_all[(df_scope_all['Tanggal'].dt.date >= (ref_date - datetime.timedelta(days=(ref_date - mtd_start).days + 1))) & (df_scope_all['Tanggal'].dt.date <= (ref_date - datetime.timedelta(days=1)))]['Jumlah'].sum())
+        if len(date_range) == 2:
+            start, end = date_range
+            delta_days = (end - start).days + 1
+            prev_end = start - datetime.timedelta(days=1)
+            prev_start = prev_end - datetime.timedelta(days=delta_days - 1)
+            omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
+            delta_val = current_omset_total - omset_prev_period
+            delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
+        else:
+            prev_date = ref_date - datetime.timedelta(days=1)
+            omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
+            delta_val = current_omset_total - omset_prev_period
+            delta_label = f"vs {prev_date.strftime('%d %b')}"
+
+        c1, c2, c3 = st.columns(3)
         delta_str = format_idr(delta_val)
         if delta_val < 0: delta_str = delta_str.replace("Rp -", "- Rp ")
         elif delta_val > 0: delta_str = f"+ {delta_str}"
-        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str}")
+        c1.metric(label="Total Omset (Periode)", value=format_idr(current_omset_total), delta=f"{delta_str} ({delta_label})")
 
     c2.metric("Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
     
@@ -1018,39 +1030,38 @@ def main_dashboard():
         st.markdown("---")
 
     # =========================================================================
-    # ROMBAK LAYOUT VERTIKAL SEPENUHNYA (NO TABS UNTUK REPORT UTAMA)
+    # FILTER IJL GLOBAL UNTUK TABS
     # =========================================================================
-
-    st.markdown("## 📊 Evaluasi Kinerja (Rapor Brand & Tren Harian)")
-    
+    st.markdown("### 📊 Parameter Analisis Terpadu")
     ijl_filter = "SEMUA"
     if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        ijl_filter = st.selectbox("Tinjauan Evaluasi Berdasarkan:", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
+        ijl_filter = st.selectbox("Pilih Ruang Lingkup Data (Hierarki IJL):", ["Total Indah Jaya Lestari (IJL)", "Lisman", "Akbar", "Madong"])
         
     df_ijl = df_active.copy()
-    if ijl_filter != "SEMUA":
+    if ijl_filter != "SEMUA" and ijl_filter != "Total Indah Jaya Lestari (IJL)":
+        nama_spv = ijl_filter.upper()
+        if nama_spv in TARGET_DATABASE:
+            df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
+            loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+        else: loop_source = None
+    else:
+        semua_tim = []
+        for spv in ["LISMAN", "AKBAR", "MADONG"]:
+            if spv in TARGET_DATABASE:
+                semua_tim.extend(TARGET_DATABASE[spv].keys())
         if ijl_filter == "Total Indah Jaya Lestari (IJL)":
-            semua_tim = []
-            for spv in ["LISMAN", "AKBAR", "MADONG"]:
-                if spv in TARGET_DATABASE:
-                    semua_tim.extend(TARGET_DATABASE[spv].keys())
             df_ijl = df_active[df_active['Merk'].isin(semua_tim)]
             loop_source = {spv: TARGET_DATABASE[spv] for spv in ["LISMAN", "AKBAR", "MADONG"]}.items()
         else:
-            nama_spv = ijl_filter.upper()
-            if nama_spv in TARGET_DATABASE:
-                df_ijl = df_active[df_active['Merk'].isin(TARGET_DATABASE[nama_spv].keys())]
-                loop_source = {nama_spv: TARGET_DATABASE[nama_spv]}.items()
+            if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
+            elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
             else: loop_source = None
-    else:
-        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
-        elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-        else: loop_source = None
 
-    c_rep1, c_rep2 = st.columns(2)
-    with c_rep1:
-        st.subheader("🏆 Ranking Brand & Detail Sales")
+    t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
+    
+    with t1:
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
+            st.subheader("🏆 Ranking Brand & Detail Sales")
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
                 for brand, target in brands_dict.items():
@@ -1118,7 +1129,7 @@ def main_dashboard():
             if indiv_data: st.dataframe(pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
-    with c_rep2:
+    with t2:
         st.subheader("📈 Tren Harian")
         if not df_ijl.empty:
             daily = df_ijl.groupby('Tanggal')['Jumlah'].sum().reset_index()
@@ -1126,284 +1137,609 @@ def main_dashboard():
             fig_line.update_traces(line_color='#2980b9', line_width=3)
             st.plotly_chart(fig_line, use_container_width=True)
 
-    st.markdown("---")
-
-    # --- BAGIAN 2: DETAIL SALES TEAM ---
-    st.markdown("## 👥 Detail Sales Team per Brand")
-    allowed_brands = []
-    if role in ['manager', 'direktur']:
-        for spv_brands in TARGET_DATABASE.values(): allowed_brands.extend(spv_brands.keys())
-    elif is_supervisor_account: allowed_brands = list(TARGET_DATABASE[my_name_key].keys())
-    
-    if allowed_brands:
-        selected_brand_detail = st.selectbox("Pilih Brand untuk Detail Sales:", sorted(set(allowed_brands)))
-        if selected_brand_detail:
-            sales_stats = []
-            total_brand_sales = 0
-            total_brand_target = 0
-            
-            yesterday = ref_date - datetime.timedelta(days=1)
-            mtd_start_date = ref_date.replace(day=1)
-            
-            for sales_name, targets in INDIVIDUAL_TARGETS.items():
-                if selected_brand_detail in targets:
-                    t_pribadi = targets[selected_brand_detail]
-                    real_sales = df_active[(df_active['Penjualan'] == sales_name) & (df_active['Merk'] == selected_brand_detail)]['Jumlah'].sum()
-                    
-                    # Data H-1
-                    omset_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Jumlah'].sum()
-                    toko_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Nama Outlet'].nunique()
-                    
-                    # Data MTD berjalan
-                    toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Nama Outlet'].nunique()
-
-                    sales_stats.append({
-                        "Nama Sales": sales_name, 
-                        "Target Pribadi": format_idr(t_pribadi), 
-                        "Realisasi (MTD)": format_idr(real_sales),
-                        "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
-                        "Omset (H-1)": format_idr(omset_h1),
-                        "Toko (H-1)": toko_h1,
-                        "Total Toko (MTD)": toko_mtd,
-                        "_real": real_sales, "_target": t_pribadi
-                    })
-                    total_brand_sales += real_sales; total_brand_target += t_pribadi
-            
-            if sales_stats:
-                st.dataframe(pd.DataFrame(sales_stats).drop(columns=["_real", "_target"]), use_container_width=True, hide_index=True)
-                m1, m2, m3 = st.columns(3)
-                m1.metric(f"Total Target {selected_brand_detail}", format_idr(total_brand_target))
-                m2.metric(f"Total Omset {selected_brand_detail}", format_idr(total_brand_sales))
-                ach_total = (total_brand_sales/total_brand_target)*100 if total_brand_target > 0 else 0
-                m3.metric("Total Ach %", f"{ach_total:.1f}%")
-            else: st.info(f"Belum ada data target sales individu untuk brand {selected_brand_detail}")
-    else: st.info("Seksi ini secara spesifik menampilkan rasio kinerja representatif dalam kelompok hierarki pengawasan manajerial.")
-
-    st.markdown("---")
-
-    # --- BAGIAN 3: TOP PRODUK & OUTLET ---
-    st.markdown("## 🏆 Top Produk & Top Outlet")
-    c_top1, c_top2 = st.columns(2)
-    with c_top1:
-        st.subheader("📦 Top 10 Produk")
-        top_prod_brand = st.selectbox("Filter Brand SKU:", ["SEMUA"] + sorted(list(df_active['Merk'].dropna().astype(str).unique())))
-        if top_prod_brand != "SEMUA": df_top_prod = df_active[df_active['Merk'] == top_prod_brand]
-        else: df_top_prod = df_active
+    with t_detail_sales:
+        st.subheader("👥 Detail Sales Team per Brand")
+        allowed_brands = []
+        if role in ['manager', 'direktur']:
+            for spv_brands in TARGET_DATABASE.values(): allowed_brands.extend(spv_brands.keys())
+        elif is_supervisor_account: allowed_brands = list(TARGET_DATABASE[my_name_key].keys())
         
-        top_prod = df_top_prod.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
-        fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s', color_discrete_sequence=['#2980b9'])
-        fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_bar, use_container_width=True)
-    with c_top2:
-        st.subheader("🏪 Top 10 Outlet")
-        top_out = df_active.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
-        fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#27ae60'])
-        fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_out, use_container_width=True)
+        if allowed_brands:
+            selected_brand_detail = st.selectbox("Pilih Brand untuk Detail Sales:", sorted(set(allowed_brands)))
+            if selected_brand_detail:
+                sales_stats = []
+                total_brand_sales = 0
+                total_brand_target = 0
+                
+                yesterday = ref_date - datetime.timedelta(days=1)
+                mtd_start_date = ref_date.replace(day=1)
+                
+                for sales_name, targets in INDIVIDUAL_TARGETS.items():
+                    if selected_brand_detail in targets:
+                        t_pribadi = targets[selected_brand_detail]
+                        real_sales = df_active[(df_active['Penjualan'] == sales_name) & (df_active['Merk'] == selected_brand_detail)]['Jumlah'].sum()
+                        
+                        # Data H-1
+                        omset_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Jumlah'].sum()
+                        toko_h1 = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date == yesterday)]['Nama Outlet'].nunique()
+                        
+                        # Data MTD berjalan
+                        toko_mtd = df_scope_all[(df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail) & (df_scope_all['Tanggal'].dt.date >= mtd_start_date) & (df_scope_all['Tanggal'].dt.date <= ref_date)]['Nama Outlet'].nunique()
 
-    st.markdown("---")
+                        sales_stats.append({
+                            "Nama Sales": sales_name, 
+                            "Target Pribadi": format_idr(t_pribadi), 
+                            "Realisasi (MTD)": format_idr(real_sales),
+                            "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
+                            "Omset (H-1)": format_idr(omset_h1),
+                            "Toko (H-1)": toko_h1,
+                            "Total Toko (MTD)": toko_mtd,
+                            "_real": real_sales, "_target": t_pribadi
+                        })
+                        total_brand_sales += real_sales; total_brand_target += t_pribadi
+                
+                if sales_stats:
+                    st.dataframe(pd.DataFrame(sales_stats).drop(columns=["_real", "_target"]), use_container_width=True, hide_index=True)
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric(f"Total Target {selected_brand_detail}", format_idr(total_brand_target))
+                    m2.metric(f"Total Omset {selected_brand_detail}", format_idr(total_brand_sales))
+                    ach_total = (total_brand_sales/total_brand_target)*100 if total_brand_target > 0 else 0
+                    m3.metric("Total Ach %", f"{ach_total:.1f}%")
+                else: st.info(f"Belum ada data target sales individu untuk brand {selected_brand_detail}")
+        else: st.info("Menu ini khusus untuk melihat detail tim sales per brand.")
 
-    # --- BAGIAN 4: PIVOT DATA CUSTOMER & GROWTH (TABS UNTUK DATA MASTER/DETAIL) ---
-    st.subheader("📋 Matriks Data Komprehensif & Analisis Terpusat")
-    
-    def get_color_achv(val):
-        try:
-            if val < 0.50: return '#ffcccc' 
-            elif val < 0.85: return '#ffffcc' 
-            else: return '#ccffcc' 
-        except:
-            return ''
-
-    tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
-    
-    with tab_pivot:
-        render_pivot_fragment(df_scope_all, role)
-
-    with tab_growth:
-        st.markdown("### 📈 Rekap Growth Brand (2025 vs 2026)")
-        list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+    with t3:
+        st.subheader("📊 Pareto Analysis (80/20 Rule)")
+        st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
-        if list_merk_growth:
-            brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
+        pareto_df = df_active.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
+        total_omset_pareto = pareto_df['Jumlah'].sum()
+        
+        if total_omset_pareto > 0:
+            pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
+            pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
             
-            df_brand_all = df[df['Merk'] == brand_growth].copy()
+            top_performers = pareto_df[pareto_df['Cumulative %'] <= 80].copy()
+            top_performers.insert(0, '🏆 Rank', range(1, len(top_performers) + 1))
             
-            if target_sales_filter != "SEMUA":
-                if target_sales_filter.upper() in TARGET_DATABASE:
-                    tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-                    df_brand_all = df_brand_all[df_brand_all['Penjualan'].isin(tim_sales_list)]
+            col_pareto1, col_pareto2 = st.columns(2)
+            col_pareto1.metric("Total SKU Terjual", len(pareto_df))
+            col_pareto2.metric("Produk Kontributor Utama (80%)", len(top_performers))
+            
+            st.dataframe(
+                top_performers[['🏆 Rank', 'Nama Barang', 'Jumlah', 'Kontribusi %']].style.format({'Jumlah': 'Rp {:,.0f}', 'Kontribusi %': '{:.2f}%'}),
+                use_container_width=True, hide_index=True
+            )
+        
+        st.divider()
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("📦 Top 10 Produk")
+            top_prod_brand = st.selectbox("Filter Brand SKU:", ["SEMUA"] + sorted(list(df_active['Merk'].dropna().astype(str).unique())))
+            if top_prod_brand != "SEMUA": df_top_prod = df_active[df_active['Merk'] == top_prod_brand]
+            else: df_top_prod = df_active
+            
+            top_prod = df_top_prod.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
+            fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s', color_discrete_sequence=['#2980b9'])
+            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_bar, use_container_width=True)
+        with c2:
+            st.subheader("🏪 Top 10 Outlet")
+            top_out = df_top_prod.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
+            fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#27ae60'])
+            fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_out, use_container_width=True)
+            
+    with t5:
+        st.subheader("🚀 Kejar Omset (Actionable Insights)")
+        st.write("#### 🚨 Toko Tidur (Potensi Hilang)")
+        st.caption("Toko yang bertransaksi di masa lalu tetapi TIDAK bertransaksi di periode yang dipilih.")
+        
+        all_outlets = df_scope_all['Nama Outlet'].unique()
+        active_outlets = df_active['Nama Outlet'].unique()
+        sleeping_outlets = list(set(all_outlets) - set(active_outlets))
+        
+        if sleeping_outlets:
+            st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
+            with st.expander("Lihat Daftar Toko Tidur"):
+                last_trx = []
+                for outlet in sleeping_outlets:
+                    outlet_df = df_scope_all[df_scope_all['Nama Outlet'] == outlet]
+                    last_date = outlet_df['Tanggal'].max()
+                    sales_handler = outlet_df['Penjualan'].iloc[0] if not outlet_df.empty else "-"
+                    last_trx.append({"Nama Toko": outlet, "Sales": sales_handler, "Terakhir Order": last_date.strftime('%d %b %Y'), "Hari Sejak Order Terakhir": (datetime.date.today() - last_date.date()).days})
+                st.dataframe(pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir"), use_container_width=True)
+        else: st.success("Semua toko langganan sudah order di periode ini.")
+
+        st.divider()
+        st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
+        
+        relevant_brands = df_active['Merk'].dropna().astype(str).unique()
+        
+        if len(relevant_brands) > 1:
+            col_cs1, col_cs2 = st.columns(2)
+            with col_cs1: brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0)
+            with col_cs2:
+                target_options = [b for b in relevant_brands if b != brand_acuan]
+                brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None)
+            if brand_target:
+                outlets_buy_acuan = df_active[df_active['Merk'] == brand_acuan]['Nama Outlet'].unique()
+                opportunities = []
+                for outlet in outlets_buy_acuan:
+                    check = df_active[(df_active['Nama Outlet'] == outlet) & (df_active['Merk'] == brand_target)]
+                    if check.empty:
+                        sales_name = df_active[df_active['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                        opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {brand_target}"})
+                if opportunities:
+                    st.info(f"Ditemukan **{len(opportunities)} Toko** yang beli {brand_acuan} tapi belum beli {brand_target}.")
+                    st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                else: st.success(f"Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
+        else: st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
+        
+        st.divider()
+        st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (Berdasarkan Pola Transaksi)")
+        st.caption("AI menganalisa pola pembelian dari ribuan transaksi untuk menemukan rekomendasi tersembunyi.")
+        recs_df = get_cross_sell_recommendations(df_scope_all)
+        if recs_df is not None and not recs_df.empty:
+            st.success(f"Ditemukan {len(recs_df)} rekomendasi cerdas berdasarkan pola pembelian.")
+            st.dataframe(recs_df, use_container_width=True)
+        elif recs_df is None: st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
+        else: st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
+        
+        st.divider()
+        st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
+        st.caption("Tabel interaktif (bisa dicentang/diedit). Terapkan **5 Step Sales Visit**, **Consultative Selling**, dan **Fast Follow Up** pada toko-toko penyumbang 80% omset ini.")
+        
+        mvp_df = df_active.groupby(['Nama Outlet'])['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
+        total_mvp_omset = mvp_df['Jumlah'].sum()
+        if total_mvp_omset > 0:
+            mvp_df['Cum %'] = (mvp_df['Jumlah'] / total_mvp_omset).cumsum() * 100
+            top_outlets_mvp = mvp_df[mvp_df['Cum %'] <= 80].copy()
+            
+            sales_dict = df_active.groupby('Nama Outlet')['Penjualan'].first().to_dict()
+            top_outlets_mvp['Salesman'] = top_outlets_mvp['Nama Outlet'].map(sales_dict)
+            
+            top_outlets_mvp.insert(0, 'Prioritas', range(1, len(top_outlets_mvp) + 1))
+            top_outlets_mvp['📍 Route Plan (Hari)'] = ""
+            top_outlets_mvp['📋 5-Step Visit Done'] = False
+            top_outlets_mvp['💡 Consultative Action'] = "Cek Stok & Penawaran Baru"
+            top_outlets_mvp['🚀 Follow Up Done'] = False
+            
+            top_outlets_mvp['Omset Historis'] = top_outlets_mvp['Jumlah'].apply(format_idr)
+            
+            st.info(f"🎯 Ditemukan **{len(top_outlets_mvp)} Toko Prioritas Utama** yang mewakili 80% omset Anda. Jadikan daftar ini sebagai panduan rute harian!")
+            
+            st.data_editor(
+                top_outlets_mvp[['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis', '📍 Route Plan (Hari)', '📋 5-Step Visit Done', '💡 Consultative Action', '🚀 Follow Up Done']],
+                use_container_width=True,
+                hide_index=True,
+                disabled=['Prioritas', 'Nama Outlet', 'Salesman', 'Omset Historis'], 
+                column_config={
+                    "Jumlah": st.column_config.NumberColumn("Omset Historis", format="Rp %d"),
+                    "📍 Route Plan (Hari)": st.column_config.SelectboxColumn("Pilih Hari Kunjungan", options=["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], required=True),
+                }
+            )
+        else:
+            st.info("Belum ada data transaksi yang cukup untuk membuat Master Visit Plan.")
+            
+    with t_forecast:
+        st.subheader("🔮 Prediksi Omset (Forecasting)")
+        st.info("Prediksi tren omset 30 hari ke depan berdasarkan data historis harian.")
+        df_forecast = df_scope_all.groupby('Tanggal')['Jumlah'].sum().reset_index().sort_values('Tanggal')
+        if len(df_forecast) > 10:
+            df_forecast['Date_Ordinal'] = df_forecast['Tanggal'].apply(lambda x: x.toordinal())
+            x = df_forecast['Date_Ordinal'].values; y = df_forecast['Jumlah'].values
+            z = np.polyfit(x, y, 1); p = np.poly1d(z)
+            last_date = df_forecast['Tanggal'].max()
+            future_days = 30
+            future_dates = [last_date + datetime.timedelta(days=i) for i in range(1, future_days + 1)]
+            future_ordinals = [d.toordinal() for d in future_dates]
+            future_values = p(future_ordinals)
+            
+            df_history = df_forecast[['Tanggal', 'Jumlah']].copy()
+            df_history['Type'] = 'Historis'
+            df_future = pd.DataFrame({'Tanggal': future_dates, 'Jumlah': future_values})
+            df_future['Type'] = 'Prediksi'
+            df_combined = pd.concat([df_history, df_future])
+            
+            fig_forecast = px.line(df_combined, x='Tanggal', y='Jumlah', color='Type', line_dash='Type', color_discrete_map={'Historis': '#2980b9', 'Prediksi': '#e74c3c'})
+            fig_forecast.update_layout(title="Proyeksi Omset 30 Hari Kedepan", xaxis_title="Tanggal", yaxis_title="Omset")
+            st.plotly_chart(fig_forecast, use_container_width=True)
+            trend = "NAIK 📈" if z[0] > 0 else "TURUN 📉"
+            st.write(f"**Analisa Tren:** Berdasarkan data historis, tren penjualan terlihat **{trend}**.")
+        else: st.warning("Data belum cukup untuk melakukan prediksi (minimal 10 hari transaksi).")
+
+    with t4:
+        st.subheader("📋 Data Rincian & Analisis Spesifik")
+        
+        def get_color_achv(val):
+            try:
+                if val < 0.50: return '#ffcccc' 
+                elif val < 0.85: return '#ffffcc' 
+                else: return '#ccffcc' 
+            except:
+                return ''
+
+        tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
+        
+        with tab_pivot:
+            @st.fragment
+            def render_pivot_fragment(df_scope_all, role):
+                list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+                list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
+                
+                grp_cols = []
+                kd_asal = 'Kode Customer'
+                if 'Kode Outlet' in df_scope_all.columns: 
+                    grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
+                elif 'Kode Customer' in df_scope_all.columns: 
+                    grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
+                elif 'Kode Costumer' in df_scope_all.columns: 
+                    grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
                 else:
-                    df_brand_all = df_brand_all[df_brand_all['Penjualan'] == target_sales_filter]
-            elif role not in ['manager', 'direktur', 'supervisor'] and my_name.lower() != 'fauziah':
-                df_brand_all = df_brand_all[df_brand_all['Penjualan'] == my_name]
+                    df_scope_all['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
+                    
+                if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
+                elif 'Nama Outlet' in df_scope_all.columns: grp_cols.append('Nama Outlet')
+                else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+                
+                if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
+                else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
+                
+                if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
+                else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
 
-            if not df_brand_all.empty:
-                df_brand_all['Tahun'] = df_brand_all['Tanggal'].dt.year
-                df_brand_all['Bulan'] = df_brand_all['Tanggal'].dt.month
-                df_brand_all['Bulan-Tahun'] = df_brand_all['Tanggal'].dt.to_period('M')
-                
-                all_months = sorted(df_brand_all['Bulan-Tahun'].dropna().unique())
-                
-                growth_data = []
-                seen_outlets = set()
-                
-                for period in all_months:
-                    df_period = df_brand_all[df_brand_all['Bulan-Tahun'] == period]
-                    current_outlets = set(df_period['Nama Outlet'].dropna().unique())
+                with st.form(key='pivot_filter_form'):
+                    col_piv1, col_piv2 = st.columns(2)
+                    with col_piv1:
+                        selected_merk_excel = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_excel)
+                    with col_piv2:
+                        selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun:", list_tahun, default=list_tahun)
+                        
+                    st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                     
-                    sales = df_period['Jumlah'].sum()
-                    
-                    # LOGIKA RO & AO BARU (YTD & Toko Awal)
-                    ro = toko_awal_dict.get(brand_growth, 0)
-                    
-                    df_ytd = df_brand_all[(df_brand_all['Tahun'] == period.year) & (df_brand_all['Bulan'] <= period.month)]
-                    ytd_outlets = set(df_ytd['Nama Outlet'].dropna().unique())
-                    ao = len(ytd_outlets)
-                    
-                    noo = len(current_outlets - seen_outlets)
-                    seen_outlets.update(current_outlets)
-                    
-                    ao_vs_ro = (ao / ro) if ro > 0 else 0
-                    
-                    growth_data.append({
-                        'Year': period.year,
-                        'Month': period.month,
-                        'SALES': sales,
-                        'RO': ro,
-                        'AO': ao,
-                        'AO VS RO %': ao_vs_ro,
-                        'NOO': noo
-                    })
-                
-                df_growth_all = pd.DataFrame(growth_data)
-                
-                if not df_growth_all.empty:
-                    bulan_dict_short = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'May', 6:'Jun', 7:'Jul', 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec'}
-                    
-                    st.divider()
-                    st.markdown(f"<h4 style='text-align: center;'>Tabel 1: Aktivitas Outlet {brand_growth} (Tahun 2026)</h4>", unsafe_allow_html=True)
-                    df_2026 = df_growth_all[df_growth_all['Year'] == 2026].copy()
-                    
-                    display_2026 = []
-                    for m in range(1, 13):
-                        row = df_2026[df_2026['Month'] == m]
-                        if not row.empty:
-                            r = row.iloc[0]
-                            display_2026.append({
-                                'MONTH': f"{bulan_dict_short[m]}-26",
-                                'SALES': r['SALES'],
-                                'RO': int(r['RO']), 'AO': int(r['AO']),
-                                'AO VS RO %': r['AO VS RO %'],
-                                'NOO': int(r['NOO'])
-                            })
-                        else:
-                            display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
-                    
-                    def style_tab1(row):
-                        styles = []
-                        for col in row.index:
-                            base_style = 'border: 1px solid #dcdcdc; '
-                            if col == 'AO VS RO %':
-                                bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black;')
-                            else:
-                                styles.append(base_style)
-                        return styles
+                    list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
+                    list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
+                    list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
+                    list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
 
-                    st.dataframe(pd.DataFrame(display_2026).style.format({
-                        'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                    }).apply(style_tab1, axis=1), use_container_width=True, hide_index=True)
-                    
-                    st.divider()
-                    col_g1, col_g2 = st.columns(2)
-                    
-                    df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
-                    df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
-                    
-                    def get_sales(df_yr, m):
-                        res = df_yr[df_yr['Month'] == m]['SALES']
-                        return res.sum() if not res.empty else 0
+                    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                    with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
+                    with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
+                    with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
+                    with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
 
-                    tot_2025 = 0
-                    tot_2026 = 0
+                    maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
+                    submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
+
+                json_data = df_scope_all.to_json(date_format='iso', orient='split')
+                master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
+
+                if not master_pivot.empty:
+                    bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                    for i in range(1, 13):
+                        if i not in master_pivot.columns: master_pivot[i] = 0
+                    cols_to_keep = grp_cols + list(range(1, 13))
+                    master_pivot = master_pivot[cols_to_keep]
+                    master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
+                    master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    with col_g1:
-                        st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
-                        yoy_data = []
+                    ren_dict = {}
+                    for col in master_pivot.columns:
+                        c_low = str(col).lower()
+                        if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
+                        elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
+                    master_pivot = master_pivot.rename(columns=ren_dict)
+                    
+                    if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
+                    if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+                    if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
+                    if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
+
+                    df_filtered = master_pivot.copy()
+                    if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
+                    if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
+                    if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
+                    if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
+                    
+                    st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+
+                    if maximize_toggle:
+                        st.markdown("""
+                        <style>
+                            iframe[title="streamlit_aggrid.agGrid"] {
+                                position: fixed !important;
+                                top: 0 !important; left: 0 !important;
+                                width: 100vw !important; height: 100vh !important;
+                                z-index: 999999 !important; background-color: white !important;
+                            }
+                            header {visibility: hidden !important;}
+                            [data-testid="stSidebar"] {display: none !important;}
+                        </style>
+                        """, unsafe_allow_html=True)
+
+                    if not df_filtered.empty:
+                        bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+                        num_cols = bulan_indo_list + ['Total Penjualan']
+                        total_dict = {col: "" for col in df_filtered.columns}
+                        total_dict['Nama Customer'] = "GRAND TOTAL" 
+                        for col in num_cols:
+                            total_dict[col] = df_filtered[col].sum()
+                        df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+                    else:
+                        df_display = df_filtered.copy()
+
+                    if AGGRID_AVAILABLE:
+                        gb = GridOptionsBuilder.from_dataframe(df_display)
+                        gb.configure_pagination(enabled=False) 
+                        gb.configure_side_bar()
+                        
+                        gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], minWidth=160)
+                        
+                        for col in num_cols:
+                            gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
+                        
+                        jscode = JsCode("""
+                        function(params) {
+                            if (params.data['Nama Customer'] === 'GRAND TOTAL') {
+                                return {
+                                    'font-weight': 'bold',
+                                    'background-color': '#eef2f5',
+                                    'border-top': '2px solid #2980b9'
+                                }
+                            }
+                        }
+                        """)
+                        gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight') 
+                        gridOptions = gb.build()
+                        
+                        grid_css = {
+                            ".ag-cell": {"border": "1px solid #e0e0e0 !important;"},
+                            ".ag-header-cell": {"border": "1px solid #e0e0e0 !important;", "border-bottom": "2px solid #a0a0a0 !important;"},
+                            ".ag-row:hover": {
+                                "background-color": "#e8f4f8 !important", 
+                                "color": "#2980b9 !important",
+                                "font-weight": "800 !important",
+                                "transition": "all 0.1s"
+                            }
+                        }
+                        
+                        AgGrid(
+                            df_display, 
+                            gridOptions=gridOptions, 
+                            enable_enterprise_modules=True, 
+                            theme='alpine', 
+                            allow_unsafe_jscode=True,
+                            custom_css=grid_css,
+                            update_mode='NO_UPDATE', 
+                            data_return_mode='FILTERED_AND_SORTED'
+                        )
+                    else:
+                        def style_fallback(row):
+                            return ['border: 1px solid #dcdcdc;' for _ in row]
+                        format_dict = {col: "Rp {:,.0f}" for col in num_cols}
+                        st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True)
+                else:
+                    st.info("Data Kosong.")
+
+                user_role_lower = role.lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        if 'df_display' in locals() and not df_display.empty:
+                            df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                        
+                        workbook = writer.book
+                        worksheet = writer.sheets['Master Data']
+                        
+                        user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        worksheet.set_footer(f'&RPage &P of &N')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        worksheet.set_column('D:P', None, format1) 
+                        
+                        if 'df_display' in locals() and not df_display.empty:
+                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                            last_row_idx = len(df_display) 
+                            worksheet.set_row(last_row_idx, None, bold_format)
+                    
+                    st.download_button(
+                        label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                        data=output.getvalue(),
+                        file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+            render_pivot_fragment(df_scope_all, role)
+
+        with tab_growth:
+            st.markdown("### 📈 Rekap Growth Brand (2025 vs 2026)")
+            list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+            
+            if list_merk_growth:
+                brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
+                
+                df_brand_all = df[df['Merk'] == brand_growth].copy()
+                
+                if target_sales_filter != "SEMUA":
+                    if target_sales_filter.upper() in TARGET_DATABASE:
+                        tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
+                        df_brand_all = df_brand_all[df_brand_all['Penjualan'].isin(tim_sales_list)]
+                    else:
+                        df_brand_all = df_brand_all[df_brand_all['Penjualan'] == target_sales_filter]
+                elif role not in ['manager', 'direktur', 'supervisor'] and my_name.lower() != 'fauziah':
+                    df_brand_all = df_brand_all[df_brand_all['Penjualan'] == my_name]
+
+                if not df_brand_all.empty:
+                    df_brand_all['Tahun'] = df_brand_all['Tanggal'].dt.year
+                    df_brand_all['Bulan'] = df_brand_all['Tanggal'].dt.month
+                    df_brand_all['Bulan-Tahun'] = df_brand_all['Tanggal'].dt.to_period('M')
+                    
+                    all_months = sorted(df_brand_all['Bulan-Tahun'].dropna().unique())
+                    
+                    growth_data = []
+                    seen_outlets = set()
+                    
+                    for period in all_months:
+                        df_period = df_brand_all[df_brand_all['Bulan-Tahun'] == period]
+                        current_outlets = set(df_period['Nama Outlet'].dropna().unique())
+                        
+                        sales = df_period['Jumlah'].sum()
+                        
+                        # LOGIKA RO & AO BARU (YTD & Toko Awal)
+                        ro = toko_awal_dict.get(brand_growth, 0)
+                        
+                        df_ytd = df_brand_all[(df_brand_all['Tahun'] == period.year) & (df_brand_all['Bulan'] <= period.month)]
+                        ytd_outlets = set(df_ytd['Nama Outlet'].dropna().unique())
+                        ao = len(ytd_outlets)
+                        
+                        noo = len(current_outlets - seen_outlets)
+                        seen_outlets.update(current_outlets)
+                        
+                        ao_vs_ro = (ao / ro) if ro > 0 else 0
+                        
+                        growth_data.append({
+                            'Year': period.year,
+                            'Month': period.month,
+                            'SALES': sales,
+                            'RO': ro,
+                            'AO': ao,
+                            'AO VS RO %': ao_vs_ro,
+                            'NOO': noo
+                        })
+                    
+                    df_growth_all = pd.DataFrame(growth_data)
+                    
+                    if not df_growth_all.empty:
+                        bulan_dict_short = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'May', 6:'Jun', 7:'Jul', 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec'}
+                        
+                        st.divider()
+                        st.markdown(f"<h4 style='text-align: center;'>Tabel 1: Aktivitas Outlet {brand_growth} (Tahun 2026)</h4>", unsafe_allow_html=True)
+                        df_2026 = df_growth_all[df_growth_all['Year'] == 2026].copy()
+                        
+                        display_2026 = []
                         for m in range(1, 13):
-                            s25 = get_sales(df_2025, m)
-                            s26 = get_sales(df_2026_sales, m)
-                            tot_2025 += s25
-                            tot_2026 += s26
-                            growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
-                            yoy_data.append({
-                                'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
-                            })
+                            row = df_2026[df_2026['Month'] == m]
+                            if not row.empty:
+                                r = row.iloc[0]
+                                display_2026.append({
+                                    'MONTH': f"{bulan_dict_short[m]}-26",
+                                    'SALES': r['SALES'],
+                                    'RO': int(r['RO']), 'AO': int(r['AO']),
+                                    'AO VS RO %': r['AO VS RO %'],
+                                    'NOO': int(r['NOO'])
+                                })
+                            else:
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
-                        df_t2 = pd.DataFrame(yoy_data)
-                        tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                        df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
-                        df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
-                        
-                        def style_tab2(row):
+                        def style_tab1(row):
                             styles = []
                             for col in row.index:
                                 base_style = 'border: 1px solid #dcdcdc; '
-                                if row['MONTH'] == 'Total Sales':
-                                    if col == 'Growth MTM':
-                                        bg = get_color_achv(row[col])
-                                        styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                    else:
-                                        styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                if col == 'AO VS RO %':
+                                    bg = get_color_achv(row[col])
+                                    styles.append(base_style + f'background-color: {bg}; color: black;')
                                 else:
-                                    if col == 'Growth MTM':
-                                        bg = get_color_achv(row[col])
-                                        styles.append(base_style + f'background-color: {bg}; color: black;')
-                                    else:
-                                        styles.append(base_style)
+                                    styles.append(base_style)
                             return styles
 
-                        st.dataframe(df_t2_display.style.format({
-                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                        }).apply(style_tab2, axis=1), use_container_width=True, hide_index=True)
-                    
-                    with col_g2:
-                        st.write(f"#### **Tabel 3: Quarterly Growth**")
-                        q_data = []
-                        for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
-                            m_end = m_start + 2
-                            q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
-                            q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
+                        st.dataframe(pd.DataFrame(display_2026).style.format({
+                            'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
+                        }).apply(style_tab1, axis=1), use_container_width=True, hide_index=True)
+                        
+                        st.divider()
+                        col_g1, col_g2 = st.columns(2)
+                        
+                        df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
+                        df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
+                        
+                        def get_sales(df_yr, m):
+                            res = df_yr[df_yr['Month'] == m]['SALES']
+                            return res.sum() if not res.empty else 0
+
+                        tot_2025 = 0
+                        tot_2026 = 0
+                        
+                        with col_g1:
+                            st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
+                            yoy_data = []
+                            for m in range(1, 13):
+                                s25 = get_sales(df_2025, m)
+                                s26 = get_sales(df_2026_sales, m)
+                                tot_2025 += s25
+                                tot_2026 += s26
+                                growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
+                                yoy_data.append({
+                                    'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
+                                })
                             
-                            q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
-                            q_data.append({
-                                'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
-                            })
-                        
-                        df_q = pd.DataFrame(q_data)
-                        df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
-                        
-                        def style_tab3(row):
-                            styles = []
-                            for col in row.index:
-                                base_style = 'border: 1px solid #dcdcdc; '
-                                if row['MONTH'] == 'Total Sales':
-                                    if col == 'Growth MTM':
-                                        bg = get_color_achv(row[col])
-                                        styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                            df_t2 = pd.DataFrame(yoy_data)
+                            tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
+                            df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
+                            df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
+                            
+                            def style_tab2(row):
+                                styles = []
+                                for col in row.index:
+                                    base_style = 'border: 1px solid #dcdcdc; '
+                                    if row['MONTH'] == 'Total Sales':
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                        else:
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                     else:
-                                        styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                                else:
-                                    if col == 'Growth MTM':
-                                        bg = get_color_achv(row[col])
-                                        styles.append(base_style + f'background-color: {bg}; color: black;')
-                                    else:
-                                        styles.append(base_style)
-                            return styles
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
+                                        else:
+                                            styles.append(base_style)
+                                return styles
 
-                        st.dataframe(df_q_display.style.format({
-                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                        }).apply(style_tab3, axis=1), use_container_width=True, hide_index=True)
+                            st.dataframe(df_t2_display.style.format({
+                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                            }).apply(style_tab2, axis=1), use_container_width=True, hide_index=True)
+                        
+                        with col_g2:
+                            st.write(f"#### **Tabel 3: Quarterly Growth**")
+                            q_data = []
+                            for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
+                                m_end = m_start + 2
+                                q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
+                                q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
+                                
+                                q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
+                                q_data.append({
+                                    'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
+                                })
+                            
+                            df_q = pd.DataFrame(q_data)
+                            df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
+                            
+                            def style_tab3(row):
+                                styles = []
+                                for col in row.index:
+                                    base_style = 'border: 1px solid #dcdcdc; '
+                                    if row['MONTH'] == 'Total Sales':
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                        else:
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                    else:
+                                        if col == 'Growth MTM':
+                                            bg = get_color_achv(row[col])
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
+                                        else:
+                                            styles.append(base_style)
+                                return styles
+
+                            st.dataframe(df_q_display.style.format({
+                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                            }).apply(style_tab3, axis=1), use_container_width=True, hide_index=True)
             else:
                 st.info(f"Belum ada data untuk brand {brand_growth}.")
         else:
