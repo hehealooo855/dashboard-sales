@@ -116,7 +116,7 @@ BRAND_PREFIXES = {
     "Bonavie": ["BNV", "BON"], 
     "Goute": ["GT", "GOU"],
     "Mlen": ["MLN", "MLE"], 
-    "Artist Inc": ["ART"], # Fix: Murni ART
+    "Artist Inc": ["ART"],
     "Maskit": ["MSK", "MAS"],
     "Birth Beyond": ["BB", "BIR"], 
     "Sociolla": ["SOC", "SCL"], 
@@ -131,8 +131,8 @@ BRAND_PREFIXES = {
     "Claresta": ["CLA", "CLR"], 
     "Rose All Day": ["RAD", "ROS"],
     "OtwooO": ["OTO", "OTW"], 
-    "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], # Fix: Penambahan AINIE explicit
-    "Avione": ["AV"], # Fix: Murni AV
+    "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], 
+    "Avione": ["AV"],
     "Honor": ["HNR", "HON"], 
     "Vlagio": ["VLG", "VLA"], 
     "Ren & R & L": ["REN", "RRL"],
@@ -337,16 +337,6 @@ def load_data():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
-    # 1. Amankan Kolom Kode_Global
-    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-        if col_name in df.columns:
-            if 'Kode_Global' not in df.columns:
-                df['Kode_Global'] = df[col_name]
-            else:
-                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
-    
-    # 2. Amankan Kolom Sales (Backfill jika kosong)
     for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
         if alt_col in df.columns:
             if 'Penjualan' in df.columns:
@@ -354,13 +344,21 @@ def load_data():
             else:
                 df['Penjualan'] = df[alt_col]
                 
+    # Amankan Kolom Kode Global untuk pencarian Auto-Detect
+    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+        if col_name in df.columns:
+            if 'Kode_Global' not in df.columns:
+                df['Kode_Global'] = df[col_name]
+            else:
+                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
             faktur_col = col; break
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    # 3. Handle data Master yang tidak punya transaksi (Anti-Drop)
     if 'Nama Barang' in df.columns:
         df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
@@ -384,7 +382,6 @@ def load_data():
     else:
         df['Jumlah'] = 0.0
 
-    # 4. Amankan Tanggal Master ke tahun 2000
     if 'Tanggal' in df.columns:
         tanggal_raw = df['Tanggal'].astype(str).str.strip()
         d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
@@ -394,24 +391,19 @@ def load_data():
     else:
         df['Tanggal'] = pd.to_datetime('2000-01-01')
 
-    # 5. Smart Sales Mapping (Isi sales kosong di toko master)
     if 'Penjualan' in df.columns:
         df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
         valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
         valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
-        
         df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
-        
         df_valid = df[df['Penjualan'] != 'Non-Sales']
         outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
-        
         mask_non = df['Penjualan'] == 'Non-Sales'
         df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
         df['Penjualan'] = df['Penjualan'].astype('category')
     else:
         df['Penjualan'] = 'Non-Sales'
 
-    # Normalisasi Merk
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
         for target_brand, keywords in BRAND_ALIASES.items():
@@ -440,9 +432,6 @@ def load_data():
             
     return df
 
-# =========================================================================
-# PERBAIKAN GENERATE PIVOT (MUNCULKAN TOKO TIDUR/MASTER)
-# =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
@@ -592,7 +581,6 @@ def render_pivot_fragment(df_scope_all, role):
         master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        # Rename Kode_Global back to Kode Customer for display
         ren_dict = {'Kode_Global': 'Kode Customer'}
         for col in master_pivot.columns:
             c_low = str(col).lower()
@@ -1451,6 +1439,25 @@ def main_dashboard():
             
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
+                
+                # ================= RADAR INVESTIGASI TOKO GANDA =================
+                if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
+                    df_cek = df_scope_all[df_scope_all['Merk'] == brand_growth].copy()
+                    kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
+                    
+                    if kd_col_cek in df_cek.columns:
+                        duplikat = df_cek.groupby('Nama Outlet')[kd_col_cek].nunique().reset_index()
+                        toko_double = duplikat[duplikat[kd_col_cek] > 1]['Nama Outlet'].tolist()
+                        
+                        if toko_double:
+                            st.error(f"🚨 Ditemukan {len(toko_double)} Toko yang tercatat ganda (karena beda Kode)!")
+                            df_tampil = df_cek[df_cek['Nama Outlet'].isin(toko_double)][['Nama Outlet', kd_col_cek, 'Provinsi', 'Kota']].drop_duplicates()
+                            st.dataframe(df_tampil.sort_values('Nama Outlet'), use_container_width=True)
+                        else:
+                            st.success("✅ Tidak ada nama toko yang kodenya ganda.")
+                    else:
+                        st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
+                # =================================================================
                 
                 df_team_all = df_scope_all.copy()
                 if target_sales_filter != "SEMUA":
