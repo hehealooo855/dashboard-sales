@@ -106,19 +106,44 @@ PROVINCE_MAPPING = {
 # DICTIONARY GLOBAL PREFIX KODE CUSTOMER (UNTUK RO TOKO AWAL)
 # ==========================================
 BRAND_PREFIXES = {
-    "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
-    "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
-    "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART", "AI"], "Maskit": ["MSK", "MAS"],
-    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"],
-    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"],
-    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"],
-    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"],
-    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK"], "Avione": ["AVI", "AVN"],
-    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"],
-    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"],
-    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"],
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
+    "Javinci": ["JV"], 
+    "Careso": ["EPS", "CRS"], 
+    "Somethinc": ["SMT", "SOM"],
+    "Newlab": ["NL", "NEW"], 
+    "Gloow & Be": ["GB", "GLO"], 
+    "Dorskin": ["DRS", "DOR"],
+    "Whitelab": ["WL", "WHI"], 
+    "Bonavie": ["BNV", "BON"], 
+    "Goute": ["GT", "GOU"],
+    "Mlen": ["MLN", "MLE"], 
+    "Artist Inc": ["ART"], # DIPERBAIKI: Hapus "AI" agar tidak bentrok dengan AINIE
+    "Maskit": ["MSK", "MAS"],
+    "Birth Beyond": ["BB", "BIR"], 
+    "Sociolla": ["SOC", "SCL"], 
+    "Thai": ["TH", "THA"],
+    "Inesia": ["INS", "INE"], 
+    "Y2000": ["Y2K", "Y20"], 
+    "Diosys": ["DIO", "DS"],
+    "Masami": ["MSM", "MAS"], 
+    "Cassandra": ["CAS", "CSD"], 
+    "Clinelle": ["CLN", "CLI"],
+    "Beautica": ["BTC", "BEA"], 
+    "Claresta": ["CLA", "CLR"], 
+    "Rose All Day": ["RAD", "ROS"],
+    "OtwooO": ["OTO", "OTW"], 
+    "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], # DIPERBAIKI: Tambah prefix Ainie spesifik
+    "Avione": ["AV"], # DIPERBAIKI: Murni hanya "AV"
+    "Honor": ["HNR", "HON"], 
+    "Vlagio": ["VLG", "VLA"], 
+    "Ren & R & L": ["REN", "RRL"],
+    "Mad For Make Up": ["MFM", "MAD"], 
+    "Satto": ["STT", "SAT"], 
+    "Mykonos": ["MYK", "MYC"],
+    "The Face": ["TF", "TFC"], 
+    "Yu Chun Mei": ["YCM", "YUC"], 
+    "Milano": ["MIL", "MLN"],
+    "Walnutt": ["WAL", "WLN"], 
+    "Elizabeth Rose": ["ELZ", "ELI"]
 }
 
 def map_city_to_province(city_name):
@@ -312,7 +337,6 @@ def load_data():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
-    # PERBAIKAN: Selaraskan kolom Salesman dari Masterlist ke Penjualan sebelum pengecekan
     for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
         if alt_col in df.columns:
             if 'Penjualan' in df.columns:
@@ -367,11 +391,7 @@ def load_data():
     d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
     d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
     d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-    
-    # ========================== PERBAIKAN FATAL: SELAMATKAN TOKO MASTER ==========================
-    # Toko dari Sheet Toko Awal yang tidak punya tanggal diselamatkan ke Tahun 2000
     df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
-    # BUKAN: df = df.dropna(subset=['Tanggal'])
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer', 'Kode Costumer']
     for col in cols_to_convert:
@@ -403,13 +423,11 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
     
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
-            # 1. Base Customer Logic: Cek History DAN Prefix
             prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
             prefix_tuple = tuple(prefixes)
             
             mask_history = df_pivot_source['Merk'] == selected_merk_excel
             
-            # --- AI AUTO-DETECT KODE COLUMN ---
             kd_col = None
             for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
                 if col in df_pivot_source.columns:
@@ -424,7 +442,6 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
                 
             base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
             
-            # 2. Transaksi Aktual untuk Tahun yang dipilih
             df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
             
             if not df_excel.empty:
@@ -688,8 +705,6 @@ def render_pivot_fragment(df_scope_all, role):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-# =====================================================================
-
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
@@ -767,9 +782,9 @@ def login_page():
 def main_dashboard():
     def get_color_achv(val):
         try:
-            if val < 0.50: return '#ffcccc' # Merah
-            elif val < 0.85: return '#fff2cc' # Kuning
-            else: return '#d1e7dd' # Hijau
+            if val < 0.50: return '#ffcccc' 
+            elif val < 0.85: return '#fff2cc' 
+            else: return '#d1e7dd' 
         except:
             return ''
 
@@ -1381,7 +1396,6 @@ def main_dashboard():
         st.subheader("🔮 Prediksi Omset (Forecasting)")
         st.info("Prediksi tren omset 30 hari ke depan berdasarkan data historis harian.")
         
-        # Abaikan data master (Tahun 2000) agar trendline prediksi tidak rusak!
         df_forecast = df_scope_all[df_scope_all['Tanggal'].dt.year > 2000].groupby('Tanggal')['Jumlah'].sum().reset_index().sort_values('Tanggal')
         
         if len(df_forecast) > 10:
@@ -1442,7 +1456,6 @@ def main_dashboard():
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
                     
-                    # --- AUTO DETECT KODE COLUMN ---
                     kd_col = None
                     for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
                         if col in df_team_all.columns:
@@ -1452,13 +1465,11 @@ def main_dashboard():
                     growth_data = []
                     
                     for period in all_months:
-                        # 1. Hitung Current AO (Hanya yg belanja bulan ini)
                         df_period_brand = df_team_all[(df_team_all['Bulan-Tahun'] == period) & (df_team_all['Merk'] == brand_growth)]
                         sales = df_period_brand['Jumlah'].sum()
                         current_outlets = set(df_period_brand['Nama Outlet'].dropna().unique())
                         ao = len(current_outlets)
                         
-                        # 2. Hitung RO Kumulatif (History + Prefix) sampai bulan ini
                         df_up_to_period = df_team_all[df_team_all['Bulan-Tahun'] <= period]
                         
                         mask_brand = df_up_to_period['Merk'] == brand_growth
@@ -1473,7 +1484,6 @@ def main_dashboard():
                         combined_ro_outlets = outlets_from_history | outlets_from_prefix
                         ro = len(combined_ro_outlets)
                         
-                        # 3. Hitung NOO (Outlet baru yg tidak ada di riwayat gabungan bulan lalu)
                         df_up_to_prev = df_team_all[df_team_all['Bulan-Tahun'] < period]
                         if not df_up_to_prev.empty:
                             mask_brand_prev = df_up_to_prev['Merk'] == brand_growth
