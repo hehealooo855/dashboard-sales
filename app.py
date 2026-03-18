@@ -103,7 +103,7 @@ PROVINCE_MAPPING = {
 }
 
 # ==========================================
-# DICTIONARY GLOBAL PREFIX KODE CUSTOMER (UNTUK RO TOKO AWAL)
+# DICTIONARY GLOBAL PREFIX KODE CUSTOMER
 # ==========================================
 BRAND_PREFIXES = {
     "Javinci": ["JV"], 
@@ -116,7 +116,7 @@ BRAND_PREFIXES = {
     "Bonavie": ["BNV", "BON"], 
     "Goute": ["GT", "GOU"],
     "Mlen": ["MLN", "MLE"], 
-    "Artist Inc": ["ART"], # DIPERBAIKI: Hapus "AI" agar tidak bentrok dengan AINIE
+    "Artist Inc": ["ART"], # Fix: Murni ART
     "Maskit": ["MSK", "MAS"],
     "Birth Beyond": ["BB", "BIR"], 
     "Sociolla": ["SOC", "SCL"], 
@@ -131,8 +131,8 @@ BRAND_PREFIXES = {
     "Claresta": ["CLA", "CLR"], 
     "Rose All Day": ["RAD", "ROS"],
     "OtwooO": ["OTO", "OTW"], 
-    "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], # DIPERBAIKI: Tambah prefix Ainie spesifik
-    "Avione": ["AV"], # DIPERBAIKI: Murni hanya "AV"
+    "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], # Fix: Penambahan AINIE explicit
+    "Avione": ["AV"], # Fix: Murni AV
     "Honor": ["HNR", "HON"], 
     "Vlagio": ["VLG", "VLA"], 
     "Ren & R & L": ["REN", "RRL"],
@@ -337,45 +337,39 @@ def load_data():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
+    # 1. Amankan Kolom Kode_Global
+    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+        if col_name in df.columns:
+            if 'Kode_Global' not in df.columns:
+                df['Kode_Global'] = df[col_name]
+            else:
+                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+    
+    # 2. Amankan Kolom Sales (Backfill jika kosong)
     for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
         if alt_col in df.columns:
             if 'Penjualan' in df.columns:
                 df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
             else:
                 df['Penjualan'] = df[alt_col]
-    
+                
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
             faktur_col = col; break
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
-    if not all(col in df.columns for col in required_cols): return None
-    
+    # 3. Handle data Master yang tidak punya transaksi (Anti-Drop)
+    if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
+        df['Nama Barang'] = df['Nama Barang'].fillna("-")
+
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
 
-    if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
-        df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
-
-    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-    valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-    valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
-    df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
-    df['Penjualan'] = df['Penjualan'].astype('category')
-
-    def normalize_brand(raw_brand):
-        raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items():
-            for keyword in keywords:
-                if keyword in raw_upper: return target_brand
-        return raw_brand
-    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
-    
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
         x = re.sub(r'\s+', '', x) 
@@ -385,15 +379,52 @@ def load_data():
         try: return float(x)
         except: return 0.0
 
-    df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    if 'Jumlah' in df.columns:
+        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    else:
+        df['Jumlah'] = 0.0
+
+    # 4. Amankan Tanggal Master ke tahun 2000
+    if 'Tanggal' in df.columns:
+        tanggal_raw = df['Tanggal'].astype(str).str.strip()
+        d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
+        d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
+        d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
+        df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
+    else:
+        df['Tanggal'] = pd.to_datetime('2000-01-01')
+
+    # 5. Smart Sales Mapping (Isi sales kosong di toko master)
+    if 'Penjualan' in df.columns:
+        df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+        valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+        valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
+        
+        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+        
+        df_valid = df[df['Penjualan'] != 'Non-Sales']
+        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
+        
+        mask_non = df['Penjualan'] == 'Non-Sales'
+        df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
+        df['Penjualan'] = df['Penjualan'].astype('category')
+    else:
+        df['Penjualan'] = 'Non-Sales'
+
+    # Normalisasi Merk
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items():
+            for keyword in keywords:
+                if keyword in raw_upper: return target_brand
+        return raw_brand
+        
+    if 'Merk' in df.columns:
+        df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
+    else:
+        df['Merk'] = "-"
     
-    tanggal_raw = df['Tanggal'].astype(str).str.strip()
-    d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
-    d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
-    d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-    df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
-    
-    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer', 'Kode Costumer']
+    cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
     for col in cols_to_convert:
         if col in df.columns: 
             df[col] = df[col].fillna("-").astype(str).str.strip()
@@ -410,7 +441,7 @@ def load_data():
     return df
 
 # =========================================================================
-# PERBAIKAN GENERATE PIVOT (DENGAN LOGIKA TOKO AWAL/PREFIX)
+# PERBAIKAN GENERATE PIVOT (MUNCULKAN TOKO TIDUR/MASTER)
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
@@ -427,19 +458,9 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
             prefix_tuple = tuple(prefixes)
             
             mask_history = df_pivot_source['Merk'] == selected_merk_excel
+            mask_prefix = df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
             
-            kd_col = None
-            for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-                if col in df_pivot_source.columns:
-                    kd_col = col
-                    break
-            
-            if kd_col:
-                mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                final_mask = mask_history | mask_prefix
-            else:
-                final_mask = mask_history
-                
+            final_mask = mask_history | mask_prefix
             base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
             
             df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
@@ -520,15 +541,10 @@ def render_pivot_fragment(df_scope_all, role):
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
     
     grp_cols = []
-    kd_asal = 'Kode Customer'
-    if 'Kode Outlet' in df_scope_all.columns: 
-        grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
-    elif 'Kode Costumer' in df_scope_all.columns: 
-        grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
-    elif 'Kode Customer' in df_scope_all.columns: 
-        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
+    if 'Kode_Global' in df_scope_all.columns: 
+        grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
     else:
-        df_scope_all['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
+        df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
         
     if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
     elif 'Nama Outlet' in df_scope_all.columns: grp_cols.append('Nama Outlet')
@@ -576,11 +592,11 @@ def render_pivot_fragment(df_scope_all, role):
         master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        ren_dict = {}
+        # Rename Kode_Global back to Kode Customer for display
+        ren_dict = {'Kode_Global': 'Kode Customer'}
         for col in master_pivot.columns:
             c_low = str(col).lower()
-            if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
-            elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
+            if 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
@@ -1456,11 +1472,7 @@ def main_dashboard():
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
                     
-                    kd_col = None
-                    for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-                        if col in df_team_all.columns:
-                            kd_col = col
-                            break
+                    kd_col = 'Kode_Global' if 'Kode_Global' in df_team_all.columns else None
                     
                     growth_data = []
                     
