@@ -400,14 +400,14 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
             
             kd_col = 'Kode Customer' if 'Kode Customer' in df_pivot_source.columns else ('Kode Outlet' if 'Kode Outlet' in df_pivot_source.columns else None)
             if kd_col:
-                mask_prefix = df_pivot_source[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
+                mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 final_mask = mask_history | mask_prefix
             else:
                 final_mask = mask_history
                 
             base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
             
-            # 2. Transaksi Aktual untuk Tahun yang dipilih (hanya untuk Merk yang sesuai)
+            # 2. Transaksi Aktual untuk Tahun yang dipilih
             df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
             
             if not df_excel.empty:
@@ -533,7 +533,6 @@ def render_pivot_fragment(df_scope_all, role):
         
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-    # 3. KALKULASI DATA PIVOT
     json_data = df_scope_all.to_json(date_format='iso', orient='split')
     master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols), BRAND_PREFIXES)
 
@@ -752,7 +751,6 @@ def login_page():
                         st.rerun()
 
 def main_dashboard():
-    # --- FUNGSI GLOBAL WARNA ACHV % ---
     def get_color_achv(val):
         try:
             if val < 0.50: return '#ffcccc' # Merah
@@ -1420,37 +1418,42 @@ def main_dashboard():
                     growth_data = []
                     
                     for period in all_months:
-                        # Data bulan ini khusus untuk brand terpilih
+                        # 1. Hitung Current AO (Hanya yg belanja bulan ini)
                         df_period_brand = df_team_all[(df_team_all['Bulan-Tahun'] == period) & (df_team_all['Merk'] == brand_growth)]
                         sales = df_period_brand['Jumlah'].sum()
                         current_outlets = set(df_period_brand['Nama Outlet'].dropna().unique())
                         ao = len(current_outlets)
                         
-                        # RO: Akumulasi dari awal transaksi sampai dengan bulan ini
+                        # 2. Hitung RO Kumulatif (History + Prefix) sampai bulan ini
                         df_up_to_period = df_team_all[df_team_all['Bulan-Tahun'] <= period]
-                        mask_brand = df_up_to_period['Merk'] == brand_growth
-                        if kd_col:
-                            mask_prefix = df_up_to_period[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
-                            mask_ro = mask_brand | mask_prefix
-                        else:
-                            mask_ro = mask_brand
-                        ro_outlets = set(df_up_to_period[mask_ro]['Nama Outlet'].dropna().unique())
-                        ro = len(ro_outlets)
                         
-                        # NOO: Toko yang transaksi bulan ini, tapi belum pernah masuk RO di bulan-bulan sebelumnya
+                        mask_brand = df_up_to_period['Merk'] == brand_growth
+                        outlets_from_history = set(df_up_to_period[mask_brand]['Nama Outlet'].dropna().unique())
+                        
+                        if kd_col:
+                            mask_prefix = df_up_to_period[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                            outlets_from_prefix = set(df_up_to_period[mask_prefix]['Nama Outlet'].dropna().unique())
+                        else:
+                            outlets_from_prefix = set()
+                            
+                        combined_ro_outlets = outlets_from_history | outlets_from_prefix
+                        ro = len(combined_ro_outlets)
+                        
+                        # 3. Hitung NOO (Outlet baru yg tidak ada di riwayat gabungan bulan lalu)
                         df_up_to_prev = df_team_all[df_team_all['Bulan-Tahun'] < period]
                         if not df_up_to_prev.empty:
                             mask_brand_prev = df_up_to_prev['Merk'] == brand_growth
+                            outlets_from_history_prev = set(df_up_to_prev[mask_brand_prev]['Nama Outlet'].dropna().unique())
                             if kd_col:
-                                mask_prefix_prev = df_up_to_prev[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
-                                mask_ro_prev = mask_brand_prev | mask_prefix_prev
+                                mask_prefix_prev = df_up_to_prev[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                                outlets_from_prefix_prev = set(df_up_to_prev[mask_prefix_prev]['Nama Outlet'].dropna().unique())
                             else:
-                                mask_ro_prev = mask_brand_prev
-                            ro_prev_outlets = set(df_up_to_prev[mask_ro_prev]['Nama Outlet'].dropna().unique())
+                                outlets_from_prefix_prev = set()
+                            combined_ro_prev = outlets_from_history_prev | outlets_from_prefix_prev
                         else:
-                            ro_prev_outlets = set()
+                            combined_ro_prev = set()
                             
-                        noo = len(current_outlets - ro_prev_outlets)
+                        noo = len(current_outlets - combined_ro_prev)
                         
                         ao_vs_ro = (ao / ro) if ro > 0 else 0
                         
