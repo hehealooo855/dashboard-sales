@@ -312,6 +312,14 @@ def load_data():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
+    # PERBAIKAN: Selaraskan kolom Salesman dari Masterlist ke Penjualan sebelum pengecekan
+    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
+        if alt_col in df.columns:
+            if 'Penjualan' in df.columns:
+                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
+            else:
+                df['Penjualan'] = df[alt_col]
+    
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
@@ -359,8 +367,11 @@ def load_data():
     d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
     d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
     d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-    df['Tanggal'] = d1.fillna(d2).fillna(d3)
-    df = df.dropna(subset=['Tanggal'])
+    
+    # ========================== PERBAIKAN FATAL: SELAMATKAN TOKO MASTER ==========================
+    # Toko dari Sheet Toko Awal yang tidak punya tanggal diselamatkan ke Tahun 2000
+    df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
+    # BUKAN: df = df.dropna(subset=['Tanggal'])
     
     cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer', 'Kode Costumer']
     for col in cols_to_convert:
@@ -379,7 +390,7 @@ def load_data():
     return df
 
 # =========================================================================
-# PERBAIKAN PIVOT: AUTO DETECT COLUMN & UNION LOGIC
+# PERBAIKAN GENERATE PIVOT (DENGAN LOGIKA TOKO AWAL/PREFIX)
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
@@ -392,6 +403,7 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
     
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
+            # 1. Base Customer Logic: Cek History DAN Prefix
             prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
             prefix_tuple = tuple(prefixes)
             
@@ -412,6 +424,7 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
                 
             base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
             
+            # 2. Transaksi Aktual untuk Tahun yang dipilih
             df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
             
             if not df_excel.empty:
@@ -1278,8 +1291,19 @@ def main_dashboard():
                     outlet_df = df_scope_all[df_scope_all['Nama Outlet'] == outlet]
                     last_date = outlet_df['Tanggal'].max()
                     sales_handler = outlet_df['Penjualan'].iloc[0] if not outlet_df.empty else "-"
-                    last_trx.append({"Nama Toko": outlet, "Sales": sales_handler, "Terakhir Order": last_date.strftime('%d %b %Y'), "Hari Sejak Order Terakhir": (datetime.date.today() - last_date.date()).days})
-                st.dataframe(pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir"), use_container_width=True)
+                    
+                    if last_date.year == 2000:
+                        terakhir_order_str = "Belum Pernah Order (Toko Master)"
+                        hari_sejak = 99999
+                    else:
+                        terakhir_order_str = last_date.strftime('%d %b %Y')
+                        hari_sejak = (datetime.date.today() - last_date.date()).days
+                        
+                    last_trx.append({"Nama Toko": outlet, "Sales": sales_handler, "Terakhir Order": terakhir_order_str, "Hari Sejak Order Terakhir": hari_sejak})
+                
+                df_sleeping = pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir")
+                df_sleeping["Hari Sejak Order Terakhir"] = df_sleeping["Hari Sejak Order Terakhir"].replace(99999, "Baru/Master")
+                st.dataframe(df_sleeping, use_container_width=True)
         else: st.success("Semua toko langganan sudah order di periode ini.")
 
         st.divider()
@@ -1356,7 +1380,10 @@ def main_dashboard():
     with t_forecast:
         st.subheader("🔮 Prediksi Omset (Forecasting)")
         st.info("Prediksi tren omset 30 hari ke depan berdasarkan data historis harian.")
-        df_forecast = df_scope_all.groupby('Tanggal')['Jumlah'].sum().reset_index().sort_values('Tanggal')
+        
+        # Abaikan data master (Tahun 2000) agar trendline prediksi tidak rusak!
+        df_forecast = df_scope_all[df_scope_all['Tanggal'].dt.year > 2000].groupby('Tanggal')['Jumlah'].sum().reset_index().sort_values('Tanggal')
+        
         if len(df_forecast) > 10:
             df_forecast['Date_Ordinal'] = df_forecast['Tanggal'].apply(lambda x: x.toordinal())
             x = df_forecast['Date_Ordinal'].values; y = df_forecast['Jumlah'].values
