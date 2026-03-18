@@ -74,20 +74,9 @@ st.markdown("""
 # MASTER KALENDER LIBUR NASIONAL 2026 (INDONESIA)
 # ==========================================
 HOLIDAYS_2026 = [
-    '2026-01-01', # Tahun Baru Masehi
-    '2026-02-14', # Isra Mikraj (Estimasi)
-    '2026-02-17', # Tahun Baru Imlek
-    '2026-03-19', # Hari Raya Idul Fitri
-    '2026-03-20', # Hari Raya Idul Fitri
-    '2026-04-03', # Wafat Yesus Kristus (Jumat Agung)
-    '2026-05-01', # Hari Buruh Internasional
-    '2026-05-14', # Kenaikan Yesus Kristus
-    '2026-05-26', # Hari Raya Idul Adha (Estimasi)
-    '2026-06-01', # Hari Lahir Pancasila
-    '2026-06-16', # Tahun Baru Islam
-    '2026-08-17', # Hari Kemerdekaan RI
-    '2026-08-25', # Maulid Nabi Muhammad SAW
-    '2026-12-25'  # Hari Raya Natal
+    '2026-01-01', '2026-02-14', '2026-02-17', '2026-03-19', '2026-03-20', 
+    '2026-04-03', '2026-05-01', '2026-05-14', '2026-05-26', '2026-06-01', 
+    '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
 ]
 
 # ==========================================
@@ -117,44 +106,19 @@ PROVINCE_MAPPING = {
 # DICTIONARY GLOBAL PREFIX KODE CUSTOMER (UNTUK RO TOKO AWAL)
 # ==========================================
 BRAND_PREFIXES = {
-    "Javinci": ["JV"],
-    "Careso": ["EPS", "CRS"],
-    "Somethinc": ["SMT", "SOM"],
-    "Newlab": ["NL", "NEW"],
-    "Gloow & Be": ["GB", "GLO"],
-    "Dorskin": ["DRS", "DOR"],
-    "Whitelab": ["WL", "WHI"],
-    "Bonavie": ["BNV", "BON"],
-    "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"],
-    "Artist Inc": ["ART", "AI"],
-    "Maskit": ["MSK", "MAS"],
-    "Birth Beyond": ["BB", "BIR"],
-    "Sociolla": ["SOC", "SCL"],
-    "Thai": ["TH", "THA"],
-    "Inesia": ["INS", "INE"],
-    "Y2000": ["Y2K", "Y20"],
-    "Diosys": ["DIO", "DS"],
-    "Masami": ["MSM", "MAS"],
-    "Cassandra": ["CAS", "CSD"],
-    "Clinelle": ["CLN", "CLI"],
-    "Beautica": ["BTC", "BEA"],
-    "Claresta": ["CLA", "CLR"],
-    "Rose All Day": ["RAD", "ROS"],
-    "OtwooO": ["OTO", "OTW"],
-    "Sekawan": ["SKW", "SEK"],
-    "Avione": ["AVI", "AVN"],
-    "Honor": ["HNR", "HON"],
-    "Vlagio": ["VLG", "VLA"],
-    "Ren & R & L": ["REN", "RRL"],
-    "Mad For Make Up": ["MFM", "MAD"],
-    "Satto": ["STT", "SAT"],
-    "Mykonos": ["MYK", "MYC"],
-    "The Face": ["TF", "TFC"],
-    "Yu Chun Mei": ["YCM", "YUC"],
-    "Milano": ["MIL", "MLN"],
-    "Walnutt": ["WAL", "WLN"],
-    "Elizabeth Rose": ["ELZ", "ELI"]
+    "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
+    "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
+    "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
+    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART", "AI"], "Maskit": ["MSK", "MAS"],
+    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"],
+    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"],
+    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"],
+    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"],
+    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK"], "Avione": ["AVI", "AVN"],
+    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"],
+    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"],
+    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"],
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
 }
 
 def map_city_to_province(city_name):
@@ -170,7 +134,6 @@ def map_city_to_province(city_name):
 # ==========================================
 # 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
-
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000, "Maskit": 30_000_000, "Birth Beyond": 120_000_000},
@@ -415,8 +378,11 @@ def load_data():
             
     return df
 
+# =========================================================================
+# PERBAIKAN GENERATE PIVOT (DENGAN LOGIKA TOKO AWAL/PREFIX)
+# =========================================================================
 @st.cache_data(show_spinner=False)
-def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
+def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
     df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
     df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
@@ -426,9 +392,24 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
     
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
-            df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
-            base_customers = df_historical_brand[group_cols].drop_duplicates()
-            df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            # 1. Base Customer Logic: Cek History DAN Prefix
+            prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
+            prefix_tuple = tuple(prefixes)
+            
+            mask_history = df_pivot_source['Merk'] == selected_merk_excel
+            
+            kd_col = 'Kode Customer' if 'Kode Customer' in df_pivot_source.columns else ('Kode Outlet' if 'Kode Outlet' in df_pivot_source.columns else None)
+            if kd_col:
+                mask_prefix = df_pivot_source[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
+                final_mask = mask_history | mask_prefix
+            else:
+                final_mask = mask_history
+                
+            base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
+            
+            # 2. Transaksi Aktual untuk Tahun yang dipilih (hanya untuk Merk yang sesuai)
+            df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
+            
             if not df_excel.empty:
                 master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
                 master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
@@ -507,7 +488,6 @@ def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
     
-    # 1. MENYIAPKAN WADAH PIVOT
     grp_cols = []
     kd_asal = 'Kode Customer'
     if 'Kode Outlet' in df_scope_all.columns: 
@@ -529,7 +509,6 @@ def render_pivot_fragment(df_scope_all, role):
     if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
     else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
 
-    # 2. BUNGKUS SEMUA FILTER KE DALAM "FORM"
     with st.form(key='pivot_filter_form'):
         col_piv1, col_piv2 = st.columns(2)
         with col_piv1:
@@ -554,9 +533,9 @@ def render_pivot_fragment(df_scope_all, role):
         
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-    # 3. KALKULASI DATA
+    # 3. KALKULASI DATA PIVOT
     json_data = df_scope_all.to_json(date_format='iso', orient='split')
-    master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
+    master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols), BRAND_PREFIXES)
 
     if not master_pivot.empty:
         bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
@@ -1185,7 +1164,6 @@ def main_dashboard():
                 
                 h_1_date = end_d - datetime.timedelta(days=1)
                 
-                # ========================== PERBAIKAN: LOGIKA SISA HARI KERJA ==========================
                 last_day_of_month = calendar.monthrange(end_d.year, end_d.month)[1]
                 remaining_workdays = 0
                 for day_int in range(end_d.day, last_day_of_month + 1):
@@ -1205,7 +1183,6 @@ def main_dashboard():
                         toko_h1 = df_h1['Nama Outlet'].nunique()
                         total_toko_mtd = df_active_tab[(df_active_tab['Penjualan'] == sales_name) & (df_active_tab['Merk'] == selected_brand_detail)]['Nama Outlet'].nunique()
                         
-                        # Hitung Gap Sales & Target Harian
                         gap_sales = t_pribadi - real_sales
                         if gap_sales < 0:
                             gap_sales = 0
@@ -1419,55 +1396,61 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                df_brand_all = df[df['Merk'] == brand_growth].copy()
-                
+                df_team_all = df_scope_all.copy()
                 if target_sales_filter != "SEMUA":
                     if target_sales_filter.upper() in TARGET_DATABASE:
                         tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-                        df_brand_all = df_brand_all[df_brand_all['Penjualan'].isin(tim_sales_list)]
+                        df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
                     else:
-                        df_brand_all = df_brand_all[df_brand_all['Penjualan'] == target_sales_filter]
+                        df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
                 elif role not in ['manager', 'direktur', 'supervisor'] and my_name.lower() != 'fauziah':
-                    df_brand_all = df_brand_all[df_brand_all['Penjualan'] == my_name]
+                    df_team_all = df_team_all[df_team_all['Penjualan'] == my_name]
 
-                if not df_brand_all.empty:
-                    df_brand_all['Tahun'] = df_brand_all['Tanggal'].dt.year
-                    df_brand_all['Bulan'] = df_brand_all['Tanggal'].dt.month
-                    df_brand_all['Bulan-Tahun'] = df_brand_all['Tanggal'].dt.to_period('M')
+                if not df_team_all.empty:
+                    df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
+                    df_team_all['Bulan'] = df_team_all['Tanggal'].dt.month
+                    df_team_all['Bulan-Tahun'] = df_team_all['Tanggal'].dt.to_period('M')
                     
-                    all_months = sorted(df_brand_all['Bulan-Tahun'].dropna().unique())
+                    all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
-                    kd_col = 'Kode Customer' if 'Kode Customer' in df_scope_all.columns else ('Kode Outlet' if 'Kode Outlet' in df_scope_all.columns else None)
-                    
-                    ro_master_value = 0
-                    if kd_col:
-                        mask = df_scope_all[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefixes))
-                        ro_master_value = df_scope_all[mask]['Nama Outlet'].nunique()
+                    prefix_tuple = tuple(prefixes)
+                    kd_col = 'Kode Customer' if 'Kode Customer' in df_team_all.columns else ('Kode Outlet' if 'Kode Outlet' in df_team_all.columns else None)
                     
                     growth_data = []
-                    seen_outlets_all_time = set()
                     
-                    current_year = None
-                    seen_outlets_ytd = set()
-
                     for period in all_months:
-                        if current_year != period.year:
-                            current_year = period.year
-                            seen_outlets_ytd = set() 
+                        # Data bulan ini khusus untuk brand terpilih
+                        df_period_brand = df_team_all[(df_team_all['Bulan-Tahun'] == period) & (df_team_all['Merk'] == brand_growth)]
+                        sales = df_period_brand['Jumlah'].sum()
+                        current_outlets = set(df_period_brand['Nama Outlet'].dropna().unique())
+                        ao = len(current_outlets)
+                        
+                        # RO: Akumulasi dari awal transaksi sampai dengan bulan ini
+                        df_up_to_period = df_team_all[df_team_all['Bulan-Tahun'] <= period]
+                        mask_brand = df_up_to_period['Merk'] == brand_growth
+                        if kd_col:
+                            mask_prefix = df_up_to_period[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
+                            mask_ro = mask_brand | mask_prefix
+                        else:
+                            mask_ro = mask_brand
+                        ro_outlets = set(df_up_to_period[mask_ro]['Nama Outlet'].dropna().unique())
+                        ro = len(ro_outlets)
+                        
+                        # NOO: Toko yang transaksi bulan ini, tapi belum pernah masuk RO di bulan-bulan sebelumnya
+                        df_up_to_prev = df_team_all[df_team_all['Bulan-Tahun'] < period]
+                        if not df_up_to_prev.empty:
+                            mask_brand_prev = df_up_to_prev['Merk'] == brand_growth
+                            if kd_col:
+                                mask_prefix_prev = df_up_to_prev[kd_col].astype(str).str.upper().str.startswith(prefix_tuple)
+                                mask_ro_prev = mask_brand_prev | mask_prefix_prev
+                            else:
+                                mask_ro_prev = mask_brand_prev
+                            ro_prev_outlets = set(df_up_to_prev[mask_ro_prev]['Nama Outlet'].dropna().unique())
+                        else:
+                            ro_prev_outlets = set()
                             
-                        df_period = df_brand_all[df_brand_all['Bulan-Tahun'] == period]
-                        current_outlets = set(df_period['Nama Outlet'].dropna().unique())
-                        
-                        sales = df_period['Jumlah'].sum()
-                        
-                        ro = ro_master_value
-                        
-                        seen_outlets_ytd.update(current_outlets)
-                        ao = len(seen_outlets_ytd)
-                        
-                        noo = len(current_outlets - seen_outlets_all_time)
-                        seen_outlets_all_time.update(current_outlets)
+                        noo = len(current_outlets - ro_prev_outlets)
                         
                         ao_vs_ro = (ao / ro) if ro > 0 else 0
                         
@@ -1503,7 +1486,7 @@ def main_dashboard():
                                     'NOO': int(r['NOO'])
                                 })
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': ro_master_value, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
                         def style_tab1(row):
                             styles = []
