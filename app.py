@@ -362,7 +362,7 @@ def load_data():
     df['Tanggal'] = d1.fillna(d2).fillna(d3)
     df = df.dropna(subset=['Tanggal'])
     
-    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer']
+    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer', 'Kode Costumer']
     for col in cols_to_convert:
         if col in df.columns: 
             df[col] = df[col].fillna("-").astype(str).str.strip()
@@ -379,7 +379,7 @@ def load_data():
     return df
 
 # =========================================================================
-# PERBAIKAN GENERATE PIVOT (DENGAN LOGIKA TOKO AWAL/PREFIX)
+# PERBAIKAN PIVOT: AUTO DETECT COLUMN & UNION LOGIC
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
@@ -392,13 +392,18 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
     
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
-            # 1. Base Customer Logic: Cek History DAN Prefix
             prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
             prefix_tuple = tuple(prefixes)
             
             mask_history = df_pivot_source['Merk'] == selected_merk_excel
             
-            kd_col = 'Kode Customer' if 'Kode Customer' in df_pivot_source.columns else ('Kode Outlet' if 'Kode Outlet' in df_pivot_source.columns else None)
+            # --- AI AUTO-DETECT KODE COLUMN ---
+            kd_col = None
+            for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+                if col in df_pivot_source.columns:
+                    kd_col = col
+                    break
+            
             if kd_col:
                 mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 final_mask = mask_history | mask_prefix
@@ -407,7 +412,6 @@ def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tup
                 
             base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
             
-            # 2. Transaksi Aktual untuk Tahun yang dipilih
             df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
             
             if not df_excel.empty:
@@ -480,9 +484,6 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
-# =====================================================================
-# ⚡ THE ULTIMATE SPEED BOOSTER: FORM ARCHITECTURE UNTUK PIVOT TABLE
-# =====================================================================
 @st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
@@ -492,10 +493,10 @@ def render_pivot_fragment(df_scope_all, role):
     kd_asal = 'Kode Customer'
     if 'Kode Outlet' in df_scope_all.columns: 
         grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
-    elif 'Kode Customer' in df_scope_all.columns: 
-        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
     elif 'Kode Costumer' in df_scope_all.columns: 
         grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
+    elif 'Kode Customer' in df_scope_all.columns: 
+        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
     else:
         df_scope_all['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
         
@@ -1413,7 +1414,13 @@ def main_dashboard():
                     
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
-                    kd_col = 'Kode Customer' if 'Kode Customer' in df_team_all.columns else ('Kode Outlet' if 'Kode Outlet' in df_team_all.columns else None)
+                    
+                    # --- AUTO DETECT KODE COLUMN ---
+                    kd_col = None
+                    for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+                        if col in df_team_all.columns:
+                            kd_col = col
+                            break
                     
                     growth_data = []
                     
