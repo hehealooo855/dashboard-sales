@@ -1440,7 +1440,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # ================= RADAR INVESTIGASI TOKO GANDA =================
                 if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
                     df_cek = df_scope_all[df_scope_all['Merk'] == brand_growth].copy()
                     kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
@@ -1457,7 +1456,6 @@ def main_dashboard():
                             st.success("✅ Tidak ada nama toko yang kodenya ganda.")
                     else:
                         st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
-                # =================================================================
                 
                 df_team_all = df_scope_all.copy()
                 if target_sales_filter != "SEMUA":
@@ -1476,9 +1474,17 @@ def main_dashboard():
                     
                     all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
+                    # === PERUBAHAN: MURNI IKUT KODE CUSTOMER ===
+                    def get_id_patokan(row):
+                        kode = str(row.get('Kode_Global', '-')).strip()
+                        if kode not in ['-', '', 'NAN', 'NONE']:
+                            return kode
+                        return str(row.get('Nama Outlet', '-')).strip()
+                        
+                    df_team_all['ID_Patokan'] = df_team_all.apply(get_id_patokan, axis=1)
+                    
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
-                    
                     kd_col = 'Kode_Global' if 'Kode_Global' in df_team_all.columns else None
                     
                     growth_data = []
@@ -1486,17 +1492,16 @@ def main_dashboard():
                     for period in all_months:
                         df_period_brand = df_team_all[(df_team_all['Bulan-Tahun'] == period) & (df_team_all['Merk'] == brand_growth)]
                         sales = df_period_brand['Jumlah'].sum()
-                        current_outlets = set(df_period_brand['Nama Outlet'].dropna().unique())
+                        current_outlets = set(df_period_brand['ID_Patokan'].dropna().unique())
                         ao = len(current_outlets)
                         
                         df_up_to_period = df_team_all[df_team_all['Bulan-Tahun'] <= period]
-                        
                         mask_brand = df_up_to_period['Merk'] == brand_growth
-                        outlets_from_history = set(df_up_to_period[mask_brand]['Nama Outlet'].dropna().unique())
+                        outlets_from_history = set(df_up_to_period[mask_brand]['ID_Patokan'].dropna().unique())
                         
                         if kd_col:
                             mask_prefix = df_up_to_period[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                            outlets_from_prefix = set(df_up_to_period[mask_prefix]['Nama Outlet'].dropna().unique())
+                            outlets_from_prefix = set(df_up_to_period[mask_prefix]['ID_Patokan'].dropna().unique())
                         else:
                             outlets_from_prefix = set()
                             
@@ -1506,10 +1511,10 @@ def main_dashboard():
                         df_up_to_prev = df_team_all[df_team_all['Bulan-Tahun'] < period]
                         if not df_up_to_prev.empty:
                             mask_brand_prev = df_up_to_prev['Merk'] == brand_growth
-                            outlets_from_history_prev = set(df_up_to_prev[mask_brand_prev]['Nama Outlet'].dropna().unique())
+                            outlets_from_history_prev = set(df_up_to_prev[mask_brand_prev]['ID_Patokan'].dropna().unique())
                             if kd_col:
                                 mask_prefix_prev = df_up_to_prev[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                                outlets_from_prefix_prev = set(df_up_to_prev[mask_prefix_prev]['Nama Outlet'].dropna().unique())
+                                outlets_from_prefix_prev = set(df_up_to_prev[mask_prefix_prev]['ID_Patokan'].dropna().unique())
                             else:
                                 outlets_from_prefix_prev = set()
                             combined_ro_prev = outlets_from_history_prev | outlets_from_prefix_prev
