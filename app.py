@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Perbaikan Metrik Label Size
+# Custom CSS
 st.markdown("""
 <style>
     .metric-card {
@@ -57,8 +57,6 @@ st.markdown("""
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
-    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
         font-size: 18px !important;
         font-weight: 600 !important;
@@ -84,39 +82,23 @@ HOLIDAYS_2026 = [
 # ==========================================
 PROVINCE_MAPPING = {
     "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
-    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
-    "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR", "LUBUK BASUNG", "SIMPANG EMPAT", "UJUNG GADING", "LUBUK SIKAPING", "MUARA LABUH", "PULAU PUNJUNG", "SUNGAI RUMBAI"],
-    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KUANTAN"],
-    "KEPULAUAN RIAU": ["BATAM", "TANJUNGPINANG", "BINTAN", "KARIMUN", "NATUNA", "LINGGA", "ANAMBAS"],
-    "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL", "RIMBO BUJANG", "SUNGAI BENGKAL"],
-    "SUMATERA SELATAN": ["PALEMBANG", "LUBUKLINGGAU", "PRABUMULIH", "PAGAR ALAM", "BANYUASIN", "EMPAT LAWANG", "LAHAT", "MUARA ENIM", "MUSI", "OGAN", "OKU", "OKI", "SEKAYU", "INDRALAYA"],
-    "BENGKULU": ["BENGKULU", "KAUR", "KEPAHIANG", "LEBONG", "MUKOMUKO", "REJANG LEBONG", "SELUMA", "BINTUHAN", "CURUP", "ARGA MAKMUR"],
-    "LAMPUNG": ["LAMPUNG", "METRO", "PESAWARAN", "PRINGSEWU", "TANGGAMUS", "TULANG BAWANG", "WAY KANAN", "MESUJI", "KALIANDA", "KOTABUMI", "LIWA", "MENGGALA", "GUNUNG SUGIH"],
-    "BANGKA BELITUNG": ["PANGKALPINANG", "BANGKA", "BELITUNG", "SUNGAILIAT", "MUNTOK", "KOBA", "TOBOALI", "TANJUNG PANDAN", "MANGGAR"],
-    "DKI JAKARTA": ["JAKARTA", "JKT"],
-    "JAWA BARAT": ["BANDUNG", "BEKASI", "BOGOR", "DEPOK", "CIMAHI", "CIREBON", "SUKABUMI", "TASIKMALAYA", "BANJAR", "GARUT", "CIANJUR", "CIAMIS", "KUNINGAN", "MAJALENGKA", "PANGANDARAN", "PURWAKARTA", "SUBANG", "SUMEDANG", "INDRAMAYU", "KARAWANG", "CIBINONG", "CISAAT", "SOREANG", "NGAMPRAH", "TAROGONG", "SINGAPARNA"],
-    "BANTEN": ["SERANG", "CILEGON", "TANGERANG", "LEBAK", "PANDEGLANG", "RANGKASBITUNG", "TIGARAKSA"],
-    "JAWA TENGAH": ["SEMARANG", "MAGELANG", "PEKALONGAN", "SALATIGA", "SURAKARTA", "SOLO", "TEGAL", "KUDUS", "PURWOKERTO", "DEMAK", "PATI", "BANJARNEGARA", "BANYUMAS", "BATANG", "BLORA", "BOYOLALI", "BREBES", "CILACAP", "GROBOGAN", "JEPARA", "KARANGANYAR", "KEBUMEN", "KENDAL", "KLATEN", "PEMALANG", "PURBALINGGA", "PURWOREJO", "REMBANG", "SRAGEN", "SUKOHARJO", "TEMANGGUNG", "WONOGIRI", "WONOSOBO", "MUNGKID", "KAJEN", "SLAWI", "PURWODADI", "UNGARAN"],
-    "DI YOGYAKARTA": ["YOGYAKARTA", "JOGJA", "SLEMAN", "BANTUL", "GUNUNGKIDUL", "KULON PROGO", "WONOSARI", "WATES"],
-    "JAWA TIMUR": ["SURABAYA", "KEDIRI", "MADIUN", "MALANG", "MOJOKERTO", "PASURUAN", "PROBOLINGGO", "BATU", "BLITAR", "SIDOARJO", "GRESIK", "JEMBER", "BANYUWANGI", "BOJONEGORO", "BONDOWOSO", "JOMBANG", "LAMONGAN", "LUMAJANG", "MAGETAN", "NGANJUK", "NGAWI", "PACITAN", "PAMEKASAN", "PONOROGO", "SAMPANG", "SITUBONDO", "SUMENEP", "TRENGGALEK", "TUBAN", "TULUNGAGUNG", "BANGKALAN", "KANIGORO", "NGASEM", "CARUBAN", "KEPANJEN", "MOJOSARI", "BANGIL", "KRAKSAAN"],
-    "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
+    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"]
 }
 
 BRAND_PREFIXES = {
     "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
     "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
     "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"],
-    "Maskit": ["MSK", "MAS"], "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], 
-    "Thai": ["TH", "THA"], "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], 
-    "Diosys": ["DIO", "DS"], "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], 
-    "Clinelle": ["CLN", "CLI"], "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], 
-    "Rose All Day": ["RAD", "ROS"], "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], 
-    "Avione": ["AV"], "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], 
-    "Ren & R & L": ["REN", "RRL"], "Mad For Make Up": ["MFM", "MAD"], 
-    "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], "The Face": ["TF", "TFC"], 
-    "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], "Walnutt": ["WAL", "WLN"], 
-    "Elizabeth Rose": ["ELZ", "ELI"]
+    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"], "Maskit": ["MSK", "MAS"], 
+    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"], 
+    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"], 
+    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"], 
+    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"], 
+    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], "Avione": ["AV"], 
+    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
+    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
+    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
 }
 
 def map_city_to_province(city_name):
@@ -138,9 +120,6 @@ TARGET_DATABASE = {
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
-# ==========================================
-# ESTIMASI TARGET BULANAN (SESUAI VSC & JPG)
-# ==========================================
 ESTIMASI_TARGET_BULANAN = {
     "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
     "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
@@ -189,14 +168,13 @@ BRAND_ALIASES = {
     "SYB": ["SYB"], "Satto": ["SATTO"], "Liora": ["LIORA"], "Mykonos": ["MYKONOS"],
     "Somethinc": ["SOMETHINC"], "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW", "GLOWBE"],
     "Artist Inc": ["ARTIST", "ARTIS"], "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"],
-    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
+    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madame G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"], "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"], "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "Madame G": ["MADAME G", "MADAM G", "MADAM"], "COSLINE": ["COSLINE"],
-    "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"]
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"]
 }
 
 SALES_MAPPING = {
@@ -280,7 +258,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER (FAST MODE ENABLED)
+# CACHE & DATA LOADER
 # =========================================================================
 @st.cache_data(ttl=3600) 
 def load_data_from_url():
@@ -417,7 +395,7 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PERBAIKAN GENERATE PIVOT (VECTORIZED / NON-JSON)
+# PIVOT FAST ENGINE
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
@@ -1024,7 +1002,6 @@ def main_dashboard():
         df_prev_month = df_scope_all[(df_scope_all['Tanggal'].dt.month == prev_month) & (df_scope_all['Tanggal'].dt.year == prev_year)]
         df_d1 = df_scope_all[df_scope_all['Tanggal'].dt.date == d_minus_1]
         
-        # Master Structure based on the image
         REPORT_STRUCTURE = {
             "LISMAN": [
                 {"group": "Total Deca Group", "brands": ["Bonavie", "Whitelab", "Goute", "Everpure"]},
@@ -1066,14 +1043,12 @@ def main_dashboard():
                 continue
                 
             spv_totals = {"target": 0, "prev": 0, "est": 0, "d1": 0, "mtd": 0}
-            spv_html = ""
-            row_count_spv = 0
+            spv_html_lines = []
             
             for grp in groups:
                 group_totals = {"target": 0, "prev": 0, "est": 0, "d1": 0, "mtd": 0}
                 
                 for brand in grp["brands"]:
-                    # Values for Brand
                     t_target = TARGET_DATABASE.get(spv, {}).get(brand, 0)
                     t_prev = get_sales_data(brand, df_prev_month)
                     t_est = ESTIMASI_TARGET_BULANAN.get(brand, 0)
@@ -1081,29 +1056,27 @@ def main_dashboard():
                     t_mtd = get_sales_data(brand, df_active_tab)
                     t_ach = (t_mtd / t_est * 100) if t_est > 0 else 0
                     
-                    ach_color = "red" if t_ach < 100 and t_est > 0 else ("green" if t_ach >= 100 else "#666")
+                    ach_color = "#C00000" if t_ach < 100 and t_est > 0 else ("#006100" if t_ach >= 100 else "#666")
                     ach_text = f"{t_ach:.2f}%".replace(".", ",") if t_est > 0 else "#DIV/0!"
-                    if ach_text == "#DIV/0!": ach_color = "red"
+                    if ach_text == "#DIV/0!": ach_color = "#C00000"
                     
                     brand_row = f"""
                     <tr style="background-color: white;">
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; color: #333;">{brand}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_target)}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_prev)}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_est)}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_d1)}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_mtd)}</td>
-                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: center; color: {ach_color}; font-weight: bold;">{ach_text}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; color: black;">{brand}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(t_target)}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(t_prev)}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(t_est)}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(t_d1)}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(t_mtd)}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: center; color: {ach_color}; font-weight: bold;">{ach_text}</td>
                     </tr>
                     """
-                    spv_html += brand_row
-                    row_count_spv += 1
+                    spv_html_lines.append(brand_row)
                     
-                    # Accumulate Subtotals
                     group_totals["target"] += t_target; group_totals["prev"] += t_prev; group_totals["est"] += t_est
                     group_totals["d1"] += t_d1; group_totals["mtd"] += t_mtd
                     
-                    # Add Salesmen rows under the brand
+                    # Salesmen detail rows
                     salesmen_mtd = get_salesmen_data(brand, df_active_tab)
                     salesmen_prev = get_salesmen_data(brand, df_prev_month)
                     salesmen_d1 = get_salesmen_data(brand, df_d1)
@@ -1114,105 +1087,100 @@ def main_dashboard():
                         s_d1 = salesmen_d1.get(sman, 0)
                         s_mtd = salesmen_mtd.get(sman, 0)
                         s_target = INDIVIDUAL_TARGETS.get(sman, {}).get(brand, 0)
-                        # Estimasi target bulanan salesman diasumsikan tidak ada detail per orang, dikosongkan
                         
                         sman_row = f"""
-                        <tr style="background-color: #fafafa;">
-                            <td style="border: 1px solid #ccc; padding: 2px 8px 2px 25px; font-style: italic; color: #666;">↳ {sman}</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_target)}</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_prev)}</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">-</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_d1)}</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_mtd)}</td>
-                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: center; color: #666;">-</td>
+                        <tr style="background-color: #f9f9f9;">
+                            <td style="border: 1px solid #000; padding: 2px 8px 2px 25px; font-style: italic; color: #444;">↳ {sman}</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: right; font-style: italic; color: #444;">{format_excel_idr(s_target)}</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: right; font-style: italic; color: #444;">{format_excel_idr(s_prev)}</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: right; font-style: italic; color: #444;">-</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: right; font-style: italic; color: #444;">{format_excel_idr(s_d1)}</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: right; font-style: italic; color: #444;">{format_excel_idr(s_mtd)}</td>
+                            <td style="border: 1px solid #000; padding: 2px 8px; text-align: center; color: #444;">-</td>
                         </tr>
                         """
-                        spv_html += sman_row
-                        row_count_spv += 1
+                        spv_html_lines.append(sman_row)
                         
-                # Render Subtotal Row if group exists
                 if grp["group"]:
                     g_ach = (group_totals["mtd"] / group_totals["est"] * 100) if group_totals["est"] > 0 else 0
-                    g_ach_color = "red" if g_ach < 100 and group_totals["est"] > 0 else ("green" if g_ach >= 100 else "#666")
+                    g_ach_color = "#C00000" if g_ach < 100 and group_totals["est"] > 0 else ("#006100" if g_ach >= 100 else "#666")
                     g_ach_text = f"{g_ach:.2f}%".replace(".", ",") if group_totals["est"] > 0 else "#DIV/0!"
-                    if g_ach_text == "#DIV/0!": g_ach_color = "red"
+                    if g_ach_text == "#DIV/0!": g_ach_color = "#C00000"
                     
                     sub_row = f"""
-                    <tr style="background-color: #B4C6E7; font-weight: bold;">
-                        <td style="border: 1px solid #999; padding: 4px 8px; color: black;">{grp["group"]}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["target"])}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["prev"])}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["est"])}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["d1"])}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["mtd"])}</td>
-                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: center; color: {g_ach_color};">{g_ach_text}</td>
+                    <tr style="background-color: #DDEBF7; font-weight: bold;">
+                        <td style="border: 1px solid #000; padding: 4px 8px; color: black;">{grp["group"]}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["target"])}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["prev"])}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["est"])}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["d1"])}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["mtd"])}</td>
+                        <td style="border: 1px solid #000; padding: 4px 8px; text-align: center; color: {g_ach_color};">{g_ach_text}</td>
                     </tr>
                     """
-                    spv_html += sub_row
-                    row_count_spv += 1
+                    spv_html_lines.append(sub_row)
                     
                 spv_totals["target"] += group_totals["target"]; spv_totals["prev"] += group_totals["prev"]
                 spv_totals["est"] += group_totals["est"]; spv_totals["d1"] += group_totals["d1"]
                 spv_totals["mtd"] += group_totals["mtd"]
             
-            # Total Supervisor Row (Yellow)
             s_ach = (spv_totals["mtd"] / spv_totals["est"] * 100) if spv_totals["est"] > 0 else 0
-            s_ach_color = "red" if s_ach < 100 and spv_totals["est"] > 0 else ("green" if s_ach >= 100 else "#666")
+            s_ach_color = "#C00000" if s_ach < 100 and spv_totals["est"] > 0 else ("#006100" if s_ach >= 100 else "#666")
             s_ach_text = f"{s_ach:.2f}%".replace(".", ",") if spv_totals["est"] > 0 else "0,00%"
             
             spv_total_row = f"""
             <tr style="background-color: #FFFF00; font-weight: bold;">
-                <td style="border: 1px solid #999; padding: 4px 8px; color: black;">Total {spv.capitalize()}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["target"])}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["prev"])}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["est"])}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["d1"])}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["mtd"])}</td>
-                <td style="border: 1px solid #999; padding: 4px 8px; text-align: center; color: {s_ach_color};">{s_ach_text}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; color: black;">Total {spv.capitalize()}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["target"])}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["prev"])}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["est"])}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["d1"])}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["mtd"])}</td>
+                <td style="border: 1px solid #000; padding: 4px 8px; text-align: center; color: {s_ach_color};">{s_ach_text}</td>
             </tr>
             """
+            spv_html_lines.append(spv_total_row)
             
-            # Injecting Rowspan for SPV Column
-            rowspan_html = f'<td rowspan="{row_count_spv + 1}" style="border: 2px solid #555; background-color: white; vertical-align: middle; text-align: center; font-weight: bold; color: black; font-size: 16px;">{spv.capitalize()}</td>'
-            spv_html_split = spv_html.split('<tr', 1)
-            spv_html_final = '<tr' + spv_html_split[1].replace('>', f'>{rowspan_html}', 1) + spv_total_row
+            rowspan_count = len(spv_html_lines)
+            rowspan_td = f'<td rowspan="{rowspan_count}" style="border: 1px solid #000; background-color: white; vertical-align: middle; text-align: center; font-weight: bold; color: black; font-size: 16px;">{spv.capitalize()}</td>'
             
-            html_rows += spv_html_final
+            first_line = spv_html_lines[0]
+            spv_html_lines[0] = first_line.replace(">", f">{rowspan_td}", 1)
             
-            # Accumulate Grand Totals
+            html_rows += "\n".join(spv_html_lines)
+            
             grand_totals["target"] += spv_totals["target"]; grand_totals["prev"] += spv_totals["prev"]
             grand_totals["est"] += spv_totals["est"]; grand_totals["d1"] += spv_totals["d1"]
             grand_totals["mtd"] += spv_totals["mtd"]
             
-        # Render Grand Total
         gt_ach = (grand_totals["mtd"] / grand_totals["est"] * 100) if grand_totals["est"] > 0 else 0
-        gt_ach_color = "red" if gt_ach < 100 and grand_totals["est"] > 0 else "green"
+        gt_ach_color = "#C00000" if gt_ach < 100 and grand_totals["est"] > 0 else "#006100"
         gt_row = f"""
-        <tr style="background-color: #FFFF00; font-weight: bold; border-top: 3px solid #333;">
-            <td colspan="2" style="border: 1px solid #999; padding: 8px; text-align: center; color: black; font-size: 16px;">Grand Total</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["target"])}</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["prev"])}</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["est"])}</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["d1"])}</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["mtd"])}</td>
-            <td style="border: 1px solid #999; padding: 8px; text-align: center; color: {gt_ach_color}; font-size: 16px;">{gt_ach:.2f}%</td>
+        <tr style="background-color: #FFFF00; font-weight: bold; border-top: 3px solid #000;">
+            <td colspan="2" style="border: 1px solid #000; padding: 8px; text-align: center; color: black; font-size: 16px;">Grand Total</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["target"])}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["prev"])}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["est"])}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["d1"])}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["mtd"])}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: center; color: {gt_ach_color}; font-size: 16px;">{gt_ach:.2f}%</td>
         </tr>
         """
         html_rows += gt_row
 
         final_table_html = f"""
         <div style="overflow-x:auto;">
-        <table style="width: 100%; border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
             <thead>
-                <tr style="background-color: #D9E1F2; border-bottom: 2px solid #444;">
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222; width: 10%;">Supervisor</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222; width: 15%;">Brand</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">Target</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_prev}</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_est}</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_d1}</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_mtd}</th>
-                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">Ach (%)</th>
+                <tr style="background-color: #B4C6E7; border-bottom: 2px solid #000;">
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black; width: 10%;">Supervisor</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black; width: 15%;">Brand</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">Target</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">{header_prev}</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">{header_est}</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">{header_d1}</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">{header_mtd}</th>
+                    <th style="border: 1px solid #000; padding: 10px; text-align: center; color: black;">Ach (%)</th>
                 </tr>
             </thead>
             <tbody>
