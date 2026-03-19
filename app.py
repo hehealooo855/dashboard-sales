@@ -138,6 +138,19 @@ TARGET_DATABASE = {
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
+# ==========================================
+# ESTIMASI TARGET BULANAN (SESUAI VSC & JPG)
+# ==========================================
+ESTIMASI_TARGET_BULANAN = {
+    "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
+    "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
+    "Mlen": 8_000_000, "COSLINE": 1_000_000, "Thai": 50_000_000, "Diosys": 55_000_000,
+    "Sociolla": 40_000_000, "Skin1004": 30_000_000, "Beautica": 10_000_000, "Claresta": 20_000_000,
+    "Masami": 10_000_000, "Cassandra": 4_000_000, "Clinelle": 15_000_000, "Honor": 10_000_000,
+    "The Face": 80_000_000, "Elizabeth Rose": 3_000_000, "Mad For Make Up": 4_000_000,
+    "Satto": 20_000_000, "Somethinc": 80_000_000, "SYB": 10_000_000
+}
+
 INDIVIDUAL_TARGETS = {
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
@@ -182,6 +195,8 @@ BRAND_ALIASES = {
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
+    "Everpure": ["EVERPURE"], "Madame G": ["MADAME G", "MADAM G", "MADAM"], "COSLINE": ["COSLINE"],
+    "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"]
 }
 
 SALES_MAPPING = {
@@ -882,7 +897,6 @@ def main_dashboard():
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
 
-    # Filtering Logic based on Form
     if target_sales_filter == "SEMUA":
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
             df_scope_all = df.copy()
@@ -894,9 +908,6 @@ def main_dashboard():
     else:
         if target_sales_filter.upper() in TARGET_DATABASE:
             tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-            # Jika dia Supervisor, ambil SEMUA teamnya (ini untuk kasus filter Hierarki)
-            # Tapi wait, dict TARGET_DATABASE isinya {Brand: Target}. 
-            # Jadi kita filter berdasarkan Merk miliknya, JIKA target_sales_filter adalah nama SPV
             brands_of_spv = TARGET_DATABASE[target_sales_filter.upper()].keys()
             df_scope_all = df[df['Merk'].isin(brands_of_spv)].copy()
         else:
@@ -963,26 +974,11 @@ def main_dashboard():
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
-    try:
-        if len(date_range) == 2 and (end_date.month == today.month and end_date.year == today.year):
-            days_in_month = monthrange(today.year, today.month)[1]
-            day_current = today.day
-            if day_current > 0:
-                run_rate = (current_omset_total / day_current) * days_in_month
-                st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
-    except Exception as e: pass
-
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
-            if is_supervisor_account:
-                target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
-                my_brands_list = TARGET_DATABASE[my_name_key].keys()
-                df_spv_only = df[df['Merk'].isin(my_brands_list)]
-                df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
-                render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
@@ -993,7 +989,6 @@ def main_dashboard():
              spv_name = target_sales_filter.upper()
              target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(spv_name, 0)
              render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
-        else: st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         st.markdown("---")
 
     st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
@@ -1008,89 +1003,227 @@ def main_dashboard():
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
     with t1:
-        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
-        elif is_supervisor_account: loop_source = {my_name_key: TARGET_DATABASE[my_name_key]}.items()
-        else: loop_source = None
+        st.markdown("### 🏆 Target vs Actual Sales Rekap")
+        
+        # ================= DYNAMIC DATE HEADERS =================
+        bulan_indo = {1:'Januari', 2:'Februari', 3:'Maret', 4:'April', 5:'Mei', 6:'Juni', 7:'Juli', 8:'Agustus', 9:'September', 10:'Oktober', 11:'November', 12:'Desember'}
+        bulan_indo_short = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'Mei', 6:'Jun', 7:'Jul', 8:'Agu', 9:'Sep', 10:'Okt', 11:'Nov', 12:'Des'}
+        
+        curr_month = end_date.month
+        prev_month = curr_month - 1 if curr_month > 1 else 12
+        prev_year = end_date.year if curr_month > 1 else end_date.year - 1
+        
+        d_minus_1 = end_date - datetime.timedelta(days=1)
+        
+        header_prev = f"Closing Sales {bulan_indo[prev_month]}"
+        header_est = f"Estimasi Target / {bulan_indo_short[curr_month]}"
+        header_d1 = f"Sales {d_minus_1.day} {bulan_indo_short[d_minus_1.month]}"
+        header_mtd = f"MTD {end_date.day} {bulan_indo_short[end_date.month]} {end_date.year}"
+        
+        # ================= DATA PREPARATION =================
+        df_prev_month = df_scope_all[(df_scope_all['Tanggal'].dt.month == prev_month) & (df_scope_all['Tanggal'].dt.year == prev_year)]
+        df_d1 = df_scope_all[df_scope_all['Tanggal'].dt.date == d_minus_1]
+        
+        # Master Structure based on the image
+        REPORT_STRUCTURE = {
+            "LISMAN": [
+                {"group": "Total Deca Group", "brands": ["Bonavie", "Whitelab", "Goute", "Everpure"]},
+                {"group": "Total Dorskin & Gloow&Be", "brands": ["Dorskin", "Gloow & Be"]},
+                {"group": None, "brands": ["Javinci", "Madame G", "Careso", "Artist Inc", "Newlab", "Mlen", "Birth Beyond", "Maskit", "COSLINE", "NAMA", "Saviosa"]}
+            ],
+            "AKBAR": [
+                {"group": "Total PJI", "brands": ["Thai", "Inesia"]},
+                {"group": "Total Harta Cosmo", "brands": ["Y2000", "Diosys"]},
+                {"group": "Total SDI", "brands": ["Sociolla", "Skin1004"]},
+                {"group": None, "brands": ["Rosanna", "OtwooO", "Beautica", "Claresta", "Masami", "Oimio", "Cassandra", "Clinelle", "Rose All Day"]}
+            ],
+            "MADONG": [
+                {"group": "Total PJI", "brands": ["Honor", "Vlagio"]},
+                {"group": None, "brands": ["Ren & R & L"]},
+                {"group": "Total TanCorp", "brands": ["Sekawan", "Avione"]},
+                {"group": "Total Cressindo", "brands": ["The Face", "Yu Chun Mei", "Milano", "Remar", "Summer"]},
+                {"group": None, "brands": ["SYB", "Walnutt", "Elizabeth Rose", "Mad For Make Up", "Satto", "Liora", "Mykonos", "Somethinc"]}
+            ]
+        }
+        
+        def format_excel_idr(val):
+            if val == 0 or pd.isna(val): return "-"
+            return f"Rp {val:,.0f}".replace(",", ".")
+            
+        def get_sales_data(brand_name, df_scope):
+            return df_scope[df_scope['Merk'] == brand_name]['Jumlah'].sum()
+            
+        def get_salesmen_data(brand_name, df_scope):
+            df_b = df_scope[df_scope['Merk'] == brand_name]
+            sales_data = df_b.groupby('Penjualan')['Jumlah'].sum()
+            return sales_data[sales_data > 0].to_dict()
 
-        if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
-            st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'SEMUA' else ''}")
-            temp_grouped_data = [] 
-            for spv, brands_dict in loop_source:
-                if selected_ijl != "SEMUA" and spv != selected_ijl:
-                    continue
-                    
-                for brand, target in brands_dict.items():
-                    realisasi_brand = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
-                    pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
-                    brand_row = {
-                        "Rank": 0, "Item": brand, "Supervisor": spv, "Target": format_idr(target),
-                        "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
-                        "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand / 100 
-                    }
-                    sales_rows_list = []
-                    for s_name, s_targets in INDIVIDUAL_TARGETS.items():
-                        if brand in s_targets:
-                            t_indiv = s_targets[brand]
-                            r_indiv = df_active_tab[(df_active_tab['Penjualan'] == s_name) & (df_active_tab['Merk'] == brand)]['Jumlah'].sum()
-                            pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
-                            sales_rows_list.append({
-                                "Rank": "", "Item": f"   └─ {s_name}", "Supervisor": "", 
-                                "Target": format_idr(t_indiv), "Realisasi": format_idr(r_indiv),
-                                "Ach (%)": f"{pct_indiv:.0f}%", "Bar": pct_indiv / 100,
-                                "Progress (Detail %)": pct_indiv / 100 
-                            })
-                    temp_grouped_data.append({"parent": brand_row, "children": sales_rows_list, "sort_val": realisasi_brand})
-
-            temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
-            final_summary_data = []
-            for idx, group in enumerate(temp_grouped_data, 1):
-                group['parent']['Rank'] = idx 
-                final_summary_data.append(group['parent'])
-                final_summary_data.extend(group['children'])
-
-            df_summ = pd.DataFrame(final_summary_data)
-            if not df_summ.empty:
-                cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
-                df_summ = df_summ[cols]
+        html_rows = ""
+        grand_totals = {"target": 0, "prev": 0, "est": 0, "d1": 0, "mtd": 0}
+        
+        for spv, groups in REPORT_STRUCTURE.items():
+            if selected_ijl != "SEMUA" and selected_ijl != spv:
+                continue
                 
-                def style_rows(row):
-                    val = row['Progress (Detail %)']
-                    bg_color = get_color_achv(val)
-                    if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
-                    else: 
-                        return [f'background-color: {bg_color}; color: #333; opacity: 0.9; border-bottom: 1px solid #eee'] * len(row)
+            spv_totals = {"target": 0, "prev": 0, "est": 0, "d1": 0, "mtd": 0}
+            spv_html = ""
+            row_count_spv = 0
+            
+            for grp in groups:
+                group_totals = {"target": 0, "prev": 0, "est": 0, "d1": 0, "mtd": 0}
+                
+                for brand in grp["brands"]:
+                    # Values for Brand
+                    t_target = TARGET_DATABASE.get(spv, {}).get(brand, 0)
+                    t_prev = get_sales_data(brand, df_prev_month)
+                    t_est = ESTIMASI_TARGET_BULANAN.get(brand, 0)
+                    t_d1 = get_sales_data(brand, df_d1)
+                    t_mtd = get_sales_data(brand, df_active_tab)
+                    t_ach = (t_mtd / t_est * 100) if t_est > 0 else 0
+                    
+                    ach_color = "red" if t_ach < 100 and t_est > 0 else ("green" if t_ach >= 100 else "#666")
+                    ach_text = f"{t_ach:.2f}%".replace(".", ",") if t_est > 0 else "#DIV/0!"
+                    if ach_text == "#DIV/0!": ach_color = "red"
+                    
+                    brand_row = f"""
+                    <tr style="background-color: white;">
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; color: #333;">{brand}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_target)}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_prev)}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_est)}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_d1)}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right; color: #333;">{format_excel_idr(t_mtd)}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: center; color: {ach_color}; font-weight: bold;">{ach_text}</td>
+                    </tr>
+                    """
+                    spv_html += brand_row
+                    row_count_spv += 1
+                    
+                    # Accumulate Subtotals
+                    group_totals["target"] += t_target; group_totals["prev"] += t_prev; group_totals["est"] += t_est
+                    group_totals["d1"] += t_d1; group_totals["mtd"] += t_mtd
+                    
+                    # Add Salesmen rows under the brand
+                    salesmen_mtd = get_salesmen_data(brand, df_active_tab)
+                    salesmen_prev = get_salesmen_data(brand, df_prev_month)
+                    salesmen_d1 = get_salesmen_data(brand, df_d1)
+                    
+                    all_salesmen = set(list(salesmen_mtd.keys()) + list(salesmen_prev.keys()) + list(salesmen_d1.keys()))
+                    for sman in sorted(all_salesmen):
+                        s_prev = salesmen_prev.get(sman, 0)
+                        s_d1 = salesmen_d1.get(sman, 0)
+                        s_mtd = salesmen_mtd.get(sman, 0)
+                        s_target = INDIVIDUAL_TARGETS.get(sman, {}).get(brand, 0)
+                        # Estimasi target bulanan salesman diasumsikan tidak ada detail per orang, dikosongkan
                         
-                st.dataframe(
-                    df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
-                    use_container_width=True, hide_index=True,
-                    column_config={
-                        "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
-                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
-                        "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=0, max_value=1)
-                    }
-                )
-            else: st.warning("Tidak ada data untuk ditampilkan pada ruang lingkup ini.")
-        elif target_sales_filter in INDIVIDUAL_TARGETS: st.info("Lihat progress bar di atas untuk detail target individu.")
-        else:
-            sales_brands = df_active_tab['Merk'].unique()
-            indiv_data = []
-            for brand in sales_brands:
-                owner, target = "-", 0
-                for spv, b_dict in TARGET_DATABASE.items():
-                    if brand in b_dict: owner, target = spv, b_dict[brand]; break
-                if target > 0:
-                    real = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
-                    pct = (real/target)*100
-                    indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
-            if indiv_data: 
-                df_indiv = pd.DataFrame(indiv_data).sort_values("Kontribusi", ascending=False)
-                def style_indiv(row):
-                    val = row['Pencapaian']
-                    bg = get_color_achv(val)
-                    return [f'background-color: {bg}; color: black;' if col == 'Ach (%)' else '' for col in row.index]
-                st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
-            else: st.warning("Tidak ada data target brand.")
+                        sman_row = f"""
+                        <tr style="background-color: #fafafa;">
+                            <td style="border: 1px solid #ccc; padding: 2px 8px 2px 25px; font-style: italic; color: #666;">↳ {sman}</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_target)}</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_prev)}</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">-</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_d1)}</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: right; font-style: italic; color: #666;">{format_excel_idr(s_mtd)}</td>
+                            <td style="border: 1px solid #ccc; padding: 2px 8px; text-align: center; color: #666;">-</td>
+                        </tr>
+                        """
+                        spv_html += sman_row
+                        row_count_spv += 1
+                        
+                # Render Subtotal Row if group exists
+                if grp["group"]:
+                    g_ach = (group_totals["mtd"] / group_totals["est"] * 100) if group_totals["est"] > 0 else 0
+                    g_ach_color = "red" if g_ach < 100 and group_totals["est"] > 0 else ("green" if g_ach >= 100 else "#666")
+                    g_ach_text = f"{g_ach:.2f}%".replace(".", ",") if group_totals["est"] > 0 else "#DIV/0!"
+                    if g_ach_text == "#DIV/0!": g_ach_color = "red"
+                    
+                    sub_row = f"""
+                    <tr style="background-color: #B4C6E7; font-weight: bold;">
+                        <td style="border: 1px solid #999; padding: 4px 8px; color: black;">{grp["group"]}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["target"])}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["prev"])}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["est"])}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["d1"])}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(group_totals["mtd"])}</td>
+                        <td style="border: 1px solid #999; padding: 4px 8px; text-align: center; color: {g_ach_color};">{g_ach_text}</td>
+                    </tr>
+                    """
+                    spv_html += sub_row
+                    row_count_spv += 1
+                    
+                spv_totals["target"] += group_totals["target"]; spv_totals["prev"] += group_totals["prev"]
+                spv_totals["est"] += group_totals["est"]; spv_totals["d1"] += group_totals["d1"]
+                spv_totals["mtd"] += group_totals["mtd"]
+            
+            # Total Supervisor Row (Yellow)
+            s_ach = (spv_totals["mtd"] / spv_totals["est"] * 100) if spv_totals["est"] > 0 else 0
+            s_ach_color = "red" if s_ach < 100 and spv_totals["est"] > 0 else ("green" if s_ach >= 100 else "#666")
+            s_ach_text = f"{s_ach:.2f}%".replace(".", ",") if spv_totals["est"] > 0 else "0,00%"
+            
+            spv_total_row = f"""
+            <tr style="background-color: #FFFF00; font-weight: bold;">
+                <td style="border: 1px solid #999; padding: 4px 8px; color: black;">Total {spv.capitalize()}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["target"])}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["prev"])}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["est"])}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["d1"])}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: right; color: black;">{format_excel_idr(spv_totals["mtd"])}</td>
+                <td style="border: 1px solid #999; padding: 4px 8px; text-align: center; color: {s_ach_color};">{s_ach_text}</td>
+            </tr>
+            """
+            
+            # Injecting Rowspan for SPV Column
+            rowspan_html = f'<td rowspan="{row_count_spv + 1}" style="border: 2px solid #555; background-color: white; vertical-align: middle; text-align: center; font-weight: bold; color: black; font-size: 16px;">{spv.capitalize()}</td>'
+            spv_html_split = spv_html.split('<tr', 1)
+            spv_html_final = '<tr' + spv_html_split[1].replace('>', f'>{rowspan_html}', 1) + spv_total_row
+            
+            html_rows += spv_html_final
+            
+            # Accumulate Grand Totals
+            grand_totals["target"] += spv_totals["target"]; grand_totals["prev"] += spv_totals["prev"]
+            grand_totals["est"] += spv_totals["est"]; grand_totals["d1"] += spv_totals["d1"]
+            grand_totals["mtd"] += spv_totals["mtd"]
+            
+        # Render Grand Total
+        gt_ach = (grand_totals["mtd"] / grand_totals["est"] * 100) if grand_totals["est"] > 0 else 0
+        gt_ach_color = "red" if gt_ach < 100 and grand_totals["est"] > 0 else "green"
+        gt_row = f"""
+        <tr style="background-color: #FFFF00; font-weight: bold; border-top: 3px solid #333;">
+            <td colspan="2" style="border: 1px solid #999; padding: 8px; text-align: center; color: black; font-size: 16px;">Grand Total</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["target"])}</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["prev"])}</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["est"])}</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["d1"])}</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: black;">{format_excel_idr(grand_totals["mtd"])}</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: center; color: {gt_ach_color}; font-size: 16px;">{gt_ach:.2f}%</td>
+        </tr>
+        """
+        html_rows += gt_row
+
+        final_table_html = f"""
+        <div style="overflow-x:auto;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <thead>
+                <tr style="background-color: #D9E1F2; border-bottom: 2px solid #444;">
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222; width: 10%;">Supervisor</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222; width: 15%;">Brand</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">Target</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_prev}</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_est}</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_d1}</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">{header_mtd}</th>
+                    <th style="border: 1px solid #999; padding: 10px; text-align: center; color: #222;">Ach (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {html_rows}
+            </tbody>
+        </table>
+        </div>
+        """
+        
+        st.markdown(final_table_html, unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
     with t2:
         st.subheader("📈 Tren Harian")
@@ -1363,7 +1496,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # ================= RADAR INVESTIGASI TOKO GANDA =================
                 if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
                     df_cek = df_scope_all[df_scope_all['Merk'] == brand_growth].copy()
                     kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
@@ -1380,7 +1512,6 @@ def main_dashboard():
                             st.success("✅ Tidak ada nama toko yang kodenya ganda.")
                     else:
                         st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
-                # =================================================================
                 
                 df_team_all = df_scope_all.copy()
                 if target_sales_filter != "SEMUA":
@@ -1399,7 +1530,6 @@ def main_dashboard():
                     
                     all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
-                    # === FAST VECTORIZED PANDAS ENGINE ===
                     invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
                     df_team_all['ID_Patokan'] = np.where(
                         df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
