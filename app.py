@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Perbaikan Metrik Label Size
+# Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
     .metric-card {
@@ -66,6 +66,17 @@ st.markdown("""
     [data-testid="stMetricValue"] div {
         font-size: 36px !important;
         font-weight: bold !important;
+    }
+    
+    /* MENGUBAH WARNA TAB INDIKATOR DARI MERAH KE CORPORATE BLUE */
+    div[data-baseweb="tab-list"] button[aria-selected="true"] {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-highlight"] {
+        background-color: #2980b9 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        border-bottom-color: #2980b9 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -106,17 +117,16 @@ BRAND_PREFIXES = {
     "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
     "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
     "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"],
-    "Maskit": ["MSK", "MAS"], "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], 
-    "Thai": ["TH", "THA"], "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], 
-    "Diosys": ["DIO", "DS"], "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], 
-    "Clinelle": ["CLN", "CLI"], "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], 
-    "Rose All Day": ["RAD", "ROS"], "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], 
-    "Avione": ["AV"], "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], 
-    "Ren & R & L": ["REN", "RRL"], "Mad For Make Up": ["MFM", "MAD"], 
-    "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], "The Face": ["TF", "TFC"], 
-    "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], "Walnutt": ["WAL", "WLN"], 
-    "Elizabeth Rose": ["ELZ", "ELI"]
+    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"], "Maskit": ["MSK", "MAS"], 
+    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"], 
+    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"], 
+    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"], 
+    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"], 
+    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], "Avione": ["AV"], 
+    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
+    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
+    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
 }
 
 def map_city_to_province(city_name):
@@ -176,12 +186,13 @@ BRAND_ALIASES = {
     "SYB": ["SYB"], "Satto": ["SATTO"], "Liora": ["LIORA"], "Mykonos": ["MYKONOS"],
     "Somethinc": ["SOMETHINC"], "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW", "GLOWBE"],
     "Artist Inc": ["ARTIST", "ARTIS"], "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"],
-    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
+    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madame G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"], "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"], "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"]
 }
 
 SALES_MAPPING = {
@@ -265,7 +276,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER (FAST MODE ENABLED)
+# CACHE & DATA LOADER
 # =========================================================================
 @st.cache_data(ttl=3600) 
 def load_data_from_url():
@@ -402,7 +413,7 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PERBAIKAN GENERATE PIVOT (VECTORIZED / NON-JSON)
+# PIVOT FAST ENGINE
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
@@ -882,7 +893,6 @@ def main_dashboard():
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
 
-    # Filtering Logic based on Form
     if target_sales_filter == "SEMUA":
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
             df_scope_all = df.copy()
@@ -894,9 +904,6 @@ def main_dashboard():
     else:
         if target_sales_filter.upper() in TARGET_DATABASE:
             tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-            # Jika dia Supervisor, ambil SEMUA teamnya (ini untuk kasus filter Hierarki)
-            # Tapi wait, dict TARGET_DATABASE isinya {Brand: Target}. 
-            # Jadi kita filter berdasarkan Merk miliknya, JIKA target_sales_filter adalah nama SPV
             brands_of_spv = TARGET_DATABASE[target_sales_filter.upper()].keys()
             df_scope_all = df[df['Merk'].isin(brands_of_spv)].copy()
         else:
@@ -963,26 +970,11 @@ def main_dashboard():
         
     c3.metric("🧾 Transaksi", f"{transaksi_count}")
 
-    try:
-        if len(date_range) == 2 and (end_date.month == today.month and end_date.year == today.year):
-            days_in_month = monthrange(today.year, today.month)[1]
-            day_current = today.day
-            if day_current > 0:
-                run_rate = (current_omset_total / day_current) * days_in_month
-                st.info(f"📈 **Proyeksi Akhir Bulan (Run Rate):** {format_idr(run_rate)} (Estimasi berdasarkan kinerja harian rata-rata saat ini)")
-    except Exception as e: pass
-
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
         if target_sales_filter == "SEMUA":
             realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum()
             render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
-            if is_supervisor_account:
-                target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(my_name_key, 0)
-                my_brands_list = TARGET_DATABASE[my_name_key].keys()
-                df_spv_only = df[df['Merk'].isin(my_brands_list)]
-                df_spv_only = df_spv_only[(df_spv_only['Tanggal'].dt.date >= start_date) & (df_spv_only['Tanggal'].dt.date <= end_date)]
-                render_custom_progress(f"👤 Target Tim {my_name}", df_spv_only['Jumlah'].sum(), target_pribadi)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
@@ -993,7 +985,6 @@ def main_dashboard():
              spv_name = target_sales_filter.upper()
              target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(spv_name, 0)
              render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
-        else: st.warning(f"Sales **{target_sales_filter}** tidak memiliki target individu spesifik.")
         st.markdown("---")
 
     st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
@@ -1363,7 +1354,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # ================= RADAR INVESTIGASI TOKO GANDA =================
                 if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
                     df_cek = df_scope_all[df_scope_all['Merk'] == brand_growth].copy()
                     kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
@@ -1380,7 +1370,6 @@ def main_dashboard():
                             st.success("✅ Tidak ada nama toko yang kodenya ganda.")
                     else:
                         st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
-                # =================================================================
                 
                 df_team_all = df_scope_all.copy()
                 if target_sales_filter != "SEMUA":
@@ -1399,7 +1388,6 @@ def main_dashboard():
                     
                     all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
-                    # === FAST VECTORIZED PANDAS ENGINE ===
                     invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
                     df_team_all['ID_Patokan'] = np.where(
                         df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
