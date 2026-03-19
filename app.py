@@ -42,7 +42,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue
+# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs)
 st.markdown("""
 <style>
     .metric-card {
@@ -68,7 +68,7 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* MENGUBAH WARNA TAB INDIKATOR DARI MERAH KE CORPORATE BLUE */
+    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
     div[data-baseweb="tab-list"] button[aria-selected="true"] {
         color: #2980b9 !important;
     }
@@ -77,6 +77,12 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
         border-bottom-color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover span {
+        color: #2980b9 !important;
     }
 </style>
 """, unsafe_allow_html=True)
