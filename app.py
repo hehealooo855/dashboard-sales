@@ -154,6 +154,16 @@ TARGET_DATABASE = {
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
+ESTIMASI_TARGET_BULANAN = {
+    "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
+    "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
+    "Mlen": 8_000_000, "COSLINE": 1_000_000, "Thai": 50_000_000, "Diosys": 55_000_000,
+    "Sociolla": 40_000_000, "Skin1004": 30_000_000, "Beautica": 10_000_000, "Claresta": 20_000_000,
+    "Masami": 10_000_000, "Cassandra": 4_000_000, "Clinelle": 15_000_000, "Honor": 10_000_000,
+    "The Face": 80_000_000, "Elizabeth Rose": 3_000_000, "Mad For Make Up": 4_000_000,
+    "Satto": 20_000_000, "Somethinc": 80_000_000, "SYB": 10_000_000
+}
+
 INDIVIDUAL_TARGETS = {
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
@@ -1030,10 +1040,13 @@ def main_dashboard():
     list_ijl = ["SEMUA", "MADONG", "LISMAN", "AKBAR"]
     selected_ijl = st.selectbox("Pilih Ruang Lingkup untuk Dashboard Bawah:", list_ijl, index=0)
 
-    df_active_tab = df_active.copy()
+    # === INJEKSI KODE SUPER KETAT DI SINI ===
     if selected_ijl != "SEMUA":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
-        df_active_tab = df_active_tab[df_active_tab['Merk'].isin(brands_in_ijl)]
+        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
+        df_active = df_active[df_active['Merk'].isin(brands_in_ijl)]
+
+    df_active_tab = df_active.copy()
 
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
