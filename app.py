@@ -680,7 +680,6 @@ def render_pivot_fragment(df_scope_all, role):
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
             st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
             
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -949,12 +948,9 @@ def main_dashboard():
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
 
-    # ==========================================
-    # SUPER ALGORITMA FILTERING (CEGAH MASTER TOKO HILANG)
-    # ==========================================
     df_scope_all = df.copy()
 
-    # 1. Filter Hierarki IJL (Selamatkan Toko Master via Prefix!)
+    # 1. Filter Hierarki IJL
     if selected_ijl != "IJL":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
         allowed_prefixes = []
@@ -985,7 +981,6 @@ def main_dashboard():
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
 
-    # 5. DataFrame Aktif untuk Menghitung Omset
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -1420,14 +1415,38 @@ def main_dashboard():
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
-            list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+            list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
+                # --- PIPA DATA RAW KHUSUS GROWTH ---
+                df_team_all = df.copy()
+                
+                if target_sales_filter != "SEMUA":
+                    if target_sales_filter.upper() in TARGET_DATABASE:
+                        tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
+                        df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
+                    else:
+                        df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
+
+                invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
+                df_team_all['ID_Patokan'] = np.where(
+                    df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
+                    df_team_all['Nama Outlet'].str.strip(),
+                    df_team_all['Kode_Global'].str.strip()
+                )
+                
+                prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
+                prefix_tuple = tuple(prefixes)
+                
+                is_target_brand = df_team_all['Merk'] == brand_growth
+                is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                is_valid_ro = is_target_brand | is_target_prefix
+
                 if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
-                    df_cek = df_scope_all[df_scope_all['Merk'] == brand_growth].copy()
+                    df_cek = df_team_all[is_valid_ro].copy()
                     kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
                     
                     if kd_col_cek in df_cek.columns:
@@ -1442,28 +1461,13 @@ def main_dashboard():
                             st.success("✅ Tidak ada nama toko yang kodenya ganda.")
                     else:
                         st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
-                
-                df_team_all = df_scope_all.copy()
 
                 if not df_team_all.empty:
                     df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
                     df_team_all['Bulan'] = df_team_all['Tanggal'].dt.month
                     df_team_all['Bulan-Tahun'] = df_team_all['Tanggal'].dt.to_period('M')
                     
-                    invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-                    df_team_all['ID_Patokan'] = np.where(
-                        df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
-                        df_team_all['Nama Outlet'].str.strip(),
-                        df_team_all['Kode_Global'].str.strip()
-                    )
-                    
-                    prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
-                    prefix_tuple = tuple(prefixes)
-                    
-                    # === WATERTIGHT ALGORITMA RO ===
-                    is_target_brand = df_team_all['Merk'] == brand_growth
-                    is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                    is_valid_ro = is_target_brand | is_target_prefix
+                    all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
