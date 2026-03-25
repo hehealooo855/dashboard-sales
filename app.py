@@ -669,9 +669,7 @@ def render_pivot_fragment(df_scope_all, role):
         else:
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
             st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
-    else:
-        st.info("Data Kosong.")
-
+            
         # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
@@ -683,7 +681,7 @@ def render_pivot_fragment(df_scope_all, role):
                 workbook = writer.book
                 worksheet = writer.sheets['Master Data']
                 
-                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
+                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
                 time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
                 
@@ -704,6 +702,8 @@ def render_pivot_fragment(df_scope_all, role):
                 file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+    else:
+        st.info("Data Kosong.")
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -1053,7 +1053,7 @@ def main_dashboard():
                     realisasi_brand = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
                     brand_row = {
-                        "Rank": 0, "Item": brand, "Supervisor": spv, "Target": format_idr(target),
+                        "Rank": 0, "Brand / Salesman": brand, "Supervisor": spv, "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
                         "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand / 100 
                     }
@@ -1064,7 +1064,7 @@ def main_dashboard():
                             r_indiv = df_active_tab[(df_active_tab['Penjualan'] == s_name) & (df_active_tab['Merk'] == brand)]['Jumlah'].sum()
                             pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
                             sales_rows_list.append({
-                                "Rank": "", "Item": f"   └─ {s_name}", "Supervisor": "", 
+                                "Rank": "", "Brand / Salesman": f"   └─ {s_name}", "Supervisor": "", 
                                 "Target": format_idr(t_indiv), "Realisasi": format_idr(r_indiv),
                                 "Ach (%)": f"{pct_indiv:.0f}%", "Bar": pct_indiv / 100,
                                 "Progress (Detail %)": pct_indiv / 100 
@@ -1096,7 +1096,7 @@ def main_dashboard():
                     use_container_width=True, hide_index=True,
                     column_config={
                         "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
-                        "Item": st.column_config.TextColumn("Brand / Salesman", width="medium"),
+                        "Brand / Salesman": st.column_config.TextColumn("Brand / Salesman", width="medium"),
                         "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=0, max_value=1)
                     }
                 )
