@@ -154,16 +154,6 @@ TARGET_DATABASE = {
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
-ESTIMASI_TARGET_BULANAN = {
-    "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
-    "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
-    "Mlen": 8_000_000, "COSLINE": 1_000_000, "Thai": 50_000_000, "Diosys": 55_000_000,
-    "Sociolla": 40_000_000, "Skin1004": 30_000_000, "Beautica": 10_000_000, "Claresta": 20_000_000,
-    "Masami": 10_000_000, "Cassandra": 4_000_000, "Clinelle": 15_000_000, "Honor": 10_000_000,
-    "The Face": 80_000_000, "Elizabeth Rose": 3_000_000, "Mad For Make Up": 4_000_000,
-    "Satto": 20_000_000, "Somethinc": 80_000_000, "SYB": 10_000_000
-}
-
 INDIVIDUAL_TARGETS = {
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
@@ -680,7 +670,6 @@ def render_pivot_fragment(df_scope_all, role):
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
             st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
             
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -942,6 +931,13 @@ def main_dashboard():
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
 
+    st.title("🚀 Executive Dashboard")
+    st.markdown("---")
+
+    st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
+    list_ijl = ["SEMUA", "MADONG", "LISMAN", "AKBAR"]
+    selected_ijl = st.selectbox("Pilih Ruang Lingkup Dashboard:", list_ijl, index=0)
+
     if target_sales_filter == "SEMUA":
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
             df_scope_all = df.copy()
@@ -971,9 +967,14 @@ def main_dashboard():
         end_date = df_scope_all['Tanggal'].max().date() if not df_scope_all.empty else today
         ref_date = end_date
 
-    st.title("🚀 Executive Dashboard")
-    st.markdown("---")
-    
+    # Pemotongan Data Akar berdasarkan IJL
+    if selected_ijl != "SEMUA":
+        brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
+        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
+        df_active = df_active[df_active['Merk'].isin(brands_in_ijl)]
+
+    df_active_tab = df_active.copy()
+
     current_omset_total = df_active['Jumlah'].sum()
     
     if len(date_range) == 2:
@@ -1022,8 +1023,15 @@ def main_dashboard():
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
         if target_sales_filter == "SEMUA":
-            realisasi_nasional = df[(df['Tanggal'].dt.date >= start_date) & (df['Tanggal'].dt.date <= end_date)]['Jumlah'].sum()
-            render_custom_progress("🏢 Target Nasional (All Team)", realisasi_nasional, TARGET_NASIONAL_VAL)
+            if selected_ijl != "SEMUA":
+                target_val = sum(TARGET_DATABASE[selected_ijl].values())
+                title = f"🏢 Target {selected_ijl} (IJL)"
+            else:
+                target_val = TARGET_NASIONAL_VAL
+                title = "🏢 Target Nasional (All Team)"
+            
+            realisasi = df_active['Jumlah'].sum()
+            render_custom_progress(title, realisasi, target_val)
         elif target_sales_filter in INDIVIDUAL_TARGETS:
             st.info(f"📋 Target Spesifik: **{target_sales_filter}**")
             targets_map = INDIVIDUAL_TARGETS[target_sales_filter]
@@ -1035,18 +1043,6 @@ def main_dashboard():
              target_pribadi = SUPERVISOR_TOTAL_TARGETS.get(spv_name, 0)
              render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
         st.markdown("---")
-
-    st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
-    list_ijl = ["SEMUA", "MADONG", "LISMAN", "AKBAR"]
-    selected_ijl = st.selectbox("Pilih Ruang Lingkup untuk Dashboard Bawah:", list_ijl, index=0)
-
-    # === INJEKSI KODE SUPER KETAT DI SINI ===
-    if selected_ijl != "SEMUA":
-        brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
-        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
-        df_active = df_active[df_active['Merk'].isin(brands_in_ijl)]
-
-    df_active_tab = df_active.copy()
 
     t1, t2, t_detail_sales, t3, t5, t_forecast, t4 = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian"])
     
