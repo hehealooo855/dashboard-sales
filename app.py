@@ -394,7 +394,7 @@ def load_data_from_url():
 
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items():
+        for target_brand, keywords in BRAND_ALIitems():
             for keyword in keywords:
                 if keyword in raw_upper: return target_brand
         return raw_brand
@@ -429,49 +429,61 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE
+# PIVOT FAST ENGINE (DEDUPLIKASI KETAT BERDASARKAN ID_PATOKAN)
 # =========================================================================
 @st.cache_data(show_spinner=False)
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
-    master_pivot = pd.DataFrame()
     
+    # 1. Pastikan kolom yang akan di-group konsisten
+    if 'Nama Outlet' in df_pivot_source.columns and 'Nama Customer' not in df_pivot_source.columns:
+        df_pivot_source = df_pivot_source.rename(columns={'Nama Outlet': 'Nama Customer'})
+        if 'Nama Outlet' in group_cols:
+            group_cols[group_cols.index('Nama Outlet')] = 'Nama Customer'
+
+    # 2. Bikin ID_Patokan murni (agar yang typo tapi kodenya sama melebur)
+    invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
+    df_pivot_source['ID_Patokan'] = np.where(
+        df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().isin(invalid_codes),
+        df_pivot_source['Nama Customer'].astype(str).str.strip(),
+        df_pivot_source['Kode_Global'].astype(str).str.strip()
+    )
+
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
             prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
             prefix_tuple = tuple(prefixes)
             
             mask_history = df_pivot_source['Merk'] == selected_merk_excel
-            
-            kd_col = None
-            for col in ['Kode Customer', 'Kode Costumer', 'Kode Outlet', 'Kode_Global']:
-                if col in df_pivot_source.columns:
-                    kd_col = col
-                    break
-            
-            if kd_col:
-                mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                final_mask = mask_history | mask_prefix
-            else:
-                final_mask = mask_history
-                
-            base_customers = df_pivot_source[final_mask][group_cols].drop_duplicates()
-            df_excel = df_pivot_source[(mask_history) & (df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple))].copy()
-            
-            if not df_excel.empty:
-                df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-                master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
-            else:
-                master_pivot = base_customers.copy()
-                for i in range(1, 13): master_pivot[i] = 0
+            kd_col = 'Kode_Global'
+            mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+            final_mask = mask_history | mask_prefix
         else:
-            df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
-            if not df_excel.empty:
-                df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+            final_mask = pd.Series(True, index=df_pivot_source.index)
+            
+        df_filtered = df_pivot_source[final_mask].copy()
+        
+        if df_filtered.empty: return pd.DataFrame()
 
-    return master_pivot
+        # 3. KUNCI RAHASIA: Membuang duplikat berdasarkan ID_Patokan (Pilih nama toko terbaru jika ada 2 nama beda tapi kode sama)
+        df_filtered = df_filtered.sort_values('Tanggal', ascending=False)
+        base_customers = df_filtered.drop_duplicates(subset=['ID_Patokan'], keep='first')[['ID_Patokan'] + group_cols]
+        
+        # 4. Hitung penjualan hanya berdasarkan tahun yang dipilih
+        df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+        
+        if not df_excel.empty:
+            df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
+            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='ID_Patokan', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+            master_pivot = pd.merge(base_customers, pivot_sales, on='ID_Patokan', how='left').fillna(0)
+        else:
+            master_pivot = base_customers.copy()
+            for i in range(1, 13): master_pivot[i] = 0
+            
+        master_pivot = master_pivot.drop(columns=['ID_Patokan'])
+        return master_pivot
+        
+    return pd.DataFrame()
 
 def load_users():
     try: return pd.read_csv('users.csv')
@@ -542,7 +554,9 @@ def render_pivot_fragment(df_scope_all, role):
         df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
         
     if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
-    elif 'Nama Outlet' in df_scope_all.columns: grp_cols.append('Nama Outlet')
+    elif 'Nama Outlet' in df_scope_all.columns: 
+        grp_cols.append('Nama Outlet')
+        df_scope_all['Nama Customer'] = df_scope_all['Nama Outlet']
     else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
     
     if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
@@ -581,15 +595,23 @@ def render_pivot_fragment(df_scope_all, role):
         bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
         for i in range(1, 13):
             if i not in master_pivot.columns: master_pivot[i] = 0
-        cols_to_keep = grp_cols + list(range(1, 13))
+        
+        cols_to_keep = []
+        for c in grp_cols:
+            if c in master_pivot.columns: cols_to_keep.append(c)
+        cols_to_keep.extend(list(range(1, 13)))
+        
         master_pivot = master_pivot[cols_to_keep]
-        master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
+        
+        new_cols = []
+        for c in cols_to_keep:
+            if isinstance(c, int): new_cols.append(bulan_indo_map[c])
+            else: new_cols.append(c)
+        master_pivot.columns = new_cols
+        
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
         ren_dict = {'Kode_Global': 'Kode Customer'}
-        for col in master_pivot.columns:
-            c_low = str(col).lower()
-            if 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
@@ -680,6 +702,7 @@ def render_pivot_fragment(df_scope_all, role):
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
             st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
             
+        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -950,7 +973,7 @@ def main_dashboard():
 
     df_scope_all = df.copy()
 
-    # 1. Filter Hierarki IJL
+    # 1. Filter Hierarki IJL (Selamatkan Toko Master via Prefix!)
     if selected_ijl != "IJL":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
         allowed_prefixes = []
@@ -981,6 +1004,7 @@ def main_dashboard():
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
 
+    # 5. DataFrame Aktif untuk Menghitung Omset
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -1422,6 +1446,8 @@ def main_dashboard():
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
                 # --- PIPA DATA RAW KHUSUS GROWTH ---
+                # Jangan pakai df_scope_all yang sudah terpotong oleh IJL secara ketat
+                # Kita pakai df mentah, HANYA memotong berdasarkan Sales (Jika difilter spesifik)
                 df_team_all = df.copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1441,6 +1467,7 @@ def main_dashboard():
                 prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                 prefix_tuple = tuple(prefixes)
                 
+                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
                 is_target_brand = df_team_all['Merk'] == brand_growth
                 is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 is_valid_ro = is_target_brand | is_target_prefix
