@@ -1445,8 +1445,6 @@ def main_dashboard():
                     df_team_all['Bulan'] = df_team_all['Tanggal'].dt.month
                     df_team_all['Bulan-Tahun'] = df_team_all['Tanggal'].dt.to_period('M')
                     
-                    all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
-                    
                     invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
                     df_team_all['ID_Patokan'] = np.where(
                         df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
@@ -1457,42 +1455,37 @@ def main_dashboard():
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
                     
-                    min_period = all_months[0] if len(all_months) > 0 else pd.Period('2025-01', freq='M')
-                    df_base = df_team_all[df_team_all['Bulan-Tahun'] < min_period]
+                    # === WATERTIGHT ALGORITMA RO ===
+                    is_target_brand = df_team_all['Merk'] == brand_growth
+                    is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                    is_valid_ro = is_target_brand | is_target_prefix
                     
-                    mask_base_brand = df_base['Merk'] == brand_growth
-                    mask_base_prefix = df_base['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                    min_period_2026 = pd.Period('2026-01', freq='M')
+                    df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
-                    base_ro_shops = set(df_base[mask_base_brand | mask_base_prefix]['ID_Patokan'].dropna().unique())
-                    
-                    df_brand_only = df_team_all[df_team_all['Merk'] == brand_growth]
-                    sales_per_month = df_brand_only.groupby('Bulan-Tahun')['Jumlah'].sum().to_dict()
-                    ao_sets = df_brand_only.groupby('Bulan-Tahun')['ID_Patokan'].apply(set).to_dict()
-                    hist_sets = df_brand_only.groupby('Bulan-Tahun')['ID_Patokan'].apply(set).to_dict()
-
-                    mask_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                    pref_sets = df_team_all[mask_prefix].groupby('Bulan-Tahun')['ID_Patokan'].apply(set).to_dict()
-                    
+                    ro_accumulated = set(df_base['ID_Patokan'].dropna().unique())
                     growth_data = []
-                    ro_accumulated = set(base_ro_shops)
                     
-                    for period in all_months:
-                        sales = sales_per_month.get(period, 0.0)
-                        current_ao = ao_sets.get(period, set())
-                        ao = len(current_ao)
+                    for m in range(1, 13):
+                        period_str = f"2026-{m:02d}"
+                        period = pd.Period(period_str, freq='M')
                         
-                        combined_ro_prev = set(ro_accumulated)
+                        df_ao_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_target_brand]
+                        current_ao = set(df_ao_current['ID_Patokan'].dropna().unique())
+                        sales = df_ao_current['Jumlah'].sum()
                         
-                        ro_accumulated.update(hist_sets.get(period, set()))
-                        ro_accumulated.update(pref_sets.get(period, set()))
+                        noo = len(current_ao - ro_accumulated)
+                        
+                        df_ro_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_valid_ro]
+                        ro_accumulated.update(df_ro_current['ID_Patokan'].dropna().unique())
                         
                         ro = len(ro_accumulated)
-                        noo = len(current_ao - combined_ro_prev)
+                        ao = len(current_ao)
                         ao_vs_ro = (ao / ro) if ro > 0 else 0
                         
                         growth_data.append({
-                            'Year': period.year,
-                            'Month': period.month,
+                            'Year': 2026,
+                            'Month': m,
                             'SALES': sales,
                             'RO': ro,
                             'AO': ao,
@@ -1542,10 +1535,14 @@ def main_dashboard():
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
                         
-                        df_2025 = df_growth_all[df_growth_all['Year'] == 2025]
+                        df_2025 = df_team_all[df_team_all['Year'] == 2025] # Reset for YoY compare
                         df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
                         
-                        def get_sales(df_yr, m):
+                        def get_sales_2025(df_yr, m, brand_name):
+                            res = df_yr[(df_yr['Month'] == m) & (df_yr['Merk'] == brand_name)]['Jumlah']
+                            return res.sum() if not res.empty else 0
+                            
+                        def get_sales_2026(df_yr, m):
                             res = df_yr[df_yr['Month'] == m]['SALES']
                             return res.sum() if not res.empty else 0
 
@@ -1556,8 +1553,8 @@ def main_dashboard():
                             st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
                             yoy_data = []
                             for m in range(1, 13):
-                                s25 = get_sales(df_2025, m)
-                                s26 = get_sales(df_2026_sales, m)
+                                s25 = get_sales_2025(df_2025, m, brand_growth)
+                                s26 = get_sales_2026(df_2026_sales, m)
                                 tot_2025 += s25
                                 tot_2026 += s26
                                 growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
@@ -1597,8 +1594,8 @@ def main_dashboard():
                             q_data = []
                             for q, m_start in [('Q1', 1), ('Q2', 4), ('Q3', 7), ('Q4', 10)]:
                                 m_end = m_start + 2
-                                q_2025 = sum(get_sales(df_2025, m) for m in range(m_start, m_end + 1))
-                                q_2026 = sum(get_sales(df_2026_sales, m) for m in range(m_start, m_end + 1))
+                                q_2025 = sum(get_sales_2025(df_2025, m, brand_growth) for m in range(m_start, m_end + 1))
+                                q_2026 = sum(get_sales_2026(df_2026_sales, m) for m in range(m_start, m_end + 1))
                                 
                                 q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
                                 q_data.append({
