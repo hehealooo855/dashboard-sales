@@ -932,6 +932,13 @@ def main_dashboard():
         st.session_state['start_date'] = df['Tanggal'].max().date().replace(day=1)
         st.session_state['end_date'] = df['Tanggal'].max().date()
         
+    st.title("🚀 Executive Dashboard")
+    st.markdown("---")
+
+    st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
+    list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
+    selected_ijl = st.selectbox("Pilih Ruang Lingkup Dashboard:", list_ijl, index=0)
+        
     st.sidebar.markdown("### ⚙️ Panel Filter Executive")
     with st.sidebar.form("main_filter_form"):
         date_range = st.date_input("Rentang Waktu", [st.session_state['start_date'], st.session_state['end_date']])
@@ -941,13 +948,6 @@ def main_dashboard():
         pilih_outlet = st.multiselect("Filter Spesifik Outlet:", outlets_list)
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
-
-    st.title("🚀 Executive Dashboard")
-    st.markdown("---")
-
-    st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
-    list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
-    selected_ijl = st.selectbox("Pilih Ruang Lingkup Dashboard:", list_ijl, index=0)
 
     if target_sales_filter == "SEMUA":
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
@@ -1457,6 +1457,14 @@ def main_dashboard():
                     prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                     prefix_tuple = tuple(prefixes)
                     
+                    min_period = all_months[0] if len(all_months) > 0 else pd.Period('2025-01', freq='M')
+                    df_base = df_team_all[df_team_all['Bulan-Tahun'] < min_period]
+                    
+                    mask_base_brand = df_base['Merk'] == brand_growth
+                    mask_base_prefix = df_base['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                    
+                    base_ro_shops = set(df_base[mask_base_brand | mask_base_prefix]['ID_Patokan'].dropna().unique())
+                    
                     df_brand_only = df_team_all[df_team_all['Merk'] == brand_growth]
                     sales_per_month = df_brand_only.groupby('Bulan-Tahun')['Jumlah'].sum().to_dict()
                     ao_sets = df_brand_only.groupby('Bulan-Tahun')['ID_Patokan'].apply(set).to_dict()
@@ -1466,7 +1474,7 @@ def main_dashboard():
                     pref_sets = df_team_all[mask_prefix].groupby('Bulan-Tahun')['ID_Patokan'].apply(set).to_dict()
                     
                     growth_data = []
-                    ro_accumulated = set()
+                    ro_accumulated = set(base_ro_shops)
                     
                     for period in all_months:
                         sales = sales_per_month.get(period, 0.0)
