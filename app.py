@@ -655,39 +655,6 @@ def render_pivot_fragment(df_scope_all, role):
     else:
         st.info("Data Kosong.")
 
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
-        user_role_lower = role.lower()
-        if user_role_lower in ['direktur', 'manager', 'supervisor']:
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
-                
-                workbook = writer.book
-                worksheet = writer.sheets['Master Data']
-                
-                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
-                format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) 
-                
-                if 'df_display' in locals() and not df_display.empty:
-                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
-                    worksheet.set_row(last_row_idx, None, bold_format)
-            
-            st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                data=output.getvalue(),
-                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
