@@ -949,25 +949,43 @@ def main_dashboard():
         
         submit_main_filter = st.form_submit_button("🚀 Terapkan Filter", use_container_width=True)
 
-    if target_sales_filter == "SEMUA":
-        if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-            df_scope_all = df.copy()
-        elif is_supervisor_account:
-            my_brands = TARGET_DATABASE[my_name_key].keys()
-            df_scope_all = df[df['Merk'].isin(my_brands)].copy()
-        else:
-            df_scope_all = df[df['Penjualan'] == my_name].copy()
-    else:
-        if target_sales_filter.upper() in TARGET_DATABASE:
-            tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-            brands_of_spv = TARGET_DATABASE[target_sales_filter.upper()].keys()
-            df_scope_all = df[df['Merk'].isin(brands_of_spv)].copy()
-        else:
-            df_scope_all = df[df['Penjualan'] == target_sales_filter].copy()
+    # ==========================================
+    # SUPER ALGORITMA FILTERING (CEGAH MASTER TOKO HILANG)
+    # ==========================================
+    df_scope_all = df.copy()
 
-    if pilih_merk: df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
-    if pilih_outlet: df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+    # 1. Filter Hierarki IJL (Selamatkan Toko Master via Prefix!)
+    if selected_ijl != "IJL":
+        brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
+        allowed_prefixes = []
+        for b in brands_in_ijl:
+            allowed_prefixes.extend(BRAND_PREFIXES.get(b, [b[:3].upper()]))
+        allowed_prefixes = tuple(allowed_prefixes)
+        
+        mask_merk = df_scope_all['Merk'].isin(brands_in_ijl)
+        mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
+        df_scope_all = df_scope_all[mask_merk | mask_prefix]
 
+    # 2. Filter Sales
+    if target_sales_filter != "SEMUA":
+        df_scope_all = df_scope_all[df_scope_all['Penjualan'] == target_sales_filter]
+
+    # 3. Filter Merk Spesifik
+    if pilih_merk:
+        allowed_prefixes = []
+        for b in pilih_merk:
+            allowed_prefixes.extend(BRAND_PREFIXES.get(b, [b[:3].upper()]))
+        allowed_prefixes = tuple(allowed_prefixes)
+        
+        mask_merk = df_scope_all['Merk'].isin(pilih_merk)
+        mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
+        df_scope_all = df_scope_all[mask_merk | mask_prefix]
+
+    # 4. Filter Outlet Spesifik
+    if pilih_outlet:
+        df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
+
+    # 5. DataFrame Aktif untuk Menghitung Omset
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -977,12 +995,6 @@ def main_dashboard():
         start_date = df_scope_all['Tanggal'].min().date() if not df_scope_all.empty else today
         end_date = df_scope_all['Tanggal'].max().date() if not df_scope_all.empty else today
         ref_date = end_date
-
-    # Pemotongan Data Akar berdasarkan IJL
-    if selected_ijl != "IJL":
-        brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
-        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
-        df_active = df_active[df_active['Merk'].isin(brands_in_ijl)]
 
     df_active_tab = df_active.copy()
 
@@ -1409,6 +1421,7 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             list_merk_growth = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+            list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
@@ -1431,14 +1444,6 @@ def main_dashboard():
                         st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
                 
                 df_team_all = df_scope_all.copy()
-                if target_sales_filter != "SEMUA":
-                    if target_sales_filter.upper() in TARGET_DATABASE:
-                        tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
-                        df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
-                    else:
-                        df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
-                elif role not in ['manager', 'direktur', 'supervisor'] and my_name.lower() != 'fauziah':
-                    df_team_all = df_team_all[df_team_all['Penjualan'] == my_name]
 
                 if not df_team_all.empty:
                     df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
@@ -1535,11 +1540,11 @@ def main_dashboard():
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
                         
-                        df_2025 = df_team_all[df_team_all['Year'] == 2025] # Reset for YoY compare
+                        df_2025 = df_team_all[df_team_all['Tahun'] == 2025] 
                         df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
                         
                         def get_sales_2025(df_yr, m, brand_name):
-                            res = df_yr[(df_yr['Month'] == m) & (df_yr['Merk'] == brand_name)]['Jumlah']
+                            res = df_yr[(df_yr['Bulan'] == m) & (df_yr['Merk'] == brand_name)]['Jumlah']
                             return res.sum() if not res.empty else 0
                             
                         def get_sales_2026(df_yr, m):
