@@ -394,7 +394,7 @@ def load_data_from_url():
 
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIitems():
+        for target_brand, keywords in BRAND_ALIASES.items(): # <--- Bagian ini yang kembali diperbaiki
             for keyword in keywords:
                 if keyword in raw_upper: return target_brand
         return raw_brand
