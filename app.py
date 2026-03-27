@@ -132,7 +132,7 @@ BRAND_PREFIXES = {
     "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
     "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
     "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong": ["SBG"]
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
 }
 
 def map_city_to_province(city_name):
@@ -149,9 +149,9 @@ def map_city_to_province(city_name):
 # 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
 TARGET_DATABASE = {
-    "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Sombong":50_000_000,"Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000},
-    "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000},
-    "AKBAR": { "Sociolla": 600_000_000, "Thai": 400_000_000, "Inesia": 80_000_000, "Y2000": 250_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 20_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 30_000_000, "OtwooO": 180_000_000}
+    "MADONG": { "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000},
+    "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000, "Maskit": 30_000_000, "Birth Beyond": 120_000_000},
+    "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
 ESTIMASI_TARGET_BULANAN = {
@@ -208,20 +208,20 @@ BRAND_ALIASES = {
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong": ["SOMBONG"]
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"]
 }
 
 SALES_MAPPING = {
-    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA SBG": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
-    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH SBG": "HAMZAH","HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
+    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
+    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
     "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
     "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
     "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA", "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA", "LYDIA - KITO": "LYDIA",
     "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
-    "ROZY AINIE": "ROZY", "ROZY AV": "ROZY", "ROZY SBG": "ROZY",
-    "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI", "RAPI SBG": "RAPI",
+    "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
+    "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
     "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
@@ -292,9 +292,9 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER
+# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
 # =========================================================================
-@st.cache_data(ttl=3600) 
+@st.cache_data(ttl=43200) 
 def load_data_from_url():
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
@@ -394,7 +394,7 @@ def load_data_from_url():
 
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items(): # <--- Bagian ini yang kembali diperbaiki
+        for target_brand, keywords in BRAND_ALIASES.items(): 
             for keyword in keywords:
                 if keyword in raw_upper: return target_brand
         return raw_brand
@@ -435,13 +435,11 @@ def load_data(fast_mode=False):
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
     
-    # 1. Pastikan kolom yang akan di-group konsisten
     if 'Nama Outlet' in df_pivot_source.columns and 'Nama Customer' not in df_pivot_source.columns:
         df_pivot_source = df_pivot_source.rename(columns={'Nama Outlet': 'Nama Customer'})
         if 'Nama Outlet' in group_cols:
             group_cols[group_cols.index('Nama Outlet')] = 'Nama Customer'
 
-    # 2. Bikin ID_Patokan murni (agar yang typo tapi kodenya sama melebur)
     invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
     df_pivot_source['ID_Patokan'] = np.where(
         df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().isin(invalid_codes),
@@ -465,11 +463,9 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
-        # 3. KUNCI RAHASIA: Membuang duplikat berdasarkan ID_Patokan (Pilih nama toko terbaru jika ada 2 nama beda tapi kode sama)
         df_filtered = df_filtered.sort_values('Tanggal', ascending=False)
         base_customers = df_filtered.drop_duplicates(subset=['ID_Patokan'], keep='first')[['ID_Patokan'] + group_cols]
         
-        # 4. Hitung penjualan hanya berdasarkan tahun yang dipilih
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
@@ -973,7 +969,6 @@ def main_dashboard():
 
     df_scope_all = df.copy()
 
-    # 1. Filter Hierarki IJL (Selamatkan Toko Master via Prefix!)
     if selected_ijl != "IJL":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
         allowed_prefixes = []
@@ -985,11 +980,9 @@ def main_dashboard():
         mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
         df_scope_all = df_scope_all[mask_merk | mask_prefix]
 
-    # 2. Filter Sales
     if target_sales_filter != "SEMUA":
         df_scope_all = df_scope_all[df_scope_all['Penjualan'] == target_sales_filter]
 
-    # 3. Filter Merk Spesifik
     if pilih_merk:
         allowed_prefixes = []
         for b in pilih_merk:
@@ -1000,11 +993,9 @@ def main_dashboard():
         mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
         df_scope_all = df_scope_all[mask_merk | mask_prefix]
 
-    # 4. Filter Outlet Spesifik
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
 
-    # 5. DataFrame Aktif untuk Menghitung Omset
     if len(date_range) == 2:
         start_date, end_date = date_range
         df_active = df_scope_all[(df_scope_all['Tanggal'].dt.date >= start_date) & (df_scope_all['Tanggal'].dt.date <= end_date)]
@@ -1016,7 +1007,6 @@ def main_dashboard():
         ref_date = end_date
 
     df_active_tab = df_active.copy()
-
     current_omset_total = df_active['Jumlah'].sum()
     
     if len(date_range) == 2:
@@ -1095,13 +1085,30 @@ def main_dashboard():
 
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'IJL' else ''}")
+            
+            # --- SUPER VECTORIZATION (PRE-AGGREGATION) UNTUK KECEPATAN ---
+            dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
+            
+            def get_salesmen_dict(df_to_group):
+                res = {}
+                if not df_to_group.empty:
+                    grouped = df_to_group.groupby(['Merk', 'Penjualan'])['Jumlah'].sum()
+                    for (b, s), val in grouped.items():
+                        if val > 0:
+                            if b not in res: res[b] = {}
+                            res[b][s] = val
+                return res
+                
+            salesmen_mtd_master = get_salesmen_dict(df_active_tab)
+            # -------------------------------------------------------------
+            
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
                 if selected_ijl != "IJL" and spv != selected_ijl:
                     continue
                     
                 for brand, target in brands_dict.items():
-                    realisasi_brand = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
+                    realisasi_brand = dict_mtd_brand.get(brand, 0.0) 
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
                     brand_row = {
                         "Rank": 0, "Brand / Salesman": brand, "Supervisor": spv, "Target": format_idr(target),
@@ -1109,10 +1116,12 @@ def main_dashboard():
                         "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand / 100 
                     }
                     sales_rows_list = []
+                    
+                    salesmen_for_this_brand = salesmen_mtd_master.get(brand, {})
                     for s_name, s_targets in INDIVIDUAL_TARGETS.items():
                         if brand in s_targets:
                             t_indiv = s_targets[brand]
-                            r_indiv = df_active_tab[(df_active_tab['Penjualan'] == s_name) & (df_active_tab['Merk'] == brand)]['Jumlah'].sum()
+                            r_indiv = salesmen_for_this_brand.get(s_name, 0.0)
                             pct_indiv = (r_indiv / t_indiv * 100) if t_indiv > 0 else 0
                             sales_rows_list.append({
                                 "Rank": "", "Brand / Salesman": f"   └─ {s_name}", "Supervisor": "", 
@@ -1156,12 +1165,13 @@ def main_dashboard():
         else:
             sales_brands = df_active_tab['Merk'].unique()
             indiv_data = []
+            dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
             for brand in sales_brands:
                 owner, target = "-", 0
                 for spv, b_dict in TARGET_DATABASE.items():
                     if brand in b_dict: owner, target = spv, b_dict[brand]; break
                 if target > 0:
-                    real = df_active_tab[df_active_tab['Merk'] == brand]['Jumlah'].sum()
+                    real = dict_mtd_brand.get(brand, 0.0)
                     pct = (real/target)*100
                     indiv_data.append({"Brand": brand, "Owner": owner, "Target Tim": format_idr(target), "Kontribusi": format_idr(real), "Ach (%)": f"{pct:.1f}%", "Pencapaian": pct/100})
             if indiv_data: 
@@ -1208,15 +1218,22 @@ def main_dashboard():
                         
                 safe_remaining_days = remaining_workdays if remaining_workdays > 0 else 1
                 
+                # --- VECTORIZATION ---
+                df_brand_active = df_active_tab[df_active_tab['Merk'] == selected_brand_detail]
+                dict_sales_mtd = df_brand_active.groupby('Penjualan')['Jumlah'].sum().to_dict()
+                
+                df_brand_h1 = df_scope_all[(df_scope_all['Tanggal'].dt.date == h_1_date) & (df_scope_all['Merk'] == selected_brand_detail)]
+                dict_sales_h1 = df_brand_h1.groupby('Penjualan')['Jumlah'].sum().to_dict()
+                dict_toko_h1 = df_brand_h1.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
+                dict_toko_mtd = df_brand_active.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
+                
                 for sales_name, targets in INDIVIDUAL_TARGETS.items():
                     if selected_brand_detail in targets:
                         t_pribadi = targets[selected_brand_detail]
-                        real_sales = df_active_tab[(df_active_tab['Penjualan'] == sales_name) & (df_active_tab['Merk'] == selected_brand_detail)]['Jumlah'].sum()
-                        
-                        df_h1 = df_scope_all[(df_scope_all['Tanggal'].dt.date == h_1_date) & (df_scope_all['Penjualan'] == sales_name) & (df_scope_all['Merk'] == selected_brand_detail)]
-                        omset_h1 = df_h1['Jumlah'].sum()
-                        toko_h1 = df_h1['Nama Outlet'].nunique()
-                        total_toko_mtd = df_active_tab[(df_active_tab['Penjualan'] == sales_name) & (df_active_tab['Merk'] == selected_brand_detail)]['Nama Outlet'].nunique()
+                        real_sales = dict_sales_mtd.get(sales_name, 0.0)
+                        omset_h1 = dict_sales_h1.get(sales_name, 0.0)
+                        toko_h1 = dict_toko_h1.get(sales_name, 0)
+                        total_toko_mtd = dict_toko_mtd.get(sales_name, 0)
                         
                         gap_sales = t_pribadi - real_sales
                         if gap_sales < 0:
@@ -1263,10 +1280,12 @@ def main_dashboard():
 
         st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
-        pareto_df = df_t3.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
-        total_omset_pareto = pareto_df['Jumlah'].sum()
+        # --- SHARED GROUPBY ---
+        grouped_barang = df_t3.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
+        total_omset_pareto = grouped_barang['Jumlah'].sum()
         
         if total_omset_pareto > 0:
+            pareto_df = grouped_barang.copy()
             pareto_df['Kontribusi %'] = (pareto_df['Jumlah'] / total_omset_pareto) * 100
             pareto_df['Cumulative %'] = pareto_df['Kontribusi %'].cumsum()
             
@@ -1286,7 +1305,7 @@ def main_dashboard():
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("📦 Top 10 Produk")
-            top_prod = df_t3.groupby('Nama Barang')['Jumlah'].sum().nlargest(10).reset_index()
+            top_prod = grouped_barang.head(10).copy() if not grouped_barang.empty else pd.DataFrame(columns=['Nama Barang', 'Jumlah'])
             fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s')
             fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_bar, use_container_width=True)
@@ -1310,17 +1329,23 @@ def main_dashboard():
             st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
             with st.expander("Lihat Daftar Toko Tidur"):
                 last_trx = []
+                # Vectorization for sleeping outlets
+                sleeping_df = df_scope_all[df_scope_all['Nama Outlet'].isin(sleeping_outlets)]
+                last_dates = sleeping_df.groupby('Nama Outlet')['Tanggal'].max()
+                sales_handlers = sleeping_df.groupby('Nama Outlet')['Penjualan'].first()
+                
+                today_date = datetime.date.today()
+                
                 for outlet in sleeping_outlets:
-                    outlet_df = df_scope_all[df_scope_all['Nama Outlet'] == outlet]
-                    last_date = outlet_df['Tanggal'].max()
-                    sales_handler = outlet_df['Penjualan'].iloc[0] if not outlet_df.empty else "-"
+                    last_date = last_dates.get(outlet, pd.to_datetime('2000-01-01'))
+                    sales_handler = sales_handlers.get(outlet, "-")
                     
                     if last_date.year == 2000:
                         terakhir_order_str = "Belum Pernah Order (Toko Master)"
                         hari_sejak = 99999
                     else:
                         terakhir_order_str = last_date.strftime('%d %b %Y')
-                        hari_sejak = (datetime.date.today() - last_date.date()).days
+                        hari_sejak = (today_date - last_date.date()).days
                         
                     last_trx.append({"Nama Toko": outlet, "Sales": sales_handler, "Terakhir Order": terakhir_order_str, "Hari Sejak Order Terakhir": hari_sejak})
                 
@@ -1445,9 +1470,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # --- PIPA DATA RAW KHUSUS GROWTH ---
-                # Jangan pakai df_scope_all yang sudah terpotong oleh IJL secara ketat
-                # Kita pakai df mentah, HANYA memotong berdasarkan Sales (Jika difilter spesifik)
                 df_team_all = df.copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1467,7 +1489,6 @@ def main_dashboard():
                 prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                 prefix_tuple = tuple(prefixes)
                 
-                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
                 is_target_brand = df_team_all['Merk'] == brand_growth
                 is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 is_valid_ro = is_target_brand | is_target_prefix
@@ -1493,8 +1514,6 @@ def main_dashboard():
                     df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
                     df_team_all['Bulan'] = df_team_all['Tanggal'].dt.month
                     df_team_all['Bulan-Tahun'] = df_team_all['Tanggal'].dt.to_period('M')
-                    
-                    all_months = sorted(df_team_all[df_team_all['Tanggal'].dt.year >= 2025]['Bulan-Tahun'].dropna().unique())
                     
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
