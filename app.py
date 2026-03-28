@@ -132,7 +132,7 @@ BRAND_PREFIXES = {
     "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
     "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
     "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"]
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong":["SOMBONG"]
 }
 
 def map_city_to_province(city_name):
