@@ -33,6 +33,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- INIT SESSION STATE UNTUK KEAMANAN (ANTI BRUTE-FORCE) ---
+if 'failed_attempts' not in st.session_state:
+    st.session_state['failed_attempts'] = {}
+if 'lockout_until' not in st.session_state:
+    st.session_state['lockout_until'] = {}
+
 # --- AUTO LOGOUT (INACTIVITY TIMEOUT: 15 MENIT) ---
 TIMEOUT_SECONDS = 900 
 if 'last_activity' in st.session_state and st.session_state.get('logged_in', False):
@@ -195,7 +201,7 @@ TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], "Y2000": ["Y2000", "Y 2000", "Y-2000"],
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
-    "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
+    "Thai": ["THAI", "JINSU"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"], "Oimio": ["OIMIO"],
     "Clinelle": ["CLINELLE", "CLIN"], "Ren & R & L": ["REN", "R & L", "R&L"], "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], "Avione": ["AVIONE"],
@@ -751,35 +757,67 @@ def login_page():
                 with st.form("login_form"):
                     username = st.text_input("Username")
                     password = st.text_input("Password", type="password")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    captcha_val = st.slider("Geser slider ke ujung kanan (100) untuk verifikasi manusia 🤖", 0, 100, 0)
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
                     submitted = st.form_submit_button("Verifikasi Akun", use_container_width=True)
                     
                     if submitted:
-                        users = load_users()
-                        if users.empty: st.error("Database user (users.csv) tidak ditemukan.")
-                        else:
-                            match = users[(users['username'] == username) & (users['password'] == password)]
-                            if match.empty:
-                                st.error("Username atau Password salah.")
-                                log_activity(username, "FAILED LOGIN - WRONG PASS")
+                        if username in st.session_state.get('lockout_until', {}):
+                            if time.time() < st.session_state['lockout_until'][username]:
+                                remaining = int((st.session_state['lockout_until'][username] - time.time()) / 60)
+                                st.error(f"🔒 Akses ditolak! Akun terkunci karena percobaan gagal beruntun. Coba lagi dalam {remaining + 1} menit.")
+                                return
                             else:
-                                user_row = match.iloc[0]
-                                user_role = user_row['role']
-                                user_sales_name = user_row['sales_name']
-                                
-                                if user_role in ['direktur', 'manager']:
-                                    st.session_state['logged_in'] = True
-                                    st.session_state['role'] = user_role
-                                    st.session_state['sales_name'] = user_sales_name
-                                    log_activity(user_sales_name, "LOGIN SUCCESS")
-                                    st.rerun()
+                                st.session_state['failed_attempts'][username] = 0
+                                del st.session_state['lockout_until'][username]
+
+                        if captcha_val != 100:
+                            st.error("🚨 Verifikasi Captcha gagal! Geser slider hingga angka 100.")
+                        else:
+                            users = load_users()
+                            if users.empty: st.error("Database user (users.csv) tidak ditemukan.")
+                            else:
+                                match = users[(users['username'] == username) & (users['password'] == password)]
+                                if match.empty:
+                                    st.error("Username atau Password salah.")
+                                    log_activity(username, "FAILED LOGIN - WRONG PASS")
+                                    st.session_state['failed_attempts'][username] = st.session_state['failed_attempts'].get(username, 0) + 1
+                                    if st.session_state['failed_attempts'][username] >= 3:
+                                        st.session_state['lockout_until'][username] = time.time() + 600 # 10 menit
+                                        st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
                                 else:
-                                    st.session_state['temp_user_data'] = user_row
-                                    st.session_state['login_step'] = '2fa_check'
-                                    st.rerun()
+                                    st.session_state['failed_attempts'][username] = 0
+                                    user_row = match.iloc[0]
+                                    user_role = user_row['role']
+                                    user_sales_name = user_row['sales_name']
+                                    
+                                    if user_role in ['direktur', 'manager']:
+                                        st.session_state['logged_in'] = True
+                                        st.session_state['role'] = user_role
+                                        st.session_state['sales_name'] = user_sales_name
+                                        log_activity(user_sales_name, "LOGIN SUCCESS")
+                                        st.rerun()
+                                    else:
+                                        st.session_state['temp_user_data'] = user_row
+                                        st.session_state['login_step'] = '2fa_check'
+                                        st.rerun()
                                     
             elif st.session_state['login_step'] == '2fa_check':
                 user_data = st.session_state['temp_user_data']
                 secret = user_data.get('secret_key', None)
+                username_2fa = user_data['username']
+                
+                if username_2fa in st.session_state.get('lockout_until', {}):
+                    if time.time() < st.session_state['lockout_until'][username_2fa]:
+                        remaining = int((st.session_state['lockout_until'][username_2fa] - time.time()) / 60)
+                        st.error(f"🔒 Akses ditolak! Akun terkunci. Coba lagi dalam {remaining + 1} menit.")
+                        if st.button("Kembali ke Awal"):
+                            st.session_state['login_step'] = 'credentials'
+                            st.rerun()
+                        return
                 
                 if pd.isna(secret) or secret == "" or secret is None:
                     st.error("⛔ Akun Anda belum diaktivasi 2FA.")
@@ -795,6 +833,7 @@ def login_page():
                     if st.button("Masuk"):
                         totp = pyotp.TOTP(secret)
                         if totp.verify(code_input):
+                            st.session_state['failed_attempts'][username_2fa] = 0
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = user_data['role']
                             st.session_state['sales_name'] = user_data['sales_name']
@@ -803,6 +842,10 @@ def login_page():
                         else:
                             st.error("Kode OTP Salah!")
                             log_activity(user_data['sales_name'], "FAILED LOGIN - WRONG OTP")
+                            st.session_state['failed_attempts'][username_2fa] = st.session_state['failed_attempts'].get(username_2fa, 0) + 1
+                            if st.session_state['failed_attempts'][username_2fa] >= 3:
+                                st.session_state['lockout_until'][username_2fa] = time.time() + 600
+                                st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
                     if st.button("Kembali"):
                         st.session_state['login_step'] = 'credentials'
                         st.rerun()
@@ -1007,6 +1050,7 @@ def main_dashboard():
         ref_date = end_date
 
     df_active_tab = df_active.copy()
+
     current_omset_total = df_active['Jumlah'].sum()
     
     if len(date_range) == 2:
