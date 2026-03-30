@@ -759,7 +759,7 @@ def login_page():
                     password = st.text_input("Password", type="password")
                     
                     st.markdown("<br>", unsafe_allow_html=True)
-                    captcha_val = st.slider("Geser slider ke ujung kanan (100) untuk verifikasi manusia 🤖", 0, 100, 0)
+                    captcha_val = st.slider("Geser slider ke ujung kanan (100) untuk verifikasi 🤖", 0, 100, 0)
                     st.markdown("<br>", unsafe_allow_html=True)
                     
                     submitted = st.form_submit_button("Verifikasi Akun", use_container_width=True)
