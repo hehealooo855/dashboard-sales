@@ -19,13 +19,6 @@ import calendar
 import concurrent.futures
 import streamlit.components.v1 as components 
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
-try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
-    AGGRID_AVAILABLE = True
-except ImportError:
-    AGGRID_AVAILABLE = False
-
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
@@ -436,9 +429,8 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE (DEDUPLIKASI KETAT BERDASARKAN ID_PATOKAN)
+# PIVOT FAST ENGINE (DIHAPUS CACHE-NYA AGAR TIDAK STUCK)
 # =========================================================================
-@st.cache_data(show_spinner=False)
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
     
@@ -633,7 +625,7 @@ def render_pivot_fragment(df_scope_all, role):
         if maximize_toggle:
             st.markdown("""
             <style>
-                iframe[title="streamlit_aggrid.agGrid"] {
+                div[data-testid="stDataFrame"] {
                     position: fixed !important;
                     top: 0 !important; left: 0 !important;
                     width: 100vw !important; height: 100vh !important;
@@ -652,58 +644,18 @@ def render_pivot_fragment(df_scope_all, role):
             for col in num_cols:
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-        else:
-            df_display = df_filtered.copy()
-
-        if AGGRID_AVAILABLE:
-            gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_pagination(enabled=False)
-            gb.configure_side_bar()
-            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, minWidth=160)
             
-            for col in num_cols:
-                gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
-            
-            jscode = JsCode("""
-            function(params) {
-                if (params.data['Nama Customer'] === 'GRAND TOTAL') {
-                    return {
-                        'font-weight': 'bold',
-                        'background-color': '#f8f9fa',
-                        'border-top': '2px solid #2980b9'
-                    }
-                }
-            }
-            """)
-            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
-            gridOptions = gb.build()
-            
-            grid_css = {
-                ".ag-header": {"background-color": "#2980b9 !important"},
-                ".ag-header-cell": {"border-right": "1px solid #ffffff44 !important"},
-                ".ag-header-cell-label": {"color": "#ffffff !important", "font-weight": "bold !important", "font-size": "14px !important"},
-                ".ag-header-icon": {"color": "#ffffff !important"},
-                ".ag-cell": {"border-right": "1px solid #e2e8f0 !important", "display": "flex", "align-items": "center"},
-                ".ag-row-hover": {
-                    "background-color": "#e3f2fd !important", 
-                    "transition": "background-color 0.15s ease-in-out !important"
-                },
-                ".ag-floating-filter-button": {"filter": "brightness(0) invert(1)"}
-            }
-            
-            AgGrid(
-                df_display, 
-                gridOptions=gridOptions, 
-                enable_enterprise_modules=True, 
-                theme='alpine', 
-                allow_unsafe_jscode=True,
-                custom_css=grid_css,
-                update_mode='NO_UPDATE',
-                data_return_mode='FILTERED_AND_SORTED'
-            )
-        else:
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-            st.dataframe(df_display.style.format(format_dict), use_container_width=True, hide_index=True)
+            
+            def style_pivot(row):
+                if row['Nama Customer'] == 'GRAND TOTAL':
+                    return ['background-color: #FFFF00; font-weight: bold; color: black; border-top: 2px solid #333;'] * len(row)
+                return [''] * len(row)
+                
+            styled_df = df_display.style.format(format_dict, na_rep="-").apply(style_pivot, axis=1)
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Data Kosong setelah difilter.")
             
         # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
@@ -760,7 +712,7 @@ def login_page():
                     password = st.text_input("Password", type="password")
                     
                     st.markdown("<br>", unsafe_allow_html=True)
-                    captcha_val = st.slider("Geser slider ke ujung kanan (100) untuk verifikasi 🤖", 0, 100, 0)
+                    captcha_val = st.slider("Geser slider ke ujung kanan (100) untuk verifikasi manusia 🤖", 0, 100, 0)
                     st.markdown("<br>", unsafe_allow_html=True)
                     
                     submitted = st.form_submit_button("Verifikasi Akun", use_container_width=True)
@@ -1051,7 +1003,6 @@ def main_dashboard():
         ref_date = end_date
 
     df_active_tab = df_active.copy()
-
     current_omset_total = df_active['Jumlah'].sum()
     
     if len(date_range) == 2:
@@ -1515,6 +1466,7 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
+                # --- PIPA DATA RAW KHUSUS GROWTH ---
                 df_team_all = df.copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1534,6 +1486,7 @@ def main_dashboard():
                 prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                 prefix_tuple = tuple(prefixes)
                 
+                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
                 is_target_brand = df_team_all['Merk'] == brand_growth
                 is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 is_valid_ro = is_target_brand | is_target_prefix
