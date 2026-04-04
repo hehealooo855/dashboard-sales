@@ -218,7 +218,7 @@ BRAND_ALIASES = {
     "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madame G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"], "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"], "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
-    "Saviosa": ["SAVIOSA"], "The Face": ["THE Face", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
+    "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
     "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG"]
@@ -636,6 +636,22 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
+        if maximize_toggle:
+            st.markdown("""
+            <style>
+                header {display: none !important;}
+                [data-testid="stSidebar"] {display: none !important;}
+                .block-container {
+                    max-width: 100% !important;
+                    padding-top: 1rem !important;
+                    padding-right: 1rem !important;
+                    padding-left: 1rem !important;
+                    padding-bottom: 1rem !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+
         if not df_filtered.empty:
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
@@ -689,23 +705,6 @@ def render_pivot_fragment(df_scope_all, role):
                 html_table += "</tr>"
             html_table += "</tbody></table></div><br>"
             
-            if maximize_toggle:
-                # Menggunakan teknik Auto-Expand: Menyembunyikan sidebar dan menghilangkan margin
-                st.markdown("""
-                <style>
-                    header {display: none !important;}
-                    [data-testid="stSidebar"] {display: none !important;}
-                    .block-container {
-                        max-width: 100% !important;
-                        padding-top: 1rem !important;
-                        padding-right: 1rem !important;
-                        padding-left: 1rem !important;
-                        padding-bottom: 1rem !important;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-                st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-
             st.markdown(html_table, unsafe_allow_html=True)
             
         else:
@@ -1571,8 +1570,8 @@ def main_dashboard():
             if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
             if filter_sku_spesifik: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Barang'].astype(str).isin(filter_sku_spesifik)]
 
-            if not filter_nama_sku:
-                st.info("👈 Silakan pilih minimal 1 'Nama Customer' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail barang yang mereka beli.")
+            if not filter_nama_sku and not filter_sku_spesifik:
+                st.info("👈 Silakan pilih minimal 1 'Nama Customer' ATAU 'Nama Barang (SKU)' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail transaksi.")
             else:
                 st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
 
