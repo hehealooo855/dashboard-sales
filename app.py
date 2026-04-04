@@ -636,20 +636,6 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
-        if maximize_toggle:
-            st.markdown("""
-            <style>
-                div[data-testid="stMarkdownContainer"] table {
-                    position: fixed !important;
-                    top: 0 !important; left: 0 !important;
-                    width: 100vw !important; height: 100vh !important;
-                    z-index: 999999 !important; background-color: white !important;
-                }
-                header {visibility: hidden !important;}
-                [data-testid="stSidebar"] {display: none !important;}
-            </style>
-            """, unsafe_allow_html=True)
-
         if not df_filtered.empty:
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
@@ -703,7 +689,21 @@ def render_pivot_fragment(df_scope_all, role):
                 html_table += "</tr>"
             html_table += "</tbody></table></div><br>"
             
-            st.markdown(html_table, unsafe_allow_html=True)
+            if maximize_toggle:
+                # Membungkus tabel dengan div fullscreen dan menambahkan Tombol Floating Merah
+                html_wrapper = f"""
+                <div id="fs-pivot-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f6f9; z-index: 9999999; padding: 20px; overflow: auto; box-sizing: border-box;">
+                    <button onclick="document.getElementById('fs-pivot-container').style.display='none'" style="position: fixed; top: 20px; right: 20px; z-index: 99999999; background-color: #e74c3c; color: white; border: none; padding: 12px 20px; font-weight: bold; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">❌ Tutup Layar Penuh</button>
+                    <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 60px;">
+                        <h2 style="margin-top:0; color:#2c3e50;">📊 Pivot Data Customer (Mode Layar Penuh)</h2>
+                        {html_table}
+                    </div>
+                </div>
+                """
+                st.markdown(html_wrapper, unsafe_allow_html=True)
+                st.info("ℹ️ Mode Layar Penuh sedang aktif. Klik tombol merah di pojok kanan atas layar Anda untuk menutupnya.")
+            else:
+                st.markdown(html_table, unsafe_allow_html=True)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1505,10 +1505,125 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
 
-        tab_pivot, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
+        tab_pivot, tab_sku, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "🛒 Detail SKU per Toko", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
         with tab_pivot:
             render_pivot_fragment(df_scope_all, role)
+
+        with tab_sku:
+            st.markdown("### 🛒 Detail SKU per Toko")
+            df_sku_base = df_scope_all.copy()
+            
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                list_merk_sku = sorted(df_sku_base['Merk'].dropna().astype(str).unique())
+                list_merk_sku = [m for m in list_merk_sku if m != "-"]
+                selected_merk_sku = st.multiselect("🎯 Pilih Merk:", list_merk_sku, default=list_merk_sku[0] if list_merk_sku else None)
+            with col_s2:
+                list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
+                selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku)
+                
+            mask_sku = pd.Series(True, index=df_sku_base.index)
+            if selected_merk_sku:
+                mask_sku = mask_sku & df_sku_base['Merk'].isin(selected_merk_sku)
+            if selected_tahun_sku:
+                mask_sku = mask_sku & df_sku_base['Tanggal'].dt.year.isin(selected_tahun_sku)
+                
+            df_sku_filtered = df_sku_base[mask_sku]
+            
+            list_cust_sku = sorted(df_sku_filtered['Nama Outlet'].dropna().astype(str).unique())
+            selected_cust_sku = st.multiselect("🏪 Pilih Nama Customer (Bisa lebih dari 1):", list_cust_sku)
+            
+            if selected_cust_sku:
+                df_sku_final = df_sku_filtered[df_sku_filtered['Nama Outlet'].isin(selected_cust_sku)].copy()
+                
+                if not df_sku_final.empty:
+                    df_sku_final['Bulan Angka'] = df_sku_final['Tanggal'].dt.month
+                    pivot_sku = pd.pivot_table(df_sku_final, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                    
+                    bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                    for i in range(1, 13):
+                        if i not in pivot_sku.columns: pivot_sku[i] = 0
+                        
+                    cols_sku = ['Nama Barang'] + list(range(1, 13))
+                    pivot_sku = pivot_sku[cols_sku]
+                    pivot_sku.columns = ['Nama Barang'] + [bulan_indo_map[i] for i in range(1, 13)]
+                    
+                    pivot_sku['Total Pembelian'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
+                    
+                    total_dict_sku = {col: "" for col in pivot_sku.columns}
+                    total_dict_sku['Nama Barang'] = "GRAND TOTAL"
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Pembelian']:
+                        total_dict_sku[col] = pivot_sku[col].sum()
+                    
+                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    
+                    html_table_sku = """
+                    <style>
+                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
+                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                    </style>
+                    <div style="overflow-x: auto; max-height: 700px;">
+                        <table class="sku-table">
+                            <thead>
+                                <tr>
+                    """
+                    for col in df_display_sku.columns:
+                        html_table_sku += f"<th>{col}</th>"
+                    html_table_sku += "</tr></thead><tbody>"
+                    
+                    for _, row in df_display_sku.iterrows():
+                        is_gt = row.get('Nama Barang') == 'GRAND TOTAL'
+                        tr_class = "grand-total-row" if is_gt else ""
+                        html_table_sku += f'<tr class="{tr_class}">'
+                        
+                        for col in df_display_sku.columns:
+                            val = row[col]
+                            if col != 'Nama Barang':
+                                if pd.isna(val) or val == 0 or val == "":
+                                    val_str = "-"
+                                else:
+                                    try:
+                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                                    except:
+                                        val_str = str(val)
+                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                            else:
+                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                                if is_gt:
+                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
+                                else:
+                                    html_table_sku += f'<td>{val_str}</td>'
+                        html_table_sku += "</tr>"
+                    html_table_sku += "</tbody></table></div><br>"
+                    
+                    st.markdown(html_table_sku, unsafe_allow_html=True)
+                    
+                    output_sku = io.BytesIO()
+                    with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                        df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                        workbook = writer.book
+                        worksheet = writer.sheets['Detail SKU']
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        worksheet.set_column('B:N', None, format1)
+                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                        worksheet.set_row(len(df_display_sku), None, bold_format)
+                        
+                    st.download_button(
+                        label="📥 Download Detail SKU (Excel)",
+                        data=output_sku.getvalue(),
+                        file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                    
+                else:
+                    st.warning("Tidak ada data transaksi untuk Customer yang dipilih pada periode tersebut.")
+            else:
+                st.info("Pilih minimal 1 Nama Customer untuk melihat detail SKU.")
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
