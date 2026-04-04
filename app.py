@@ -19,6 +19,13 @@ import calendar
 import concurrent.futures
 import streamlit.components.v1 as components 
 
+# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
+try:
+    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
+    AGGRID_AVAILABLE = True
+except ImportError:
+    AGGRID_AVAILABLE = False
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
@@ -644,18 +651,72 @@ def render_pivot_fragment(df_scope_all, role):
             for col in num_cols:
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+        else:
+            df_display = df_filtered.copy()
+
+        if AGGRID_AVAILABLE:
+            gb = GridOptionsBuilder.from_dataframe(df_display)
+            gb.configure_pagination(enabled=False)
+            gb.configure_side_bar()
+            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, minWidth=160)
             
+            for col in num_cols:
+                gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
+            
+            jscode = JsCode("""
+            function(params) {
+                if (params.data['Nama Customer'] === 'GRAND TOTAL') {
+                    return {
+                        'font-weight': 'bold',
+                        'background-color': '#f8f9fa',
+                        'border-top': '2px solid #2980b9'
+                    }
+                }
+            }
+            """)
+            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
+            gridOptions = gb.build()
+            
+            grid_css = {
+                ".ag-header": {"background-color": "#2980b9 !important"},
+                ".ag-header-cell": {"border-right": "1px solid #ffffff44 !important"},
+                ".ag-header-cell-label": {"color": "#ffffff !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                ".ag-header-icon": {"color": "#ffffff !important"},
+                ".ag-cell": {"border-right": "1px solid #e2e8f0 !important", "display": "flex", "align-items": "center"},
+                ".ag-row-hover": {
+                    "background-color": "#e3f2fd !important", 
+                    "transition": "background-color 0.15s ease-in-out !important"
+                },
+                ".ag-floating-filter-button": {"filter": "brightness(0) invert(1)"}
+            }
+            
+            AgGrid(
+                df_display, 
+                gridOptions=gridOptions, 
+                enable_enterprise_modules=True, 
+                theme='alpine', 
+                allow_unsafe_jscode=True,
+                custom_css=grid_css,
+                update_mode='NO_UPDATE',
+                data_return_mode='FILTERED_AND_SORTED'
+            )
+        else:
             format_dict = {col: "Rp {:,.0f}" for col in num_cols}
             
             def style_pivot(row):
                 if row['Nama Customer'] == 'GRAND TOTAL':
-                    return ['background-color: #FFFF00; font-weight: bold; color: black; border-top: 2px solid #333;'] * len(row)
-                return [''] * len(row)
+                    return ['background-color: #FFFF00; font-weight: bold; color: black; border: 1px solid #555555;'] * len(row)
+                # Berikan garis batas (border) yang jelas untuk setiap sel
+                return ['border: 1px solid #555555;'] * len(row)
                 
-            styled_df = df_display.style.format(format_dict, na_rep="-").apply(style_pivot, axis=1)
+            # Setup Styler untuk mewarnai Header menjadi Corporate Blue
+            table_styles = [
+                {'selector': 'thead th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold'), ('border', '1px solid #555555')]},
+                {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('border', '1px solid #555555')]}
+            ]
+            
+            styled_df = df_display.style.format(format_dict, na_rep="-").apply(style_pivot, axis=1).set_table_styles(table_styles)
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("Data Kosong setelah difilter.")
             
         # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
@@ -1003,6 +1064,7 @@ def main_dashboard():
         ref_date = end_date
 
     df_active_tab = df_active.copy()
+
     current_omset_total = df_active['Jumlah'].sum()
     
     if len(date_range) == 2:
