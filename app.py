@@ -62,13 +62,14 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
-    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stAppDeployButton"] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="manage-app-button"] {display: none !important;}
     
     /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
@@ -638,7 +639,7 @@ def render_pivot_fragment(df_scope_all, role):
         if maximize_toggle:
             st.markdown("""
             <style>
-                div[data-testid="stDataFrame"], div[data-testid="stMarkdownContainer"] table {
+                div[data-testid="stMarkdownContainer"] table {
                     position: fixed !important;
                     top: 0 !important; left: 0 !important;
                     width: 100vw !important; height: 100vh !important;
@@ -658,17 +659,17 @@ def render_pivot_fragment(df_scope_all, role):
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # ================= HTML PIVOT TABLE RENDERER =================
+            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
             html_table = """
             <style>
                 .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; }
-                .pivot-table td { border: 1px solid #999; padding: 6px 8px; color: #000; background-color: #fff; }
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
                 .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
                 .pivot-table tr:hover td { background-color: #e3f2fd !important; }
                 .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
             </style>
-            <div style="overflow-x: auto;">
+            <div style="overflow-x: auto; max-height: 800px;">
                 <table class="pivot-table">
                     <thead>
                         <tr>
