@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs)
+# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs & Hilangkan Logo Streamlit)
 st.markdown("""
 <style>
     .metric-card {
@@ -61,8 +61,14 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
+    
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display: none !important;}
+    [data-testid="stAppDeployButton"] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
     
     /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
@@ -632,7 +638,7 @@ def render_pivot_fragment(df_scope_all, role):
         if maximize_toggle:
             st.markdown("""
             <style>
-                div[data-testid="stDataFrame"] {
+                div[data-testid="stDataFrame"], div[data-testid="stMarkdownContainer"] table {
                     position: fixed !important;
                     top: 0 !important; left: 0 !important;
                     width: 100vw !important; height: 100vh !important;
@@ -651,72 +657,55 @@ def render_pivot_fragment(df_scope_all, role):
             for col in num_cols:
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-        else:
-            df_display = df_filtered.copy()
-
-        if AGGRID_AVAILABLE:
-            gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_pagination(enabled=False)
-            gb.configure_side_bar()
-            gb.configure_default_column(filter='agSetColumnFilter', sortable=True, resizable=True, floatingFilter=True, minWidth=160)
             
-            for col in num_cols:
-                gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
+            # ================= HTML PIVOT TABLE RENDERER =================
+            html_table = """
+            <style>
+                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; }
+                .pivot-table td { border: 1px solid #999; padding: 6px 8px; color: #000; background-color: #fff; }
+                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
+                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+            </style>
+            <div style="overflow-x: auto;">
+                <table class="pivot-table">
+                    <thead>
+                        <tr>
+            """
+            for col in df_display.columns:
+                html_table += f"<th>{col}</th>"
+            html_table += "</tr></thead><tbody>"
             
-            jscode = JsCode("""
-            function(params) {
-                if (params.data['Nama Customer'] === 'GRAND TOTAL') {
-                    return {
-                        'font-weight': 'bold',
-                        'background-color': '#f8f9fa',
-                        'border-top': '2px solid #2980b9'
-                    }
-                }
-            }
-            """)
-            gb.configure_grid_options(getRowStyle=jscode, domLayout='autoHeight')
-            gridOptions = gb.build()
-            
-            grid_css = {
-                ".ag-header": {"background-color": "#2980b9 !important"},
-                ".ag-header-cell": {"border-right": "1px solid #ffffff44 !important"},
-                ".ag-header-cell-label": {"color": "#ffffff !important", "font-weight": "bold !important", "font-size": "14px !important"},
-                ".ag-header-icon": {"color": "#ffffff !important"},
-                ".ag-cell": {"border-right": "1px solid #e2e8f0 !important", "display": "flex", "align-items": "center"},
-                ".ag-row-hover": {
-                    "background-color": "#e3f2fd !important", 
-                    "transition": "background-color 0.15s ease-in-out !important"
-                },
-                ".ag-floating-filter-button": {"filter": "brightness(0) invert(1)"}
-            }
-            
-            AgGrid(
-                df_display, 
-                gridOptions=gridOptions, 
-                enable_enterprise_modules=True, 
-                theme='alpine', 
-                allow_unsafe_jscode=True,
-                custom_css=grid_css,
-                update_mode='NO_UPDATE',
-                data_return_mode='FILTERED_AND_SORTED'
-            )
-        else:
-            format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-            
-            def style_pivot(row):
-                if row['Nama Customer'] == 'GRAND TOTAL':
-                    return ['background-color: #FFFF00; font-weight: bold; color: black; border: 1px solid #555555;'] * len(row)
-                # Berikan garis batas (border) yang jelas untuk setiap sel
-                return ['border: 1px solid #555555;'] * len(row)
+            for _, row in df_display.iterrows():
+                is_gt = row.get('Nama Customer') == 'GRAND TOTAL'
+                tr_class = "grand-total-row" if is_gt else ""
+                html_table += f'<tr class="{tr_class}">'
                 
-            # Setup Styler untuk mewarnai Header menjadi Corporate Blue
-            table_styles = [
-                {'selector': 'thead th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold'), ('border', '1px solid #555555')]},
-                {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('border', '1px solid #555555')]}
-            ]
+                for col in df_display.columns:
+                    val = row[col]
+                    if col in num_cols:
+                        if pd.isna(val) or val == "":
+                            val_str = "-"
+                        else:
+                            try:
+                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                            except:
+                                val_str = str(val)
+                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                    else:
+                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                        if is_gt and col == 'Nama Customer':
+                            html_table += f'<td style="text-align: center;">{val_str}</td>'
+                        else:
+                            html_table += f'<td>{val_str}</td>'
+                html_table += "</tr>"
+            html_table += "</tbody></table></div><br>"
             
-            styled_df = df_display.style.format(format_dict, na_rep="-").apply(style_pivot, axis=1).set_table_styles(table_styles)
-            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            st.markdown(html_table, unsafe_allow_html=True)
+            
+        else:
+            st.info("Data Kosong setelah difilter.")
             
         # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
