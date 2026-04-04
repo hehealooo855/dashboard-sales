@@ -19,13 +19,6 @@ import calendar
 import concurrent.futures
 import streamlit.components.v1 as components 
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
-try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
-    AGGRID_AVAILABLE = True
-except ImportError:
-    AGGRID_AVAILABLE = False
-
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
@@ -636,6 +629,23 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
+        if maximize_toggle:
+            # Menggunakan teknik Auto-Expand: Menyembunyikan sidebar dan menghilangkan margin
+            st.markdown("""
+            <style>
+                header {display: none !important;}
+                [data-testid="stSidebar"] {display: none !important;}
+                .block-container {
+                    max-width: 100% !important;
+                    padding-top: 1rem !important;
+                    padding-right: 1rem !important;
+                    padding-left: 1rem !important;
+                    padding-bottom: 1rem !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+
         if not df_filtered.empty:
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
@@ -689,21 +699,7 @@ def render_pivot_fragment(df_scope_all, role):
                 html_table += "</tr>"
             html_table += "</tbody></table></div><br>"
             
-            if maximize_toggle:
-                # Membungkus tabel dengan div fullscreen dan menambahkan Tombol Floating Merah
-                html_wrapper = f"""
-                <div id="fs-pivot-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f6f9; z-index: 9999999; padding: 20px; overflow: auto; box-sizing: border-box;">
-                    <button onclick="document.getElementById('fs-pivot-container').style.display='none'" style="position: fixed; top: 20px; right: 20px; z-index: 99999999; background-color: #e74c3c; color: white; border: none; padding: 12px 20px; font-weight: bold; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">❌ Tutup Layar Penuh</button>
-                    <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 60px;">
-                        <h2 style="margin-top:0; color:#2c3e50;">📊 Pivot Data Customer (Mode Layar Penuh)</h2>
-                        {html_table}
-                    </div>
-                </div>
-                """
-                st.markdown(html_wrapper, unsafe_allow_html=True)
-                st.info("ℹ️ Mode Layar Penuh sedang aktif. Klik tombol merah di pojok kanan atas layar Anda untuk menutupnya.")
-            else:
-                st.markdown(html_table, unsafe_allow_html=True)
+            st.markdown(html_table, unsafe_allow_html=True)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1514,32 +1510,75 @@ def main_dashboard():
             st.markdown("### 🛒 Detail SKU per Toko")
             df_sku_base = df_scope_all.copy()
             
-            col_s1, col_s2 = st.columns(2)
-            with col_s1:
-                list_merk_sku = sorted(df_sku_base['Merk'].dropna().astype(str).unique())
-                list_merk_sku = [m for m in list_merk_sku if m != "-"]
-                selected_merk_sku = st.multiselect("🎯 Pilih Merk:", list_merk_sku, default=list_merk_sku[0] if list_merk_sku else None)
-            with col_s2:
-                list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
-                selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku)
+            list_merk_sku = sorted(df_sku_base['Merk'].dropna().astype(str).unique())
+            list_merk_sku = [m for m in list_merk_sku if m != "-"]
+            list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
+            kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
+            
+            with st.form(key='sku_filter_form'):
+                col_s1, col_s2 = st.columns(2)
+                with col_s1:
+                    selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
+                with col_s2:
+                    selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
+                    
+                st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
-            mask_sku = pd.Series(True, index=df_sku_base.index)
-            if selected_merk_sku:
-                mask_sku = mask_sku & df_sku_base['Merk'].isin(selected_merk_sku)
+                list_kode_all_sku = sorted(df_sku_base[kd_asal].astype(str).unique())
+                list_nama_all_sku = sorted(df_sku_base['Nama Outlet'].astype(str).unique())
+                list_provinsi_all_sku = sorted(df_sku_base['Provinsi'].astype(str).unique())
+                list_kota_all_sku = sorted(df_sku_base['Kota'].astype(str).unique())
+
+                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                with col_f1: filter_kode_sku = st.multiselect("Kode Customer:", list_kode_all_sku, placeholder="Pilih Kode...")
+                with col_f2: filter_nama_sku = st.multiselect("Nama Customer:", list_nama_all_sku, placeholder="Pilih Customer...")
+                with col_f3: filter_provinsi_sku = st.multiselect("Provinsi:", list_provinsi_all_sku, placeholder="Pilih Provinsi...")
+                with col_f4: filter_kota_sku = st.multiselect("Kota:", list_kota_all_sku, placeholder="Pilih Kota...")
+
+                maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
+                submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
+
+            # Filtering Execution (Selalu berjalan agar tabel default langsung muncul jika data ada)
+            df_sku_filtered = df_sku_base.copy()
+            if selected_merk_sku != "SEMUA":
+                prefixes = BRAND_PREFIXES.get(selected_merk_sku, [selected_merk_sku[:3].upper()])
+                prefix_tuple = tuple(prefixes)
+                mask_history = df_sku_filtered['Merk'] == selected_merk_sku
+                mask_prefix = df_sku_filtered[kd_asal].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                df_sku_filtered = df_sku_filtered[mask_history | mask_prefix]
+
             if selected_tahun_sku:
-                mask_sku = mask_sku & df_sku_base['Tanggal'].dt.year.isin(selected_tahun_sku)
-                
-            df_sku_filtered = df_sku_base[mask_sku]
-            
-            list_cust_sku = sorted(df_sku_filtered['Nama Outlet'].dropna().astype(str).unique())
-            selected_cust_sku = st.multiselect("🏪 Pilih Nama Customer (Bisa lebih dari 1):", list_cust_sku)
-            
-            if selected_cust_sku:
-                df_sku_final = df_sku_filtered[df_sku_filtered['Nama Outlet'].isin(selected_cust_sku)].copy()
-                
-                if not df_sku_final.empty:
-                    df_sku_final['Bulan Angka'] = df_sku_final['Tanggal'].dt.month
-                    pivot_sku = pd.pivot_table(df_sku_final, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                df_sku_filtered = df_sku_filtered[df_sku_filtered['Tanggal'].dt.year.isin(selected_tahun_sku)]
+
+            if filter_kode_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered[kd_asal].astype(str).isin(filter_kode_sku)]
+            if filter_nama_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Outlet'].astype(str).isin(filter_nama_sku)]
+            if filter_provinsi_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Provinsi'].astype(str).isin(filter_provinsi_sku)]
+            if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
+
+            if not filter_nama_sku:
+                st.info("👈 Silakan pilih minimal 1 'Nama Customer' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail barang yang mereka beli.")
+            else:
+                st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
+
+                if maximize_toggle_sku:
+                    st.markdown("""
+                    <style>
+                        header {display: none !important;}
+                        [data-testid="stSidebar"] {display: none !important;}
+                        .block-container {
+                            max-width: 100% !important;
+                            padding-top: 1rem !important;
+                            padding-right: 1rem !important;
+                            padding-left: 1rem !important;
+                            padding-bottom: 1rem !important;
+                        }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+
+                if not df_sku_filtered.empty:
+                    df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
+                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
                     
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
@@ -1549,15 +1588,17 @@ def main_dashboard():
                     pivot_sku = pivot_sku[cols_sku]
                     pivot_sku.columns = ['Nama Barang'] + [bulan_indo_map[i] for i in range(1, 13)]
                     
-                    pivot_sku['Total Pembelian'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
+                    pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
+                    # Grand Total Row
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku['Nama Barang'] = "GRAND TOTAL"
-                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Pembelian']:
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
+                    # HTML Table Rendering
                     html_table_sku = """
                     <style>
                         .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -1567,7 +1608,7 @@ def main_dashboard():
                         .sku-table tr:hover td { background-color: #e3f2fd !important; }
                         .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
                     </style>
-                    <div style="overflow-x: auto; max-height: 700px;">
+                    <div style="overflow-x: auto; max-height: 800px;">
                         <table class="sku-table">
                             <thead>
                                 <tr>
@@ -1603,27 +1644,32 @@ def main_dashboard():
                     
                     st.markdown(html_table_sku, unsafe_allow_html=True)
                     
-                    output_sku = io.BytesIO()
-                    with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                        df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
-                        workbook = writer.book
-                        worksheet = writer.sheets['Detail SKU']
-                        format1 = workbook.add_format({'num_format': '#,##0'})
-                        worksheet.set_column('B:N', None, format1)
-                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                        worksheet.set_row(len(df_display_sku), None, bold_format)
-                        
-                    st.download_button(
-                        label="📥 Download Detail SKU (Excel)",
-                        data=output_sku.getvalue(),
-                        file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                    
+                    user_role_lower = role.lower()
+                    if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                        output_sku = io.BytesIO()
+                        with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            workbook = writer.book
+                            worksheet = writer.sheets['Detail SKU']
+                            
+                            user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                            worksheet.set_header(f'&C&10{watermark_text}')
+                            
+                            format1 = workbook.add_format({'num_format': '#,##0'})
+                            worksheet.set_column('B:N', None, format1)
+                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            
+                        st.download_button(
+                            label="📥 Download Detail SKU (Excel)",
+                            data=output_sku.getvalue(),
+                            file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
                 else:
-                    st.warning("Tidak ada data transaksi untuk Customer yang dipilih pada periode tersebut.")
-            else:
-                st.info("Pilih minimal 1 Nama Customer untuk melihat detail SKU.")
+                    st.warning("Tidak ada transaksi untuk filter tersebut.")
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
