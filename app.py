@@ -19,6 +19,13 @@ import calendar
 import concurrent.futures
 import streamlit.components.v1 as components 
 
+# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
+try:
+    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
+    AGGRID_AVAILABLE = True
+except ImportError:
+    AGGRID_AVAILABLE = False
+
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
@@ -629,23 +636,6 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
-        if maximize_toggle:
-            # Menggunakan teknik Auto-Expand: Menyembunyikan sidebar dan menghilangkan margin
-            st.markdown("""
-            <style>
-                header {display: none !important;}
-                [data-testid="stSidebar"] {display: none !important;}
-                .block-container {
-                    max-width: 100% !important;
-                    padding-top: 1rem !important;
-                    padding-right: 1rem !important;
-                    padding-left: 1rem !important;
-                    padding-bottom: 1rem !important;
-                }
-            </style>
-            """, unsafe_allow_html=True)
-            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-
         if not df_filtered.empty:
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
@@ -699,6 +689,23 @@ def render_pivot_fragment(df_scope_all, role):
                 html_table += "</tr>"
             html_table += "</tbody></table></div><br>"
             
+            if maximize_toggle:
+                # Menggunakan teknik Auto-Expand: Menyembunyikan sidebar dan menghilangkan margin
+                st.markdown("""
+                <style>
+                    header {display: none !important;}
+                    [data-testid="stSidebar"] {display: none !important;}
+                    .block-container {
+                        max-width: 100% !important;
+                        padding-top: 1rem !important;
+                        padding-right: 1rem !important;
+                        padding-left: 1rem !important;
+                        padding-bottom: 1rem !important;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+
             st.markdown(html_table, unsafe_allow_html=True)
             
         else:
@@ -1515,37 +1522,44 @@ def main_dashboard():
             list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
             kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
             
+            # --- CASCADING DROPDOWN (Pilih Merk di Luar Form agar bisa auto-update) ---
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
+            with col_s2:
+                selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
+                
+            # Pra-Filter df_sku_base untuk mendapatkan daftar opsi dropdown yang dinamis (Cascading)
+            df_sku_for_options = df_sku_base.copy()
+            if selected_merk_sku != "SEMUA":
+                prefixes = BRAND_PREFIXES.get(selected_merk_sku, [selected_merk_sku[:3].upper()])
+                prefix_tuple = tuple(prefixes)
+                mask_history = df_sku_for_options['Merk'] == selected_merk_sku
+                mask_prefix = df_sku_for_options[kd_asal].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
+                df_sku_for_options = df_sku_for_options[mask_history | mask_prefix]
+                
+            list_sku_cascading = sorted(df_sku_for_options['Nama Barang'].dropna().astype(str).unique())
+            list_kode_all_sku = sorted(df_sku_for_options[kd_asal].astype(str).unique())
+            list_nama_all_sku = sorted(df_sku_for_options['Nama Outlet'].astype(str).unique())
+            list_provinsi_all_sku = sorted(df_sku_for_options['Provinsi'].astype(str).unique())
+            list_kota_all_sku = sorted(df_sku_for_options['Kota'].astype(str).unique())
+
             with st.form(key='sku_filter_form'):
-                col_s1, col_s2 = st.columns(2)
-                with col_s1:
-                    selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
-                with col_s2:
-                    selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
-                    
                 st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
-                list_kode_all_sku = sorted(df_sku_base[kd_asal].astype(str).unique())
-                list_nama_all_sku = sorted(df_sku_base['Nama Outlet'].astype(str).unique())
-                list_provinsi_all_sku = sorted(df_sku_base['Provinsi'].astype(str).unique())
-                list_kota_all_sku = sorted(df_sku_base['Kota'].astype(str).unique())
-
-                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                # --- 5 KOLOM (DITAMBAH SKU) ---
+                col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
                 with col_f1: filter_kode_sku = st.multiselect("Kode Customer:", list_kode_all_sku, placeholder="Pilih Kode...")
                 with col_f2: filter_nama_sku = st.multiselect("Nama Customer:", list_nama_all_sku, placeholder="Pilih Customer...")
                 with col_f3: filter_provinsi_sku = st.multiselect("Provinsi:", list_provinsi_all_sku, placeholder="Pilih Provinsi...")
                 with col_f4: filter_kota_sku = st.multiselect("Kota:", list_kota_all_sku, placeholder="Pilih Kota...")
+                with col_f5: filter_sku_spesifik = st.multiselect("Nama Barang (SKU):", list_sku_cascading, placeholder="Pilih SKU...")
 
                 maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
                 submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-            # Filtering Execution (Selalu berjalan agar tabel default langsung muncul jika data ada)
-            df_sku_filtered = df_sku_base.copy()
-            if selected_merk_sku != "SEMUA":
-                prefixes = BRAND_PREFIXES.get(selected_merk_sku, [selected_merk_sku[:3].upper()])
-                prefix_tuple = tuple(prefixes)
-                mask_history = df_sku_filtered['Merk'] == selected_merk_sku
-                mask_prefix = df_sku_filtered[kd_asal].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                df_sku_filtered = df_sku_filtered[mask_history | mask_prefix]
+            # Filtering Execution
+            df_sku_filtered = df_sku_for_options.copy() 
 
             if selected_tahun_sku:
                 df_sku_filtered = df_sku_filtered[df_sku_filtered['Tanggal'].dt.year.isin(selected_tahun_sku)]
@@ -1554,6 +1568,7 @@ def main_dashboard():
             if filter_nama_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Outlet'].astype(str).isin(filter_nama_sku)]
             if filter_provinsi_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Provinsi'].astype(str).isin(filter_provinsi_sku)]
             if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
+            if filter_sku_spesifik: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Barang'].astype(str).isin(filter_sku_spesifik)]
 
             if not filter_nama_sku:
                 st.info("👈 Silakan pilih minimal 1 'Nama Customer' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail barang yang mereka beli.")
