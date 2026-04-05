@@ -682,7 +682,7 @@ def render_pivot_fragment(df_scope_all, role):
                 # Mengatur Semua Kolom: Bisa disortir (sortable) & Filter Dropdown (agSetColumnFilter)
                 gb.configure_default_column(
                     sortable=True, 
-                    filter='agSetColumnFilter', 
+                    filter=True, 
                     resizable=True
                 )
                 
@@ -695,6 +695,18 @@ def render_pivot_fragment(df_scope_all, role):
                     return 'Rp ' + Number(params.value).toLocaleString('id-ID');
                 }
                 """)
+
+                go = gb.build()
+                AgGrid(
+                df_display,
+                gridOptions=go,
+                theme='alpine', # <--- 2. Ubah tema ke 'alpine' (paling stabil di Dark Mode)
+                height=600,
+                width='100%',
+                allow_unsafe_jscode=True,
+                # enable_enterprise_modules=True, # <--- 3. Matikan baris ini dengan tanda '#'
+                columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
+            )
                 
                 for col in df_display.columns:
                     if col in num_cols:
