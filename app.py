@@ -675,11 +675,11 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
 
-            # --- 3. IMPLEMENTASI AGGRID (Modern, Dropdown Filter, Sortable) ---
+            # --- 3. IMPLEMENTASI AGGRID AMAN (Tanpa Crash Enterprise, Pakai Tema Alpine) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_display)
                 
-                # Mengatur Semua Kolom: Bisa disortir (sortable) & Filter Dropdown (agSetColumnFilter)
+                # Menggunakan filter=True (Filter standar yang sangat aman dan mendukung pencarian)
                 gb.configure_default_column(
                     sortable=True, 
                     filter=True, 
@@ -695,18 +695,6 @@ def render_pivot_fragment(df_scope_all, role):
                     return 'Rp ' + Number(params.value).toLocaleString('id-ID');
                 }
                 """)
-
-                go = gb.build()
-                AgGrid(
-                df_display,
-                gridOptions=go,
-                theme='alpine', # <--- 2. Ubah tema ke 'alpine' (paling stabil di Dark Mode)
-                height=600,
-                width='100%',
-                allow_unsafe_jscode=True,
-                # enable_enterprise_modules=True, # <--- 3. Matikan baris ini dengan tanda '#'
-                columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
-            )
                 
                 for col in df_display.columns:
                     if col in num_cols:
@@ -717,11 +705,11 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_display,
                     gridOptions=go,
-                    theme='streamlit', # Tema Modern dan Lega ala Google Sheets
+                    theme='alpine', # Tema Alpine sangat aman dari bug Dark Mode
                     height=600,
                     width='100%',
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True, # Wajib agar agSetColumnFilter (Dropdown ala Excel) aktif
+                    enable_enterprise_modules=False, # DIMATIKAN agar tidak terjadi bug layar hitam (crash)
                     columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
                 )
             else:
@@ -1645,13 +1633,13 @@ def main_dashboard():
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
 
-                    # --- IMPLEMENTASI AGGRID (SKU TABLE) ---
+                    # --- IMPLEMENTASI AGGRID AMAN (SKU TABLE) ---
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                         
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            filter='agSetColumnFilter', 
+                            filter=True, # Menggunakan filter standar aman
                             resizable=True
                         )
                         
@@ -1673,11 +1661,11 @@ def main_dashboard():
                         AgGrid(
                             df_display_sku,
                             gridOptions=go_sku,
-                            theme='streamlit',
+                            theme='alpine', # Tema aman dari crash dark mode
                             height=600,
                             width='100%',
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True,
+                            enable_enterprise_modules=False, # DIMATIKAN agar tidak crash
                             columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
                         )
                     else:
