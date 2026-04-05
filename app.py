@@ -661,8 +661,8 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL (Dibiarkan di dalam DF agar bisa disortir ke atas) ---
-            total_dict = {col: None for col in df_filtered.columns}
+            # --- 2. PENYESUAIAN GRAND TOTAL ---
+            total_dict = {col: "" for col in df_filtered.columns} # <-- DIGANTI JADI STRING KOSONG
             if 'Kode Customer' in total_dict:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
             elif len(df_filtered.columns) > 0:
@@ -675,47 +675,35 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
 
-            # --- 3. IMPLEMENTASI AGGRID AMAN (Tanpa auto_size dan width=100% yang bikin crash) ---
+            # --- 3. VAKSIN ANTI CRASH AGGRID ---
+            df_display = df_display.fillna("") # Basmi semua NaN/Null
+            df_display.columns = df_display.columns.astype(str) # Pastikan header murni teks
+
+            # --- 4. IMPLEMENTASI AGGRID (MODE SUPER AMAN) ---
             if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_display)
-                
-                # Mengaktifkan filter agSetColumnFilter (Dropdown ala Excel yang bisa diketik)
-                gb.configure_default_column(
-                    sortable=True, 
-                    filter='agSetColumnFilter', 
-                    resizable=True
-                )
-                
-                # Formatter JavaScript untuk Kolom Angka (Agar tampil sebagai Rp x.xxx)
-                rupiah_format = JsCode("""
-                function(params) {
-                    if (params.value === null || params.value === undefined || params.value === "") {
-                        return '-';
-                    }
-                    return 'Rp ' + Number(params.value).toLocaleString('id-ID');
-                }
-                """)
-                
-                for col in df_display.columns:
-                    if col in num_cols:
-                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
-                
-                go = gb.build()
-                
-                AgGrid(
-                    df_display,
-                    gridOptions=go,
-                    theme='alpine', # Tema aman, lega, modern ala Google Sheets
-                    height=600,
-                    allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True # Wajib diaktifkan untuk Dropdown agSetColumnFilter
-                )
+                try:
+                    gb = GridOptionsBuilder.from_dataframe(df_display)
+                    
+                    # Filter standar aman
+                    gb.configure_default_column(sortable=True, filter=True, resizable=True)
+                    
+                    go = gb.build()
+                    
+                    AgGrid(
+                        df_display,
+                        gridOptions=go,
+                        theme='streamlit', 
+                        height=500,
+                        width='100%',
+                        allow_unsafe_jscode=False, # MATIKAN SEMENTARA
+                        enable_enterprise_modules=False # MATIKAN SEMENTARA
+                    )
+                except Exception as e:
+                    st.error(f"Sistem AgGrid Error: {e}")
+                    st.dataframe(df_display)
             else:
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
                 st.dataframe(df_display)
-            
-        else:
-            st.info("Data Kosong setelah difilter.")
             
         # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
