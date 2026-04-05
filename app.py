@@ -653,15 +653,25 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
+            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
+            if 'Nama Customer' in df_filtered.columns:
+                df_filtered = df_filtered.drop(columns=['Nama Customer'])
+
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
-            total_dict = {col: "" for col in df_filtered.columns}
-            total_dict['Nama Customer'] = "GRAND TOTAL" 
-            for col in num_cols:
-                total_dict[col] = df_filtered[col].sum()
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+            # --- 2. PENYESUAIAN GRAND TOTAL ---
+            total_dict = {col: "" for col in df_filtered.columns}
+            if 'Kode Customer' in total_dict:
+                total_dict['Kode Customer'] = "GRAND TOTAL"
+            elif len(df_filtered.columns) > 0:
+                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
+                
+            for col in num_cols:
+                if col in df_filtered.columns:
+                    total_dict[col] = df_filtered[col].sum()
+                    
+            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
             # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
@@ -673,21 +683,39 @@ def render_pivot_fragment(df_scope_all, role):
                 .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
                 .pivot-table tr:hover td { background-color: #e3f2fd !important; }
                 .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                /* Styling untuk input Filter Corong */
-                .filter-input { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                /* Styling untuk Dropdown Filter */
+                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
             </style>
             <div style="overflow-x: auto; max-height: 800px;">
                 <table class="pivot-table" id="table-pivot-main">
                     <thead>
                         <tr>
             """
+            
+            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
+            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
+            
             for col in df_display.columns:
-                # --- 🚀 FITUR: Filter Corong (Gaya A) ---
-                html_table += f"<th>{col}<br><input type='text' class='filter-input' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-pivot-main')\"></th>"
+                if col in categorical_cols:
+                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
+                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
+                    
+                    options_html = "<option value=''>Semua</option>"
+                    for val in unique_vals:
+                        options_html += f"<option value='{val}'>{val}</option>"
+                    
+                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
+                else:
+                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
+                    html_table += f"<th>{col}</th>"
+                    
             html_table += "</tr></thead><tbody>"
             
             for _, row in df_display.iterrows():
-                is_gt = row.get('Nama Customer') == 'GRAND TOTAL'
+                is_gt = False
+                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
+                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
+                
                 tr_class = "grand-total-row" if is_gt else ""
                 html_table += f'<tr class="{tr_class}">'
                 
@@ -704,36 +732,42 @@ def render_pivot_fragment(df_scope_all, role):
                         html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
                     else:
                         val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                        if is_gt and col == 'Nama Customer':
+                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
                             html_table += f'<td style="text-align: center;">{val_str}</td>'
                         else:
                             html_table += f'<td>{val_str}</td>'
                 html_table += "</tr>"
                 
-            # --- 🚀 JS INJECTION: Script Filter Real-Time ---
+            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
             html_table += """
             </tbody></table></div><br>
             <script>
-            function filterTableData(tableId) {
+            function filterTableDropdown(tableId) {
                 var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
                 if (!table) return;
                 var tr = table.getElementsByTagName("tr");
                 var ths = table.getElementsByTagName("th");
-                var inputs = [];
-                for (var i=0; i<ths.length; i++) {
-                    inputs.push(ths[i].getElementsByTagName("input")[0]);
+                var selects = [];
+                
+                // Kumpulkan semua elemen select
+                for (var i = 0; i < ths.length; i++) {
+                    var sel = ths[i].getElementsByTagName("select")[0];
+                    selects.push(sel ? sel : null);
                 }
                 
+                // Eksekusi filter
                 for (var i = 1; i < tr.length; i++) {
                     if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                    
                     var displayRow = true;
-                    for (var j = 0; j < inputs.length; j++) {
-                        if (inputs[j] && inputs[j].value !== "") {
-                            var filter = inputs[j].value.toUpperCase();
+                    for (var j = 0; j < selects.length; j++) {
+                        if (selects[j] && selects[j].value !== "") {
+                            var filterVal = selects[j].value.toUpperCase();
                             var td = tr[i].getElementsByTagName("td")[j];
                             if (td) {
                                 var txtValue = td.textContent || td.innerText;
-                                if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                // Pencarian Exact Match (Sama Persis)
+                                if (txtValue.toUpperCase() !== filterVal) {
                                     displayRow = false;
                                     break;
                                 }
