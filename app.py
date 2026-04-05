@@ -270,8 +270,11 @@ def generate_daily_token():
     except: secret_salt = "RAHASIA_PERUSAHAAN_2025" 
     now_wib = get_current_time_wib()
     time_key = now_wib.strftime("%Y-%m-%d-%p")
-    hash_object = hashlib.sha256(f"{time_key}-{secret_salt}".encode())
-    return "".join(filter(str.isdigit, hash_object.hexdigest()))[:4].ljust(4, '0')
+    hash_object = hashlib.sha256(raw_string.encode())
+    hex_dig = hash_object.hexdigest()
+    numeric_filter = filter(str.isdigit, hex_dig)
+    numeric_string = "".join(numeric_filter)
+    return numeric_string[:4].ljust(4, '0')
 
 def render_custom_progress(title, current, target):
     if target == 0: target = 1
@@ -657,10 +660,10 @@ def render_pivot_fragment(df_scope_all, role):
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # --- PENGHANCUR BUG KOLOM GANDA DI HULU ---
+            # --- PENGHANCUR BUG KOLOM GANDA ---
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
-
-            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES, CORPORATE BLUE, & JS FILTER =================
+            
+            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
             html_table = """
             <style>
                 .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -669,20 +672,18 @@ def render_pivot_fragment(df_scope_all, role):
                 .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
                 .pivot-table tr:hover td { background-color: #e3f2fd !important; }
                 .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                /* Style untuk input filter di dalam header */
-                .filter-input { width: 100%; padding: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-weight: normal; font-size: 11px; color: black; margin-top: 6px; }
             </style>
             <div style="overflow-x: auto; max-height: 800px;">
-                <table class="pivot-table" id="pivot-table-id">
+                <table class="pivot-table" id="pivotTbl">
                     <thead>
                         <tr>
             """
             for idx, col in enumerate(df_display.columns):
-                # Input disematkan tepat di bawah teks judul (dalam th yang sama)
                 if col not in num_cols:
-                    html_table += f"<th>{col}<br><input type='text' class='filter-input' data-colindex='{idx}' placeholder='🔍 Filter {col}' onkeyup='applyFilters(\"pivot-table-id\")' onclick='event.stopPropagation();' /></th>"
+                    html_table += f"<th><div style='display:flex; justify-content:space-between; align-items:center;'><span>{col}</span><input type='text' class='filter-input' data-colindex='{idx}' placeholder='🔍' style='width:60px; margin-left:8px; font-weight:normal; font-size:11px; padding:2px 4px; border-radius:3px; border:1px solid #ccc; color:black;' onkeyup='filterTable(\"pivotTbl\")' onclick='event.stopPropagation()'></div></th>"
                 else:
                     html_table += f"<th>{col}</th>"
+                    
             html_table += "</tr></thead><tbody>"
             
             for _, row in df_display.iterrows():
@@ -708,41 +709,35 @@ def render_pivot_fragment(df_scope_all, role):
                         else:
                             html_table += f'<td>{val_str}</td>'
                 html_table += "</tr>"
-            
-            # --- JS LOGIC UNTUK FILTER (VANILLA JS) ---
             html_table += """
                 </tbody></table></div><br>
                 <script>
-                function applyFilters(tableId) {
+                function filterTable(tableId) {
                     var table = document.getElementById(tableId);
                     if (!table) return;
-                    var inputs = table.getElementsByClassName("filter-input");
-                    var tbody = table.getElementsByTagName("tbody")[0];
-                    var tr = tbody.getElementsByTagName("tr");
-                    
-                    for (var i = 0; i < tr.length; i++) {
-                        // JANGAN SEMBUNYIKAN BARIS GRAND TOTAL
-                        if (tr[i].className.includes("grand-total-row")) {
-                            tr[i].style.display = "";
+                    var trs = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+                    var inputs = table.querySelectorAll("thead input.filter-input");
+                    for (var i = 0; i < trs.length; i++) {
+                        if (trs[i].className.indexOf("grand-total-row") > -1) {
+                            trs[i].style.display = "";
                             continue;
                         }
                         var showRow = true;
                         for (var j = 0; j < inputs.length; j++) {
                             var filterVal = inputs[j].value.toUpperCase();
                             if (filterVal) {
-                                var colIndex = inputs[j].getAttribute("data-colindex");
-                                var td = tr[i].getElementsByTagName("td")[colIndex];
+                                var colIdx = inputs[j].getAttribute("data-colindex");
+                                var td = trs[i].getElementsByTagName("td")[colIdx];
                                 if (td) {
-                                    var txtValue = td.textContent || td.innerText;
-                                    // PENCARIAN FLEKSIBEL (Case Insensitive)
-                                    if (txtValue.toUpperCase().indexOf(filterVal) === -1) {
+                                    var cellText = td.textContent || td.innerText;
+                                    if (cellText.toUpperCase().indexOf(filterVal) === -1) {
                                         showRow = false;
                                         break;
                                     }
                                 }
                             }
                         }
-                        tr[i].style.display = showRow ? "" : "none";
+                        trs[i].style.display = showRow ? "" : "none";
                     }
                 }
                 </script>
@@ -1664,7 +1659,7 @@ def main_dashboard():
                     # --- PENGHANCUR BUG KOLOM GANDA DI HULU ---
                     df_display = df_display.loc[:, ~df_display.columns.duplicated()]
 
-                    # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES, CORPORATE BLUE, & JS FILTER =================
+                    # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
                     html_table = """
                     <style>
                         .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -1673,18 +1668,15 @@ def main_dashboard():
                         .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
                         .pivot-table tr:hover td { background-color: #e3f2fd !important; }
                         .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        /* Style untuk input filter di dalam header */
-                        .filter-input { width: 100%; padding: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-weight: normal; font-size: 11px; color: black; margin-top: 6px; }
                     </style>
                     <div style="overflow-x: auto; max-height: 800px;">
-                        <table class="pivot-table" id="pivot-table-id">
+                        <table class="pivot-table" id="pivotTbl">
                             <thead>
                                 <tr>
                     """
                     for idx, col in enumerate(df_display.columns):
-                        # Input disematkan tepat di bawah teks judul (dalam th yang sama)
                         if col not in num_cols:
-                            html_table += f"<th><div style='display:flex; align-items:center; justify-content:space-between;'><span>{col}</span> <input type='text' class='filter-input' style='width:60px; margin-top:0; margin-left:8px; padding:3px 5px;' data-colindex='{idx}' placeholder='🔍' onkeyup='applyFilters(\"pivot-table-id\")' onclick='event.stopPropagation();' /></div></th>"
+                            html_table += f"<th><div style='display:flex; justify-content:space-between; align-items:center;'><span>{col}</span><input type='text' class='filter-input' data-colindex='{idx}' placeholder='🔍' style='width:60px; margin-left:8px; font-weight:normal; font-size:11px; padding:2px 4px; border-radius:3px; border:1px solid #ccc; color:black;' onkeyup='filterTable(\"pivotTbl\")' onclick='event.stopPropagation()'></div></th>"
                         else:
                             html_table += f"<th>{col}</th>"
                     html_table += "</tr></thead><tbody>"
@@ -1712,47 +1704,41 @@ def main_dashboard():
                                 else:
                                     html_table += f'<td>{val_str}</td>'
                         html_table += "</tr>"
-                    
-                    # --- JS LOGIC UNTUK FILTER (VANILLA JS) ---
                     html_table += """
                         </tbody></table></div><br>
                         <script>
-                        function applyFilters(tableId) {
+                        function filterTable(tableId) {
                             var table = document.getElementById(tableId);
                             if (!table) return;
-                            var inputs = table.getElementsByClassName("filter-input");
-                            var tbody = table.getElementsByTagName("tbody")[0];
-                            var tr = tbody.getElementsByTagName("tr");
-                            
-                            for (var i = 0; i < tr.length; i++) {
-                                // JANGAN SEMBUNYIKAN BARIS GRAND TOTAL
-                                if (tr[i].className.includes("grand-total-row")) {
-                                    tr[i].style.display = "";
+                            var trs = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+                            var inputs = table.querySelectorAll("thead input.filter-input");
+                            for (var i = 0; i < trs.length; i++) {
+                                if (trs[i].className.indexOf("grand-total-row") > -1) {
+                                    trs[i].style.display = "";
                                     continue;
                                 }
                                 var showRow = true;
                                 for (var j = 0; j < inputs.length; j++) {
                                     var filterVal = inputs[j].value.toUpperCase();
                                     if (filterVal) {
-                                        var colIndex = inputs[j].getAttribute("data-colindex");
-                                        var td = tr[i].getElementsByTagName("td")[colIndex];
+                                        var colIdx = inputs[j].getAttribute("data-colindex");
+                                        var td = trs[i].getElementsByTagName("td")[colIdx];
                                         if (td) {
-                                            var txtValue = td.textContent || td.innerText;
-                                            // PENCARIAN FLEKSIBEL (Case Insensitive)
-                                            if (txtValue.toUpperCase().indexOf(filterVal) === -1) {
+                                            var cellText = td.textContent || td.innerText;
+                                            if (cellText.toUpperCase().indexOf(filterVal) === -1) {
                                                 showRow = false;
                                                 break;
                                             }
                                         }
                                     }
                                 }
-                                tr[i].style.display = showRow ? "" : "none";
+                                trs[i].style.display = showRow ? "" : "none";
                             }
                         }
                         </script>
                     """
                     
-                    components.html(html_table, height=800 if maximize_toggle else 600, scrolling=True)
+                    st.markdown(html_table, unsafe_allow_html=True)
                     
                 else:
                     st.info("Data Kosong setelah difilter.")
@@ -1914,17 +1900,16 @@ def main_dashboard():
                         .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
                         .sku-table tr:hover td { background-color: #e3f2fd !important; }
                         .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        .filter-input { width: 100%; padding: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-weight: normal; font-size: 11px; color: black; margin-top: 4px; }
                     </style>
                     <div style="overflow-x: auto; max-height: 800px;">
-                        <table class="sku-table" id="sku-table-id">
+                        <table class="sku-table" id="skuTbl">
                             <thead>
                                 <tr>
                     """
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
                     for idx, col in enumerate(df_display_sku.columns):
                         if col not in num_cols_sku:
-                            html_table_sku += f"<th><div style='display:flex; align-items:center; justify-content:space-between;'><span>{col}</span> <input type='text' class='filter-input' style='width:60px; margin-top:0; margin-left:8px; padding:3px 5px;' data-colindex='{idx}' placeholder='🔍' onkeyup='applyFiltersSku(\"sku-table-id\")' onclick='event.stopPropagation();' /></div></th>"
+                            html_table_sku += f"<th><div style='display:flex; justify-content:space-between; align-items:center;'><span>{col}</span><input type='text' class='filter-input' data-colindex='{idx}' placeholder='🔍' style='width:60px; margin-left:8px; font-weight:normal; font-size:11px; padding:2px 4px; border-radius:3px; border:1px solid #ccc; color:black;' onkeyup='filterTable(\"skuTbl\")' onclick='event.stopPropagation()'></div></th>"
                         else:
                             html_table_sku += f"<th>{col}</th>"
                     html_table_sku += "</tr></thead><tbody>"
@@ -1955,40 +1940,38 @@ def main_dashboard():
                     html_table_sku += """
                         </tbody></table></div><br>
                         <script>
-                        function applyFiltersSku(tableId) {
+                        function filterTable(tableId) {
                             var table = document.getElementById(tableId);
                             if (!table) return;
-                            var inputs = table.getElementsByClassName("filter-input");
-                            var tbody = table.getElementsByTagName("tbody")[0];
-                            var tr = tbody.getElementsByTagName("tr");
-                            
-                            for (var i = 0; i < tr.length; i++) {
-                                if (tr[i].className.includes("grand-total-row")) {
-                                    tr[i].style.display = "";
+                            var trs = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+                            var inputs = table.querySelectorAll("thead input.filter-input");
+                            for (var i = 0; i < trs.length; i++) {
+                                if (trs[i].className.indexOf("grand-total-row") > -1) {
+                                    trs[i].style.display = "";
                                     continue;
                                 }
                                 var showRow = true;
                                 for (var j = 0; j < inputs.length; j++) {
                                     var filterVal = inputs[j].value.toUpperCase();
                                     if (filterVal) {
-                                        var colIndex = inputs[j].getAttribute("data-colindex");
-                                        var td = tr[i].getElementsByTagName("td")[colIndex];
+                                        var colIdx = inputs[j].getAttribute("data-colindex");
+                                        var td = trs[i].getElementsByTagName("td")[colIdx];
                                         if (td) {
-                                            var txtValue = td.textContent || td.innerText;
-                                            if (txtValue.toUpperCase().indexOf(filterVal) === -1) {
+                                            var cellText = td.textContent || td.innerText;
+                                            if (cellText.toUpperCase().indexOf(filterVal) === -1) {
                                                 showRow = false;
                                                 break;
                                             }
                                         }
                                     }
                                 }
-                                tr[i].style.display = showRow ? "" : "none";
+                                trs[i].style.display = showRow ? "" : "none";
                             }
                         }
                         </script>
                     """
                     
-                    components.html(html_table_sku, height=800 if maximize_toggle_sku else 600, scrolling=True)
+                    st.markdown(html_table_sku, unsafe_allow_html=True)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
