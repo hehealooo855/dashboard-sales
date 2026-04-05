@@ -19,13 +19,6 @@ import calendar
 import concurrent.futures
 import streamlit.components.v1 as components 
 
-# --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
-try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
-    AGGRID_AVAILABLE = True
-except ImportError:
-    AGGRID_AVAILABLE = False
-
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
     page_title="Dashboard Sales", 
@@ -408,7 +401,7 @@ def load_data_from_url():
 
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items(): 
+        for target_brand, keywords in BRAND_ALIitems(): 
             for keyword in keywords:
                 if keyword in raw_upper: return target_brand
         return raw_brand
@@ -653,6 +646,7 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
+            
             # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
@@ -660,66 +654,62 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL ---
-            total_dict = {col: "" for col in df_filtered.columns}
-            if 'Kode Customer' in total_dict:
-                total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_filtered.columns) > 0:
-                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
-                
-            for col in num_cols:
-                if col in df_filtered.columns:
-                    total_dict[col] = df_filtered[col].sum()
-                    
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
-            
-            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
+            df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
+
+            # --- 2. PEMBUATAN HTML TABLE NATIVE DENGAN DATALIST & STICKY FOOTER ---
             html_table = """
             <style>
                 .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
-                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                /* Styling untuk Dropdown Filter */
-                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; }
+                .pivot-table th:hover { background-color: #1f6391; }
+                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #333; background-color: #fff; }
+                .pivot-table tbody tr:nth-child(even) td { background-color: #f9f9f9; }
+                .pivot-table tbody tr:hover td { background-color: #e3f2fd !important; }
+                
+                /* TFOOTER STICKY UNTUK GRAND TOTAL */
+                .pivot-table tfoot { position: sticky; bottom: 0; z-index: 20; }
+                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; border-bottom: 2px solid #555;}
+                
+                /* SEARCHABLE DROPDOWN (DATALIST) */
+                .filter-input { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                .sort-icon { font-size: 10px; margin-left: 5px; opacity: 0.7; }
             </style>
-            <div style="overflow-x: auto; max-height: 800px;">
+            
+            <div style="overflow-x: auto; max-height: 700px; border: 1px solid #ccc;">
                 <table class="pivot-table" id="table-pivot-main">
                     <thead>
                         <tr>
             """
             
-            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
-            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
-            
-            for col in df_display.columns:
-                if col in categorical_cols:
-                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
-                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
-                    
-                    options_html = "<option value=''>Semua</option>"
-                    for val in unique_vals:
-                        options_html += f"<option value='{val}'>{val}</option>"
-                    
-                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
-                else:
-                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
-                    html_table += f"<th>{col}</th>"
-                    
-            html_table += "</tr></thead><tbody>"
-            
-            for _, row in df_display.iterrows():
-                is_gt = False
-                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
-                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
+            # --- RENDER HEADER + FILTER DATALIST (DI SEMUA KOLOM) ---
+            for col_idx, col in enumerate(df_filtered.columns):
+                # Buat ID unik untuk datalist tiap kolom
+                list_id = f"list_pivot_{col_idx}"
+                unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
                 
-                tr_class = "grand-total-row" if is_gt else ""
-                html_table += f'<tr class="{tr_class}">'
+                # Options untuk Datalist (Dropdown yang bisa diketik)
+                options_html = ""
+                for val in unique_vals:
+                    # Bersihkan tanda petik ganda agar HTML tidak rusak
+                    safe_val = val.replace('"', '&quot;')
+                    options_html += f"<option value=\"{safe_val}\"></option>"
                 
-                for col in df_display.columns:
+                # Header bisa di-klik untuk sortir, tapi input di dalamnya tidak boleh memicu sortir
+                html_table += f"""
+                    <th onclick="sortNativeTable(event, 'table-pivot-main', {col_idx}, this)" data-sort-dir="asc">
+                        {col} <span class="sort-icon">↕</span><br>
+                        <input type="text" list="{list_id}" class="filter-input" placeholder="🔍 Ketik / Pilih..." onkeyup="filterNativeTable('table-pivot-main')" onchange="filterNativeTable('table-pivot-main')" onclick="event.stopPropagation();">
+                        <datalist id="{list_id}">
+                            {options_html}
+                        </datalist>
+                    </th>
+                """
+            html_table += "</tr></thead><tbody id='table-pivot-main-body'>"
+            
+            # --- RENDER BODY (DATA) ---
+            for _, row in df_filtered.iterrows():
+                html_table += "<tr>"
+                for col in df_filtered.columns:
                     val = row[col]
                     if col in num_cols:
                         if pd.isna(val) or val == "":
@@ -729,45 +719,57 @@ def render_pivot_fragment(df_scope_all, role):
                                 val_str = f"Rp {float(val):,.0f}".replace(',', '.')
                             except:
                                 val_str = str(val)
-                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                        html_table += f'<td style="text-align: right; white-space: nowrap;" data-raw="{val}">{val_str}</td>'
                     else:
                         val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
-                            html_table += f'<td style="text-align: center;">{val_str}</td>'
-                        else:
-                            html_table += f'<td>{val_str}</td>'
+                        html_table += f'<td>{val_str}</td>'
                 html_table += "</tr>"
                 
-            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
+            html_table += "</tbody>"
+            
+            # --- RENDER TFOOTER (GRAND TOTAL TERKUNCI) ---
+            html_table += "<tfoot><tr class='grand-total-row'>"
+            for col_idx, col in enumerate(df_filtered.columns):
+                if col_idx == 0:
+                    html_table += "<td style='text-align: center;'>GRAND TOTAL</td>"
+                elif col in num_cols:
+                    total_val = df_filtered[col].sum()
+                    try:
+                        total_str = f"Rp {float(total_val):,.0f}".replace(',', '.')
+                    except:
+                        total_str = str(total_val)
+                    html_table += f"<td style='text-align: right; white-space: nowrap;'>{total_str}</td>"
+                else:
+                    html_table += "<td>-</td>"
+            html_table += "</tr></tfoot></table></div><br>"
+
+            # --- 3. JAVASCRIPT UNTUK FILTER (PARSIAL) & SORTIR ---
             html_table += """
-            </tbody></table></div><br>
             <script>
-            function filterTableDropdown(tableId) {
+            // FUNGSI FILTER PARSIAL
+            function filterNativeTable(tableId) {
                 var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
                 if (!table) return;
-                var tr = table.getElementsByTagName("tr");
+                var tbody = table.querySelector("tbody");
+                var tr = tbody.getElementsByTagName("tr");
                 var ths = table.getElementsByTagName("th");
-                var selects = [];
                 
-                // Kumpulkan semua elemen select
+                var inputs = [];
                 for (var i = 0; i < ths.length; i++) {
-                    var sel = ths[i].getElementsByTagName("select")[0];
-                    selects.push(sel ? sel : null);
+                    var inp = ths[i].getElementsByTagName("input")[0];
+                    inputs.push(inp);
                 }
                 
-                // Eksekusi filter
-                for (var i = 1; i < tr.length; i++) {
-                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
-                    
+                for (var i = 0; i < tr.length; i++) {
                     var displayRow = true;
-                    for (var j = 0; j < selects.length; j++) {
-                        if (selects[j] && selects[j].value !== "") {
-                            var filterVal = selects[j].value.toUpperCase();
+                    for (var j = 0; j < inputs.length; j++) {
+                        if (inputs[j] && inputs[j].value !== "") {
+                            var filterVal = inputs[j].value.toLowerCase();
                             var td = tr[i].getElementsByTagName("td")[j];
                             if (td) {
-                                var txtValue = td.textContent || td.innerText;
-                                // Pencarian Exact Match (Sama Persis)
-                                if (txtValue.toUpperCase() !== filterVal) {
+                                var txtValue = (td.textContent || td.innerText).toLowerCase();
+                                // PENCARIAN PARSIAL (INCLUDES)
+                                if (txtValue.indexOf(filterVal) === -1) {
                                     displayRow = false;
                                     break;
                                 }
@@ -777,9 +779,60 @@ def render_pivot_fragment(df_scope_all, role):
                     tr[i].style.display = displayRow ? "" : "none";
                 }
             }
+
+            // FUNGSI SORTIR KLIK (BESAR -> KECIL)
+            function sortNativeTable(event, tableId, colIndex, thElement) {
+                // Jangan sortir jika yang diklik adalah kotak input
+                if (event.target.tagName.toLowerCase() === 'input') return;
+
+                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                if (!table) return;
+                var tbody = table.querySelector("tbody");
+                var rows = Array.from(tbody.querySelectorAll("tr"));
+                
+                // Toggle Arah Sortir
+                var dir = thElement.getAttribute("data-sort-dir") === "asc" ? "desc" : "asc";
+                thElement.setAttribute("data-sort-dir", dir);
+                
+                // Update Icon
+                var allThs = table.querySelectorAll("th");
+                allThs.forEach(th => {
+                    var icon = th.querySelector(".sort-icon");
+                    if (icon) icon.innerText = "↕";
+                });
+                var currentIcon = thElement.querySelector(".sort-icon");
+                if (currentIcon) currentIcon.innerText = dir === "asc" ? "↑" : "↓";
+
+                // Sorting Logic
+                rows.sort((a, b) => {
+                    var cellA = a.cells[colIndex];
+                    var cellB = b.cells[colIndex];
+                    
+                    // Coba ambil data mentah (angka murni) jika ada, atau bersihkan teks Rp
+                    var valA = cellA.getAttribute("data-raw") || cellA.innerText.replace(/[^0-9.-]+/g,"");
+                    var valB = cellB.getAttribute("data-raw") || cellB.innerText.replace(/[^0-9.-]+/g,"");
+                    
+                    var numA = parseFloat(valA);
+                    var numB = parseFloat(valB);
+
+                    // Jika keduanya adalah angka, urutkan sebagai angka
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return dir === "asc" ? numA - numB : numB - numA;
+                    } else {
+                        // Jika bukan, urutkan sebagai teks
+                        var textA = cellA.innerText.toLowerCase();
+                        var textB = cellB.innerText.toLowerCase();
+                        if (textA < textB) return dir === "asc" ? -1 : 1;
+                        if (textA > textB) return dir === "asc" ? 1 : -1;
+                        return 0;
+                    }
+                });
+
+                // Memasukkan kembali baris yang sudah disortir ke Tbody
+                rows.forEach(row => tbody.appendChild(row));
+            }
             </script>
             """
-            
             st.markdown(html_table, unsafe_allow_html=True)
             
         else:
@@ -790,8 +843,16 @@ def render_pivot_fragment(df_scope_all, role):
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                if 'df_filtered' in locals() and not df_filtered.empty:
+                    df_export = df_filtered.copy()
+                    # Tambah grand total untuk excel
+                    total_dict_ex = {col: "" for col in df_export.columns}
+                    total_dict_ex[df_export.columns[0]] = "GRAND TOTAL"
+                    for c in num_cols:
+                        if c in df_export.columns:
+                            total_dict_ex[c] = df_export[c].sum()
+                    df_export = pd.concat([df_export, pd.DataFrame([total_dict_ex])], ignore_index=True)
+                    df_export.to_excel(writer, index=False, sheet_name='Master Data')
                 
                 workbook = writer.book
                 worksheet = writer.sheets['Master Data']
@@ -804,12 +865,11 @@ def render_pivot_fragment(df_scope_all, role):
                 worksheet.set_footer(f'&RPage &P of &N')
                 
                 format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) 
+                worksheet.set_column('C:P', None, format1) 
                 
-                if 'df_display' in locals() and not df_display.empty:
+                if 'df_filtered' in locals() and not df_filtered.empty:
                     bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
-                    worksheet.set_row(last_row_idx, None, bold_format)
+                    worksheet.set_row(len(df_export)-1, None, bold_format)
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX) - DRM Protected",
@@ -1670,7 +1730,6 @@ def main_dashboard():
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
                     # --- 🚀 FITUR: Tabel SKU Bunglon ---
-                    # Jika user mencari SKU spesifik, balik tabelnya menjadi berbasis Toko
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
                         display_col = 'Nama Toko'
@@ -1691,47 +1750,63 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # Grand Total Row
-                    total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
-                        total_dict_sku[col] = pivot_sku[col].sum()
-                    
-                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    
-                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+                    df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-                    
-                    # HTML Table Rendering
+
+                    # --- PEMBUATAN HTML TABLE NATIVE DENGAN DATALIST & STICKY FOOTER (SKU TAB) ---
                     html_table_sku = """
                     <style>
                         .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
-                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        /* Styling untuk input Filter Corong */
-                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; }
+                        .sku-table th:hover { background-color: #1f6391; }
+                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #333; background-color: #fff; }
+                        .sku-table tbody tr:nth-child(even) td { background-color: #f9f9f9; }
+                        .sku-table tbody tr:hover td { background-color: #e3f2fd !important; }
+                        
+                        /* TFOOTER STICKY UNTUK GRAND TOTAL */
+                        .sku-table tfoot { position: sticky; bottom: 0; z-index: 20; }
+                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; border-bottom: 2px solid #555;}
+                        
+                        /* SEARCHABLE DROPDOWN (DATALIST) */
+                        .filter-input-sku { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                        .sort-icon { font-size: 10px; margin-left: 5px; opacity: 0.7; }
                     </style>
-                    <div style="overflow-x: auto; max-height: 800px;">
+                    
+                    <div style="overflow-x: auto; max-height: 700px; border: 1px solid #ccc;">
                         <table class="sku-table" id="table-sku-main">
                             <thead>
                                 <tr>
                     """
-                    for col in df_display_sku.columns:
-                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
-                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
-                    html_table_sku += "</tr></thead><tbody>"
                     
-                    for _, row in df_display_sku.iterrows():
-                        is_gt = row.get(display_col) == 'GRAND TOTAL'
-                        tr_class = "grand-total-row" if is_gt else ""
-                        html_table_sku += f'<tr class="{tr_class}">'
+                    num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
+                    
+                    # --- RENDER HEADER SKU ---
+                    for col_idx, col in enumerate(df_display_sku.columns):
+                        list_id_sku = f"list_sku_{col_idx}"
+                        unique_vals_sku = sorted(list(set([str(x) for x in df_display_sku[col].dropna() if str(x).strip() != ""])))
                         
+                        options_html_sku = ""
+                        for val in unique_vals_sku:
+                            safe_val = val.replace('"', '&quot;')
+                            options_html_sku += f"<option value=\"{safe_val}\"></option>"
+                        
+                        html_table_sku += f"""
+                            <th onclick="sortNativeTableSKU(event, 'table-sku-main', {col_idx}, this)" data-sort-dir="asc">
+                                {col} <span class="sort-icon">↕</span><br>
+                                <input type="text" list="{list_id_sku}" class="filter-input-sku" placeholder="🔍 Ketik / Pilih..." onkeyup="filterNativeTableSKU('table-sku-main')" onchange="filterNativeTableSKU('table-sku-main')" onclick="event.stopPropagation();">
+                                <datalist id="{list_id_sku}">
+                                    {options_html_sku}
+                                </datalist>
+                            </th>
+                        """
+                    html_table_sku += "</tr></thead><tbody id='table-sku-main-body'>"
+                    
+                    # --- RENDER BODY SKU ---
+                    for _, row in df_display_sku.iterrows():
+                        html_table_sku += "<tr>"
                         for col in df_display_sku.columns:
                             val = row[col]
-                            if col != display_col:
+                            if col in num_cols_sku:
                                 if pd.isna(val) or val == 0 or val == "":
                                     val_str = "-"
                                 else:
@@ -1739,38 +1814,55 @@ def main_dashboard():
                                         val_str = f"Rp {float(val):,.0f}".replace(',', '.')
                                     except:
                                         val_str = str(val)
-                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;" data-raw="{val}">{val_str}</td>'
                             else:
                                 val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                                if is_gt:
-                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
-                                else:
-                                    html_table_sku += f'<td>{val_str}</td>'
+                                html_table_sku += f'<td>{val_str}</td>'
                         html_table_sku += "</tr>"
                         
+                    html_table_sku += "</tbody>"
+                    
+                    # --- RENDER TFOOTER SKU (GRAND TOTAL TERKUNCI) ---
+                    html_table_sku += "<tfoot><tr class='grand-total-row'>"
+                    for col_idx, col in enumerate(df_display_sku.columns):
+                        if col_idx == 0:
+                            html_table_sku += "<td style='text-align: center;'>GRAND TOTAL</td>"
+                        elif col in num_cols_sku:
+                            total_val_sku = df_display_sku[col].sum()
+                            try:
+                                total_str_sku = f"Rp {float(total_val_sku):,.0f}".replace(',', '.')
+                            except:
+                                total_str_sku = str(total_val_sku)
+                            html_table_sku += f"<td style='text-align: right; white-space: nowrap;'>{total_str_sku}</td>"
+                        else:
+                            html_table_sku += "<td>-</td>"
+                    html_table_sku += "</tr></tfoot></table></div><br>"
+
+                    # --- JAVASCRIPT UNTUK SKU TAB ---
                     html_table_sku += """
-                    </tbody></table></div><br>
                     <script>
-                    function filterTableData(tableId) {
+                    function filterNativeTableSKU(tableId) {
                         var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
                         if (!table) return;
-                        var tr = table.getElementsByTagName("tr");
+                        var tbody = table.querySelector("tbody");
+                        var tr = tbody.getElementsByTagName("tr");
                         var ths = table.getElementsByTagName("th");
+                        
                         var inputs = [];
-                        for (var i=0; i<ths.length; i++) {
-                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                        for (var i = 0; i < ths.length; i++) {
+                            var inp = ths[i].getElementsByTagName("input")[0];
+                            inputs.push(inp);
                         }
                         
-                        for (var i = 1; i < tr.length; i++) {
-                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                        for (var i = 0; i < tr.length; i++) {
                             var displayRow = true;
                             for (var j = 0; j < inputs.length; j++) {
                                 if (inputs[j] && inputs[j].value !== "") {
-                                    var filter = inputs[j].value.toUpperCase();
+                                    var filterVal = inputs[j].value.toLowerCase();
                                     var td = tr[i].getElementsByTagName("td")[j];
                                     if (td) {
-                                        var txtValue = td.textContent || td.innerText;
-                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                        var txtValue = (td.textContent || td.innerText).toLowerCase();
+                                        if (txtValue.indexOf(filterVal) === -1) {
                                             displayRow = false;
                                             break;
                                         }
@@ -1779,6 +1871,49 @@ def main_dashboard():
                             }
                             tr[i].style.display = displayRow ? "" : "none";
                         }
+                    }
+
+                    function sortNativeTableSKU(event, tableId, colIndex, thElement) {
+                        if (event.target.tagName.toLowerCase() === 'input') return;
+
+                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                        if (!table) return;
+                        var tbody = table.querySelector("tbody");
+                        var rows = Array.from(tbody.querySelectorAll("tr"));
+                        
+                        var dir = thElement.getAttribute("data-sort-dir") === "asc" ? "desc" : "asc";
+                        thElement.setAttribute("data-sort-dir", dir);
+                        
+                        var allThs = table.querySelectorAll("th");
+                        allThs.forEach(th => {
+                            var icon = th.querySelector(".sort-icon");
+                            if (icon) icon.innerText = "↕";
+                        });
+                        var currentIcon = thElement.querySelector(".sort-icon");
+                        if (currentIcon) currentIcon.innerText = dir === "asc" ? "↑" : "↓";
+
+                        rows.sort((a, b) => {
+                            var cellA = a.cells[colIndex];
+                            var cellB = b.cells[colIndex];
+                            
+                            var valA = cellA.getAttribute("data-raw") || cellA.innerText.replace(/[^0-9.-]+/g,"");
+                            var valB = cellB.getAttribute("data-raw") || cellB.innerText.replace(/[^0-9.-]+/g,"");
+                            
+                            var numA = parseFloat(valA);
+                            var numB = parseFloat(valB);
+
+                            if (!isNaN(numA) && !isNaN(numB)) {
+                                return dir === "asc" ? numA - numB : numB - numA;
+                            } else {
+                                var textA = cellA.innerText.toLowerCase();
+                                var textB = cellB.innerText.toLowerCase();
+                                if (textA < textB) return dir === "asc" ? -1 : 1;
+                                if (textA > textB) return dir === "asc" ? 1 : -1;
+                                return 0;
+                            }
+                        });
+
+                        rows.forEach(row => tbody.appendChild(row));
                     }
                     </script>
                     """
@@ -1789,7 +1924,16 @@ def main_dashboard():
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            df_export_sku = df_display_sku.copy()
+                            # Tambah grand total ke excel export
+                            total_dict_sku_ex = {col: "" for col in df_export_sku.columns}
+                            total_dict_sku_ex[df_export_sku.columns[0]] = "GRAND TOTAL"
+                            for c in num_cols_sku:
+                                if c in df_export_sku.columns:
+                                    total_dict_sku_ex[c] = df_export_sku[c].sum()
+                            df_export_sku = pd.concat([df_export_sku, pd.DataFrame([total_dict_sku_ex])], ignore_index=True)
+                            
+                            df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
                             
@@ -1801,7 +1945,7 @@ def main_dashboard():
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
                             bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            worksheet.set_row(len(df_export_sku)-1, None, bold_format)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
