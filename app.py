@@ -661,49 +661,51 @@ def render_pivot_fragment(df_scope_all, role):
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # --- PENGHANCUR KOLOM GANDA ---
-            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
-
-            # --- RENDER AGGRID ---
-            if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_display)
-                gb.configure_default_column(filter=True, sortable=True, resizable=True)
+            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
+            html_table = """
+            <style>
+                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
+                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+            </style>
+            <div style="overflow-x: auto; max-height: 800px;">
+                <table class="pivot-table">
+                    <thead>
+                        <tr>
+            """
+            for col in df_display.columns:
+                html_table += f"<th>{col}</th>"
+            html_table += "</tr></thead><tbody>"
+            
+            for _, row in df_display.iterrows():
+                is_gt = row.get('Nama Customer') == 'GRAND TOTAL'
+                tr_class = "grand-total-row" if is_gt else ""
+                html_table += f'<tr class="{tr_class}">'
                 
                 for col in df_display.columns:
+                    val = row[col]
                     if col in num_cols:
-                        gb.configure_column(
-                            col, 
-                            type=["numericColumn", "numberColumnFilter"],
-                            valueFormatter=JsCode("function(params) { return params.value != null ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
-                        )
+                        if pd.isna(val) or val == "":
+                            val_str = "-"
+                        else:
+                            try:
+                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                            except:
+                                val_str = str(val)
+                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
                     else:
-                        if col == df_display.columns[0]:
-                            gb.configure_column(col, pinned='left')
-                            
-                getRowStyle = JsCode("""
-                function(params) {
-                    for (var key in params.data) {
-                        if (params.data[key] === 'GRAND TOTAL') {
-                            return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
-                        }
-                    }
-                    return null;
-                }
-                """)
-                gb.configure_grid_options(getRowStyle=getRowStyle)
-                gridOptions = gb.build()
-                
-                AgGrid(
-                    df_display,
-                    gridOptions=gridOptions,
-                    allow_unsafe_jscode=True,
-                    theme='balham', 
-                    height=800 if maximize_toggle else 500,
-                    fit_columns_on_grid_load=False
-                )
-            else:
-                st.warning("Library 'streamlit-aggrid' tidak ditemukan. Menampilkan tabel standar.")
-                st.dataframe(df_display)
+                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                        if is_gt and col == 'Nama Customer':
+                            html_table += f'<td style="text-align: center;">{val_str}</td>'
+                        else:
+                            html_table += f'<td>{val_str}</td>'
+                html_table += "</tr>"
+            html_table += "</tbody></table></div><br>"
+            
+            st.markdown(html_table, unsafe_allow_html=True)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1591,78 +1593,71 @@ def main_dashboard():
 
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
+                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
                     
-                    # --- CHAMELEON TABLE LOGIC (TABEL BUNGLON) ---
-                    if filter_sku_spesifik and not filter_nama_sku:
-                        pivot_idx, display_label = 'Nama Outlet', 'Nama Customer'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet']
-                    elif filter_nama_sku and not filter_sku_spesifik:
-                        pivot_idx, display_label = 'Nama Barang', 'Nama Barang'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Barang']
-                    else:
-                        pivot_idx, display_label = 'Pivot_Index', 'Customer ➔ SKU'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet'].astype(str) + " ➔ " + df_sku_filtered['Nama Barang'].astype(str)
-                        
-                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Pivot_Index', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
                         if i not in pivot_sku.columns: pivot_sku[i] = 0
                         
-                    pivot_sku = pivot_sku[['Pivot_Index'] + list(range(1, 13))]
-                    pivot_sku.columns = [display_label] + [bulan_indo_map[i] for i in range(1, 13)]
+                    cols_sku = ['Nama Barang'] + list(range(1, 13))
+                    pivot_sku = pivot_sku[cols_sku]
+                    pivot_sku.columns = ['Nama Barang'] + [bulan_indo_map[i] for i in range(1, 13)]
+                    
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
                     # Grand Total Row
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_label] = "GRAND TOTAL"
+                    total_dict_sku['Nama Barang'] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
-                    # --- PENGHANCUR BUG KOLOM GANDA ---
-                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                    # HTML Table Rendering
+                    html_table_sku = """
+                    <style>
+                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
+                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                    </style>
+                    <div style="overflow-x: auto; max-height: 800px;">
+                        <table class="sku-table">
+                            <thead>
+                                <tr>
+                    """
+                    for col in df_display_sku.columns:
+                        html_table_sku += f"<th>{col}</th>"
+                    html_table_sku += "</tr></thead><tbody>"
                     
-                    # --- RENDER AGGRID ---
-                    if AGGRID_AVAILABLE:
-                        gb = GridOptionsBuilder.from_dataframe(df_display_sku)
-                        gb.configure_default_column(filter=True, sortable=True, resizable=True)
+                    for _, row in df_display_sku.iterrows():
+                        is_gt = row.get('Nama Barang') == 'GRAND TOTAL'
+                        tr_class = "grand-total-row" if is_gt else ""
+                        html_table_sku += f'<tr class="{tr_class}">'
                         
                         for col in df_display_sku.columns:
-                            if col in list(bulan_indo_map.values()) + ['Total Penjualan']:
-                                gb.configure_column(
-                                    col, 
-                                    type=["numericColumn", "numberColumnFilter"],
-                                    valueFormatter=JsCode("function(params) { return params.value != null && params.value !== '' ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
-                                )
+                            val = row[col]
+                            if col != 'Nama Barang':
+                                if pd.isna(val) or val == 0 or val == "":
+                                    val_str = "-"
+                                else:
+                                    try:
+                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                                    except:
+                                        val_str = str(val)
+                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
                             else:
-                                if col == df_display_sku.columns[0]:
-                                    gb.configure_column(col, pinned='left')
-                                    
-                        getRowStyle = JsCode("""
-                        function(params) {
-                            for (var key in params.data) {
-                                if (params.data[key] === 'GRAND TOTAL') {
-                                    return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
-                                }
-                            }
-                            return null;
-                        }
-                        """)
-                        gb.configure_grid_options(getRowStyle=getRowStyle)
-                        gridOptions = gb.build()
-                        
-                        AgGrid(
-                            df_display_sku,
-                            gridOptions=gridOptions,
-                            allow_unsafe_jscode=True,
-                            theme='balham', 
-                            height=800 if maximize_toggle_sku else 500,
-                            fit_columns_on_grid_load=False
-                        )
-                    else:
-                        st.warning("Library 'streamlit-aggrid' tidak ditemukan. Menampilkan tabel standar.")
-                        st.dataframe(df_display_sku)
+                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                                if is_gt:
+                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
+                                else:
+                                    html_table_sku += f'<td>{val_str}</td>'
+                        html_table_sku += "</tr>"
+                    html_table_sku += "</tbody></table></div><br>"
+                    
+                    st.markdown(html_table_sku, unsafe_allow_html=True)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
