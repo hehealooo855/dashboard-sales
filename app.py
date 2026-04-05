@@ -661,6 +661,9 @@ def render_pivot_fragment(df_scope_all, role):
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
+            # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
+            
             # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
             html_table = """
             <style>
@@ -670,14 +673,17 @@ def render_pivot_fragment(df_scope_all, role):
                 .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
                 .pivot-table tr:hover td { background-color: #e3f2fd !important; }
                 .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                /* Styling untuk input Filter Corong */
+                .filter-input { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
             </style>
             <div style="overflow-x: auto; max-height: 800px;">
-                <table class="pivot-table">
+                <table class="pivot-table" id="table-pivot-main">
                     <thead>
                         <tr>
             """
             for col in df_display.columns:
-                html_table += f"<th>{col}</th>"
+                # --- 🚀 FITUR: Filter Corong (Gaya A) ---
+                html_table += f"<th>{col}<br><input type='text' class='filter-input' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-pivot-main')\"></th>"
             html_table += "</tr></thead><tbody>"
             
             for _, row in df_display.iterrows():
@@ -703,7 +709,42 @@ def render_pivot_fragment(df_scope_all, role):
                         else:
                             html_table += f'<td>{val_str}</td>'
                 html_table += "</tr>"
-            html_table += "</tbody></table></div><br>"
+                
+            # --- 🚀 JS INJECTION: Script Filter Real-Time ---
+            html_table += """
+            </tbody></table></div><br>
+            <script>
+            function filterTableData(tableId) {
+                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                if (!table) return;
+                var tr = table.getElementsByTagName("tr");
+                var ths = table.getElementsByTagName("th");
+                var inputs = [];
+                for (var i=0; i<ths.length; i++) {
+                    inputs.push(ths[i].getElementsByTagName("input")[0]);
+                }
+                
+                for (var i = 1; i < tr.length; i++) {
+                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                    var displayRow = true;
+                    for (var j = 0; j < inputs.length; j++) {
+                        if (inputs[j] && inputs[j].value !== "") {
+                            var filter = inputs[j].value.toUpperCase();
+                            var td = tr[i].getElementsByTagName("td")[j];
+                            if (td) {
+                                var txtValue = td.textContent || td.innerText;
+                                if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                    displayRow = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    tr[i].style.display = displayRow ? "" : "none";
+                }
+            }
+            </script>
+            """
             
             st.markdown(html_table, unsafe_allow_html=True)
             
@@ -1593,25 +1634,39 @@ def main_dashboard():
 
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
-                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                    
+                    # --- 🚀 FITUR: Tabel SKU Bunglon ---
+                    # Jika user mencari SKU spesifik, balik tabelnya menjadi berbasis Toko
+                    if filter_sku_spesifik:
+                        index_col = 'Nama Outlet'
+                        display_col = 'Nama Toko'
+                    else:
+                        index_col = 'Nama Barang'
+                        display_col = 'Nama Barang'
+                        
+                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index=index_col, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                    pivot_sku = pivot_sku.rename(columns={index_col: display_col})
                     
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
                         if i not in pivot_sku.columns: pivot_sku[i] = 0
                         
-                    cols_sku = ['Nama Barang'] + list(range(1, 13))
+                    cols_sku = [display_col] + list(range(1, 13))
                     pivot_sku = pivot_sku[cols_sku]
-                    pivot_sku.columns = ['Nama Barang'] + [bulan_indo_map[i] for i in range(1, 13)]
+                    pivot_sku.columns = [display_col] + [bulan_indo_map[i] for i in range(1, 13)]
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
                     # Grand Total Row
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku['Nama Barang'] = "GRAND TOTAL"
+                    total_dict_sku[display_col] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    
+                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
                     # HTML Table Rendering
                     html_table_sku = """
@@ -1622,24 +1677,27 @@ def main_dashboard():
                         .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
                         .sku-table tr:hover td { background-color: #e3f2fd !important; }
                         .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                        /* Styling untuk input Filter Corong */
+                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
                     </style>
                     <div style="overflow-x: auto; max-height: 800px;">
-                        <table class="sku-table">
+                        <table class="sku-table" id="table-sku-main">
                             <thead>
                                 <tr>
                     """
                     for col in df_display_sku.columns:
-                        html_table_sku += f"<th>{col}</th>"
+                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
+                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
                     html_table_sku += "</tr></thead><tbody>"
                     
                     for _, row in df_display_sku.iterrows():
-                        is_gt = row.get('Nama Barang') == 'GRAND TOTAL'
+                        is_gt = row.get(display_col) == 'GRAND TOTAL'
                         tr_class = "grand-total-row" if is_gt else ""
                         html_table_sku += f'<tr class="{tr_class}">'
                         
                         for col in df_display_sku.columns:
                             val = row[col]
-                            if col != 'Nama Barang':
+                            if col != display_col:
                                 if pd.isna(val) or val == 0 or val == "":
                                     val_str = "-"
                                 else:
@@ -1655,7 +1713,41 @@ def main_dashboard():
                                 else:
                                     html_table_sku += f'<td>{val_str}</td>'
                         html_table_sku += "</tr>"
-                    html_table_sku += "</tbody></table></div><br>"
+                        
+                    html_table_sku += """
+                    </tbody></table></div><br>
+                    <script>
+                    function filterTableData(tableId) {
+                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                        if (!table) return;
+                        var tr = table.getElementsByTagName("tr");
+                        var ths = table.getElementsByTagName("th");
+                        var inputs = [];
+                        for (var i=0; i<ths.length; i++) {
+                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                        }
+                        
+                        for (var i = 1; i < tr.length; i++) {
+                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                            var displayRow = true;
+                            for (var j = 0; j < inputs.length; j++) {
+                                if (inputs[j] && inputs[j].value !== "") {
+                                    var filter = inputs[j].value.toUpperCase();
+                                    var td = tr[i].getElementsByTagName("td")[j];
+                                    if (td) {
+                                        var txtValue = td.textContent || td.innerText;
+                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                            displayRow = false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            tr[i].style.display = displayRow ? "" : "none";
+                        }
+                    }
+                    </script>
+                    """
                     
                     st.markdown(html_table_sku, unsafe_allow_html=True)
                     
