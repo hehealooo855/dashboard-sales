@@ -1721,6 +1721,40 @@ def main_dashboard():
                             
                     df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
                     
+                    df_display = df_display.loc[:, ~df_display.columns.duplicated()]
+            if 'Nama Outlet' in df_display.columns and 'Nama Customer' in df_display.columns:
+                df_display = df_display.drop(columns=['Nama Outlet'])
+
+                if AGGRID_AVAILABLE:
+                # Pisahkan Grand Total agar tidak ikut tersortir A-Z
+                df_clean = df_display[df_display['Nama Customer'] != 'GRAND TOTAL']
+                gb = GridOptionsBuilder.from_dataframe(df_clean)
+                # floatingFilter=True memunculkan kotak ketik cepat di bawah judul kolom
+                gb.configure_default_column(filter=True, floatingFilter=True, sortable=True, resizable=True)
+                for col in df_clean.columns:
+                    if col in num_cols:
+                        gb.configure_column(
+                            col, type=["numericColumn", "numberColumnFilter"],
+                            valueFormatter=JsCode("function(params) { return params.value != null && params.value !== '' ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
+                        )
+                        elif col in ['Kode Customer', 'Nama Customer']:
+                        gb.configure_column(col, pinned='left')
+
+                        gridOptions = gb.build()
+                        gridOptions['pinnedBottomRowData'] = [total_dict] # Kunci Grand Total di bawah
+                        gridOptions['getRowStyle'] = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned) {
+                        return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
+                    }
+                    return null;
+                }
+                """)
+                    AgGrid(df_clean, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=800 if maximize_toggle else 600)
+                    else:
+                    st.dataframe(df_display)
+                        
+
                     # --- 2. PENGHANCUR BUG KOLOM GANDA DI TAHAP AKHIR ---
                     df_display = df_display.loc[:, ~df_display.columns.duplicated()]
                     
@@ -1847,7 +1881,7 @@ def main_dashboard():
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
-                    # --- CHAMELEON TABLE LOGIC (TABEL BUNGLON YANG ANTI-CRASH) ---
+                    # --- CHAMELEON TABLE LOGIC (TABEL BUNGLON PINTAR) ---
                     if filter_sku_spesifik and not filter_nama_sku:
                         pivot_idx, display_label = 'Nama Outlet', 'Nama Customer'
                         df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet']
@@ -1859,17 +1893,15 @@ def main_dashboard():
                         df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet'].astype(str) + " ➔ " + df_sku_filtered['Nama Barang'].astype(str)
                         
                     pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Pivot_Index', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                    
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
                         if i not in pivot_sku.columns: pivot_sku[i] = 0
                         
-                    # Gunakan Pivot_Index untuk mengambil kolom sebelum melakukan rename
                     cols_sku = ['Pivot_Index'] + list(range(1, 13))
                     pivot_sku = pivot_sku[cols_sku]
-                    
-                    # Sekarang aman untuk merubah nama kolom
+                    # Rename aman menggunakan display_label dinamis
                     pivot_sku.columns = [display_label] + [bulan_indo_map[i] for i in range(1, 13)]
-                    
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
                     # Grand Total Row
@@ -1879,6 +1911,42 @@ def main_dashboard():
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    # --- PENGHANCUR BUG KOLOM GANDA ---
+                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                    
+                    # --- RENDER AGGRID ---
+                    if AGGRID_AVAILABLE:
+                        # Buang Grand Total dari data utama agar tak kena sort
+                        df_sku_clean = df_display_sku[df_display_sku[display_label] != 'GRAND TOTAL']
+                        
+                        gb = GridOptionsBuilder.from_dataframe(df_sku_clean)
+                        # Filter ketik & Dropdown Excel diaktifkan
+                        gb.configure_default_column(filter=True, floatingFilter=True, sortable=True, resizable=True)
+                        
+                        for col in df_sku_clean.columns:
+                            if col in list(bulan_indo_map.values()) + ['Total Penjualan']:
+                                gb.configure_column(
+                                    col, type=["numericColumn", "numberColumnFilter"],
+                                    valueFormatter=JsCode("function(params) { return params.value != null && params.value !== '' ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
+                                )
+                            else:
+                                if col == display_label:
+                                    gb.configure_column(col, pinned='left')
+                                    
+                        gridOptions = gb.build()
+                        gridOptions['pinnedBottomRowData'] = [total_dict_sku]
+                        gridOptions['getRowStyle'] = JsCode("""
+                        function(params) {
+                            if (params.node.rowPinned) {
+                                return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
+                            }
+                            return null;
+                        }
+                        """)
+                        
+                        AgGrid(df_sku_clean, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=800 if maximize_toggle_sku else 600)
+                    else:
+                        st.dataframe(df_display_sku)
                     
                     # --- PENGHANCUR BUG KOLOM GANDA DI HULU ---
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
