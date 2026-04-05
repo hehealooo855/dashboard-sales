@@ -675,14 +675,14 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
 
-            # --- 3. IMPLEMENTASI AGGRID AMAN (Tanpa Crash Enterprise, Pakai Tema Alpine) ---
+            # --- 3. IMPLEMENTASI AGGRID AMAN (Tanpa auto_size dan width=100% yang bikin crash) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_display)
                 
-                # Menggunakan filter=True (Filter standar yang sangat aman dan mendukung pencarian)
+                # Mengaktifkan filter agSetColumnFilter (Dropdown ala Excel yang bisa diketik)
                 gb.configure_default_column(
                     sortable=True, 
-                    filter=True, 
+                    filter='agSetColumnFilter', 
                     resizable=True
                 )
                 
@@ -705,12 +705,10 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_display,
                     gridOptions=go,
-                    theme='alpine', # Tema Alpine sangat aman dari bug Dark Mode
+                    theme='alpine', # Tema aman, lega, modern ala Google Sheets
                     height=600,
-                    width='100%',
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=False, # DIMATIKAN agar tidak terjadi bug layar hitam (crash)
-                    columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
+                    enable_enterprise_modules=True # Wajib diaktifkan untuk Dropdown agSetColumnFilter
                 )
             else:
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
@@ -1639,7 +1637,7 @@ def main_dashboard():
                         
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            filter=True, # Menggunakan filter standar aman
+                            filter='agSetColumnFilter', # Filter dropdown yang bisa diketik
                             resizable=True
                         )
                         
@@ -1661,12 +1659,10 @@ def main_dashboard():
                         AgGrid(
                             df_display_sku,
                             gridOptions=go_sku,
-                            theme='alpine', # Tema aman dari crash dark mode
+                            theme='alpine', # Tema aman, lega, modern
                             height=600,
-                            width='100%',
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=False, # DIMATIKAN agar tidak crash
-                            columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
+                            enable_enterprise_modules=True # Wajib diaktifkan untuk Dropdown agSetColumnFilter
                         )
                     else:
                         st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
