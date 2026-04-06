@@ -661,7 +661,7 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL ---
+            # --- 2. PENYESUAIAN GRAND TOTAL (Dibiarkan di dalam DF agar bisa disortir) ---
             total_dict = {col: None for col in df_filtered.columns}
             if 'Kode Customer' in total_dict:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
@@ -689,9 +689,23 @@ def render_pivot_fragment(df_scope_all, role):
                     grid_config[col] = st.column_config.TextColumn(col)
                     
             st.info("💡 **Tips Filter & Sortir:** Arahkan kursor/mouse Anda ke setiap judul kolom di bawah ini. Klik **ikon garis tiga/kaca pembesar** untuk memunculkan filter teks parsial (ketik dan cari). Klik pada judul teksnya untuk mengurutkan dari besar ke kecil (baris Grand Total akan otomatis naik ke paling atas jika diurutkan terbesar).")
+            
+            # --- 🚀 FITUR: EXCEL STYLING (WARNA HEADER & GRAND TOTAL) ---
+            def style_excel_pivot(row):
+                # Cek apakah sel pertama di baris ini adalah GRAND TOTAL
+                if str(row.iloc[0]).strip() == "GRAND TOTAL":
+                    # Warna kuning corporate untuk baris paling bawah
+                    return ['background-color: #FFFF00; color: black; font-weight: bold'] * len(row)
+                return [''] * len(row)
+                
+            # Menerapkan pewarnaan baris (Kuning) dan mencoba memaksakan pewarnaan Header (Corporate Blue)
+            styled_df = df_display.style.apply(style_excel_pivot, axis=1)
+            styled_df = styled_df.set_table_styles([
+                {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold')]}
+            ])
                     
             st.dataframe(
-                df_display,
+                styled_df,
                 column_config=grid_config,
                 use_container_width=True,
                 height=600,
@@ -1031,7 +1045,7 @@ def main_dashboard():
         
         mask_merk = df_scope_all['Merk'].isin(pilih_merk)
         mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
-        df_scope_all = df_scope_all[mask_merk | mask_prefix]
+        df_scope_all = df_scope_all[mask_prefix | mask_merk]
 
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
@@ -1606,7 +1620,7 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # Grand Total Row 
+                    # Grand Total Row (Dibiarkan menyatu dengan data)
                     total_dict_sku = {col: None for col in pivot_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
@@ -1630,9 +1644,20 @@ def main_dashboard():
                             grid_config_sku[col] = st.column_config.TextColumn(col)
                     
                     st.info("💡 **Tips Filter & Sortir:** Arahkan kursor/mouse Anda ke setiap judul kolom di bawah ini. Klik **ikon garis tiga/kaca pembesar** untuk memunculkan filter teks parsial (ketik dan cari). Klik pada judul teksnya untuk mengurutkan dari besar ke kecil.")
+                    
+                    # --- 🚀 FITUR: EXCEL STYLING (WARNA HEADER & GRAND TOTAL) ---
+                    def style_excel_sku(row):
+                        if str(row.iloc[0]).strip() == "GRAND TOTAL":
+                            return ['background-color: #FFFF00; color: black; font-weight: bold'] * len(row)
+                        return [''] * len(row)
+
+                    styled_sku = df_display_sku.style.apply(style_excel_sku, axis=1)
+                    styled_sku = styled_sku.set_table_styles([
+                        {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold')]}
+                    ])
                             
                     st.dataframe(
-                        df_display_sku,
+                        styled_sku,
                         column_config=grid_config_sku,
                         use_container_width=True,
                         height=600,
@@ -1643,7 +1668,16 @@ def main_dashboard():
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            df_export_sku = df_display_sku.copy()
+                            # Tambah grand total ke excel export
+                            total_dict_sku_ex = {col: "" for col in df_export_sku.columns}
+                            total_dict_sku_ex[df_export_sku.columns[0]] = "GRAND TOTAL"
+                            for c in num_cols_sku:
+                                if c in df_export_sku.columns:
+                                    total_dict_sku_ex[c] = df_export_sku[c].sum()
+                            df_export_sku = pd.concat([df_export_sku, pd.DataFrame([total_dict_sku_ex])], ignore_index=True)
+                            
+                            df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
                             
@@ -1655,7 +1689,7 @@ def main_dashboard():
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
                             bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            worksheet.set_row(len(df_export_sku)-1, None, bold_format)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
