@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue
+# Custom CSS & Tema Corporate Blue (Termasuk Injeksi AgGrid Paksa)
 st.markdown("""
 <style>
     .metric-card {
@@ -62,6 +62,7 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -70,6 +71,7 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
+    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
         font-size: 18px !important;
         font-weight: 600 !important;
@@ -79,6 +81,7 @@ st.markdown("""
         font-weight: bold !important;
     }
     
+    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
     div[data-baseweb="tab-list"] button[aria-selected="true"] {
         color: #2980b9 !important;
     }
@@ -93,6 +96,18 @@ st.markdown("""
     }
     div[data-baseweb="tab-list"] button:hover span {
         color: #2980b9 !important;
+    }
+    
+    /* INJEKSI GLOBAL CSS UNTUK AGGRID (ANTI CRASH) */
+    .ag-theme-alpine {
+        --ag-header-background-color: #2980b9 !important;
+        --ag-header-foreground-color: #ffffff !important;
+    }
+    .ag-header-cell-text {
+        font-weight: bold !important;
+    }
+    .ag-icon {
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -650,7 +665,6 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            
             # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
@@ -658,11 +672,10 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # Menghapus kolom duplikat sebelum merakit total
             df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
-            
+
             # --- 2. PENYESUAIAN GRAND TOTAL UNTUK PINNED ROW ---
-            total_dict = {col: None for col in df_filtered.columns}
+            total_dict = {col: "" for col in df_filtered.columns}
             if 'Kode Customer' in df_filtered.columns:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
             elif len(df_filtered.columns) > 0:
@@ -670,9 +683,13 @@ def render_pivot_fragment(df_scope_all, role):
                 
             for col in num_cols:
                 if col in df_filtered.columns:
-                    total_dict[col] = df_filtered[col].sum()
-                    
-            # Siapkan Data Export Excel (Grand Total menyatu)
+                    val = df_filtered[col].sum()
+                    total_dict[col] = val if not pd.isna(val) else 0
+
+            # === VAKSIN ANTI CRASH AGGRID ===
+            # Mengganti semua NaN menjadi string kosong agar JSON tidak error
+            df_filtered = df_filtered.fillna("")
+            
             df_export = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
 
             # --- 3. IMPLEMENTASI AGGRID (EXCEL LIKE: Pinned Row & Corporate Header) ---
@@ -714,13 +731,6 @@ def render_pivot_fragment(df_scope_all, role):
                 }
                 """)
                 
-                # CSS Custom untuk Header Corporate Blue
-                custom_css = {
-                    ".ag-header": {"background-color": "#2980b9 !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                    ".ag-icon": {"color": "white !important"}
-                }
-                
                 st.info("💡 **Tips Filter & Sortir:** Klik menu (garis tiga/corong) di judul kolom untuk filter dropdown yang bisa diketik. Klik teks judul untuk mengurutkan (Sort). Baris Grand Total sudah dikunci permanen di bawah!")
                 
                 AgGrid(
@@ -729,8 +739,8 @@ def render_pivot_fragment(df_scope_all, role):
                     theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True,
-                    custom_css=custom_css
+                    enable_enterprise_modules=True
+                    # Parameter custom_css DIHAPUS agar tidak bentrok (Sudah diganti Injeksi Global)
                 )
             else:
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
@@ -1648,12 +1658,16 @@ def main_dashboard():
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
 
                     # --- PENYESUAIAN GRAND TOTAL (SKU TAB) ---
-                    total_dict_sku = {col: None for col in df_display_sku.columns}
+                    total_dict_sku = {col: "" for col in df_display_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
                     for col in num_cols_sku:
                         if col in df_display_sku.columns:
-                            total_dict_sku[col] = df_display_sku[col].sum()
+                            val = df_display_sku[col].sum()
+                            total_dict_sku[col] = val if not pd.isna(val) else 0
+                            
+                    # === VAKSIN ANTI CRASH AGGRID ===
+                    df_display_sku = df_display_sku.fillna("")
                             
                     df_export_sku = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
 
@@ -1691,12 +1705,6 @@ def main_dashboard():
                         }
                         """)
                         
-                        custom_css_sku = {
-                            ".ag-header": {"background-color": "#2980b9 !important"},
-                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                            ".ag-icon": {"color": "white !important"}
-                        }
-                        
                         st.info("💡 **Tips Filter & Sortir:** Klik menu (garis tiga/corong) di judul kolom untuk filter dropdown yang bisa diketik. Klik teks judul untuk mengurutkan (Sort). Baris Grand Total sudah dikunci permanen di bawah!")
                         
                         AgGrid(
@@ -1705,8 +1713,7 @@ def main_dashboard():
                             theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True,
-                            custom_css=custom_css_sku
+                            enable_enterprise_modules=True
                         )
                     else:
                         st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
@@ -1923,9 +1930,9 @@ def main_dashboard():
                                             styles.append(base_style)
                                 return styles
 
-                        st.dataframe(df_t2_display.style.format({
-                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                        }).apply(style_tab2, axis=1), use_container_width=True)
+                            st.dataframe(df_t2_display.style.format({
+                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                            }).apply(style_tab2, axis=1), use_container_width=True)
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
