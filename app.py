@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs & Hilangkan Logo Streamlit)
+# Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
     .metric-card {
@@ -62,7 +62,6 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
-    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -71,7 +70,6 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
-    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
         font-size: 18px !important;
         font-weight: 600 !important;
@@ -81,7 +79,6 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
     div[data-baseweb="tab-list"] button[aria-selected="true"] {
         color: #2980b9 !important;
     }
@@ -661,9 +658,12 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL (Dibiarkan di dalam DF agar bisa disortir) ---
+            # Menghapus kolom duplikat sebelum merakit total
+            df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
+            
+            # --- 2. PENYESUAIAN GRAND TOTAL UNTUK PINNED ROW ---
             total_dict = {col: None for col in df_filtered.columns}
-            if 'Kode Customer' in total_dict:
+            if 'Kode Customer' in df_filtered.columns:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
             elif len(df_filtered.columns) > 0:
                 total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
@@ -672,45 +672,69 @@ def render_pivot_fragment(df_scope_all, role):
                 if col in df_filtered.columns:
                     total_dict[col] = df_filtered[col].sum()
                     
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
+            # Siapkan Data Export Excel (Grand Total menyatu)
+            df_export = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
 
-            # --- 3. IMPLEMENTASI NATIVE DATAFRAME (ANTI BLANK / ANTI CRASH) ---
-            grid_config = {}
-            for col in df_display.columns:
-                if col in num_cols:
-                    df_display[col] = pd.to_numeric(df_display[col], errors='coerce').fillna(0)
-                    grid_config[col] = st.column_config.NumberColumn(
-                        col,
-                        format="Rp %d"
-                    )
-                else:
-                    df_display[col] = df_display[col].fillna("-").astype(str)
-                    grid_config[col] = st.column_config.TextColumn(col)
-                    
-            st.info("💡 **Tips Filter & Sortir:** Arahkan kursor/mouse Anda ke setiap judul kolom di bawah ini. Klik **ikon garis tiga/kaca pembesar** untuk memunculkan filter teks parsial (ketik dan cari). Klik pada judul teksnya untuk mengurutkan dari besar ke kecil (baris Grand Total akan otomatis naik ke paling atas jika diurutkan terbesar).")
-            
-            # --- 🚀 FITUR: EXCEL STYLING (WARNA HEADER & GRAND TOTAL) ---
-            def style_excel_pivot(row):
-                # Cek apakah sel pertama di baris ini adalah GRAND TOTAL
-                if str(row.iloc[0]).strip() == "GRAND TOTAL":
-                    # Warna kuning corporate untuk baris paling bawah
-                    return ['background-color: #FFFF00; color: black; font-weight: bold'] * len(row)
-                return [''] * len(row)
+            # --- 3. IMPLEMENTASI AGGRID (EXCEL LIKE: Pinned Row & Corporate Header) ---
+            if AGGRID_AVAILABLE:
+                gb = GridOptionsBuilder.from_dataframe(df_filtered)
                 
-            # Menerapkan pewarnaan baris (Kuning) dan mencoba memaksakan pewarnaan Header (Corporate Blue)
-            styled_df = df_display.style.apply(style_excel_pivot, axis=1)
-            styled_df = styled_df.set_table_styles([
-                {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold')]}
-            ])
-                    
-            st.dataframe(
-                styled_df,
-                column_config=grid_config,
-                use_container_width=True,
-                height=600,
-                hide_index=True
-            )
+                # Filter Dropdown (agSetColumnFilter) di SEMUA kolom
+                gb.configure_default_column(
+                    sortable=True, 
+                    filter='agSetColumnFilter', 
+                    resizable=True
+                )
+                
+                # Formatter Rupiah
+                rupiah_format = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") {
+                        return '-';
+                    }
+                    return 'Rp ' + Number(params.value).toLocaleString('id-ID');
+                }
+                """)
+                
+                for col in df_filtered.columns:
+                    if col in num_cols:
+                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
+                
+                go = gb.build()
+                
+                # Mengunci baris Grand Total di bawah
+                go['pinnedBottomRowData'] = [total_dict]
+                
+                # Mewarnai baris Grand Total menjadi kuning
+                go['getRowStyle'] = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return {'background-color': '#FFFF00', 'color': 'black', 'font-weight': 'bold'};
+                    }
+                }
+                """)
+                
+                # CSS Custom untuk Header Corporate Blue
+                custom_css = {
+                    ".ag-header": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-icon": {"color": "white !important"}
+                }
+                
+                st.info("💡 **Tips Filter & Sortir:** Klik menu (garis tiga/corong) di judul kolom untuk filter dropdown yang bisa diketik. Klik teks judul untuk mengurutkan (Sort). Baris Grand Total sudah dikunci permanen di bawah!")
+                
+                AgGrid(
+                    df_filtered,
+                    gridOptions=go,
+                    theme='alpine',
+                    height=600,
+                    allow_unsafe_jscode=True,
+                    enable_enterprise_modules=True,
+                    custom_css=custom_css
+                )
+            else:
+                st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
+                st.dataframe(df_export)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -720,8 +744,8 @@ def render_pivot_fragment(df_scope_all, role):
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                if 'df_export' in locals() and not df_export.empty:
+                    df_export.to_excel(writer, index=False, sheet_name='Master Data')
                 
                 workbook = writer.book
                 worksheet = writer.sheets['Master Data']
@@ -736,9 +760,9 @@ def render_pivot_fragment(df_scope_all, role):
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('D:P', None, format1) 
                 
-                if 'df_display' in locals() and not df_display.empty:
+                if 'df_export' in locals() and not df_export.empty:
                     bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
+                    last_row_idx = len(df_export) 
                     worksheet.set_row(last_row_idx, None, bold_format)
             
             st.download_button(
@@ -1045,7 +1069,7 @@ def main_dashboard():
         
         mask_merk = df_scope_all['Merk'].isin(pilih_merk)
         mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
-        df_scope_all = df_scope_all[mask_prefix | mask_merk]
+        df_scope_all = df_scope_all[mask_merk | mask_prefix]
 
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
@@ -1620,64 +1644,81 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # Grand Total Row (Dibiarkan menyatu dengan data)
-                    total_dict_sku = {col: None for col in pivot_sku.columns}
+                    df_display_sku = pivot_sku.copy()
+                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+
+                    # --- PENYESUAIAN GRAND TOTAL (SKU TAB) ---
+                    total_dict_sku = {col: None for col in df_display_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
                     for col in num_cols_sku:
-                        total_dict_sku[col] = pivot_sku[col].sum()
-                    
-                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-
-                    # --- IMPLEMENTASI NATIVE DATAFRAME (ANTI BLANK / ANTI CRASH) ---
-                    grid_config_sku = {}
-                    for col in df_display_sku.columns:
-                        if col in num_cols_sku:
-                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0)
-                            grid_config_sku[col] = st.column_config.NumberColumn(
-                                col,
-                                format="Rp %d"
-                            )
-                        else:
-                            df_display_sku[col] = df_display_sku[col].fillna("-").astype(str)
-                            grid_config_sku[col] = st.column_config.TextColumn(col)
-                    
-                    st.info("💡 **Tips Filter & Sortir:** Arahkan kursor/mouse Anda ke setiap judul kolom di bawah ini. Klik **ikon garis tiga/kaca pembesar** untuk memunculkan filter teks parsial (ketik dan cari). Klik pada judul teksnya untuk mengurutkan dari besar ke kecil.")
-                    
-                    # --- 🚀 FITUR: EXCEL STYLING (WARNA HEADER & GRAND TOTAL) ---
-                    def style_excel_sku(row):
-                        if str(row.iloc[0]).strip() == "GRAND TOTAL":
-                            return ['background-color: #FFFF00; color: black; font-weight: bold'] * len(row)
-                        return [''] * len(row)
-
-                    styled_sku = df_display_sku.style.apply(style_excel_sku, axis=1)
-                    styled_sku = styled_sku.set_table_styles([
-                        {'selector': 'th', 'props': [('background-color', '#2980b9'), ('color', 'white'), ('font-weight', 'bold')]}
-                    ])
+                        if col in df_display_sku.columns:
+                            total_dict_sku[col] = df_display_sku[col].sum()
                             
-                    st.dataframe(
-                        styled_sku,
-                        column_config=grid_config_sku,
-                        use_container_width=True,
-                        height=600,
-                        hide_index=True
-                    )
+                    df_export_sku = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+
+                    # --- IMPLEMENTASI AGGRID AMAN (SKU TABLE) ---
+                    if AGGRID_AVAILABLE:
+                        gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
+                        
+                        gb_sku.configure_default_column(
+                            sortable=True, 
+                            filter='agSetColumnFilter', 
+                            resizable=True
+                        )
+                        
+                        rupiah_format_sku = JsCode("""
+                        function(params) {
+                            if (params.value === null || params.value === undefined || params.value === "") {
+                                return '-';
+                            }
+                            return 'Rp ' + Number(params.value).toLocaleString('id-ID');
+                        }
+                        """)
+                        
+                        for col in df_display_sku.columns:
+                            if col != display_col:
+                                gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
+                                
+                        go_sku = gb_sku.build()
+                        
+                        go_sku['pinnedBottomRowData'] = [total_dict_sku]
+                        go_sku['getRowStyle'] = JsCode("""
+                        function(params) {
+                            if (params.node.rowPinned === 'bottom') {
+                                return {'background-color': '#FFFF00', 'color': 'black', 'font-weight': 'bold'};
+                            }
+                        }
+                        """)
+                        
+                        custom_css_sku = {
+                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-icon": {"color": "white !important"}
+                        }
+                        
+                        st.info("💡 **Tips Filter & Sortir:** Klik menu (garis tiga/corong) di judul kolom untuk filter dropdown yang bisa diketik. Klik teks judul untuk mengurutkan (Sort). Baris Grand Total sudah dikunci permanen di bawah!")
+                        
+                        AgGrid(
+                            df_display_sku,
+                            gridOptions=go_sku,
+                            theme='alpine',
+                            height=600,
+                            allow_unsafe_jscode=True,
+                            enable_enterprise_modules=True,
+                            custom_css=custom_css_sku
+                        )
+                    else:
+                        st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
+                        st.dataframe(df_export_sku)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_export_sku = df_display_sku.copy()
-                            # Tambah grand total ke excel export
-                            total_dict_sku_ex = {col: "" for col in df_export_sku.columns}
-                            total_dict_sku_ex[df_export_sku.columns[0]] = "GRAND TOTAL"
-                            for c in num_cols_sku:
-                                if c in df_export_sku.columns:
-                                    total_dict_sku_ex[c] = df_export_sku[c].sum()
-                            df_export_sku = pd.concat([df_export_sku, pd.DataFrame([total_dict_sku_ex])], ignore_index=True)
+                            if 'df_export_sku' in locals() and not df_export_sku.empty:
+                                df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
                             
-                            df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
                             
@@ -1688,8 +1729,10 @@ def main_dashboard():
                             
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
-                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_export_sku)-1, None, bold_format)
+                            
+                            if 'df_export_sku' in locals() and not df_export_sku.empty:
+                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                                worksheet.set_row(len(df_export_sku)-1, None, bold_format)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
@@ -1880,9 +1923,9 @@ def main_dashboard():
                                             styles.append(base_style)
                                 return styles
 
-                            st.dataframe(df_t2_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab2, axis=1), use_container_width=True)
+                        st.dataframe(df_t2_display.style.format({
+                            'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
+                        }).apply(style_tab2, axis=1), use_container_width=True)
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
