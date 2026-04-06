@@ -84,6 +84,11 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    
+    /* MEMAKSA AGGRID HEADER MENJADI CORPORATE BLUE DARI LUAR (BACKUP) */
+    .ag-theme-alpine .ag-header { background-color: #2980b9 !important; }
+    .ag-theme-alpine .ag-header-cell-text { color: white !important; font-weight: bold !important; }
+    .ag-theme-alpine .ag-icon { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -292,7 +297,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
+# CACHE & DATA LOADER
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
@@ -640,6 +645,8 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
+            
+            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
@@ -648,36 +655,38 @@ def render_pivot_fragment(df_scope_all, role):
             
             df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
 
-            # --- 1. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
+            # --- 2. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
             # Mengamankan seluruh tipe data sebelum dilempar ke AgGrid Javascript
-            for col in df_filtered.columns:
+            df_clean = df_filtered.copy()
+            for col in df_clean.columns:
                 if col in num_cols:
-                    df_filtered[col] = pd.to_numeric(df_filtered[col], errors='coerce').fillna(0).astype(float)
+                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0).astype(float)
                 else:
-                    df_filtered[col] = df_filtered[col].astype(str).replace('nan', '-').replace('None', '-')
+                    df_clean[col] = df_clean[col].astype(str).replace('nan', '')
 
-            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
-            # Grand Total dipisah dari dataframe agar tidak merusak tipe data (Tidak perlu dicomcat)
-            total_dict = {}
-            for col in df_filtered.columns:
-                if col == df_filtered.columns[0]:
-                    total_dict[col] = "GRAND TOTAL"
-                elif col in num_cols:
-                    total_dict[col] = float(df_filtered[col].sum())
-                else:
-                    total_dict[col] = "-"
+            # --- 3. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
+            total_dict = {col: "" for col in df_clean.columns}
+            if 'Kode Customer' in df_clean.columns:
+                total_dict['Kode Customer'] = "GRAND TOTAL"
+            elif len(df_clean.columns) > 0:
+                total_dict[df_clean.columns[0]] = "GRAND TOTAL"
+                
+            for col in num_cols:
+                if col in df_clean.columns:
+                    total_dict[col] = float(df_clean[col].sum())
                     
             # Data asli untuk diekspor ke Excel agar rapi
-            df_export = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+            df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
 
-            # --- 3. IMPLEMENTASI AGGRID (EXCEL LIKE & ANTI CRASH) ---
+            # --- 4. IMPLEMENTASI AGGRID DENGAN FLOATING FILTER (EXCEL LIKE) ---
             if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_filtered)
+                gb = GridOptionsBuilder.from_dataframe(df_clean)
                 
-                # Filter Dropdown (agSetColumnFilter) di SEMUA kolom yang bisa diketik
+                # MENGAKTIFKAN FLOATING FILTER (KOTAK KETIK DI BAWAH HEADER SEPERTI GAMBAR ANDA)
                 gb.configure_default_column(
                     sortable=True, 
-                    filter='agSetColumnFilter', 
+                    filter=True, # Menggunakan text/number filter standar yang anti-crash
+                    floatingFilter=True, # <--- INI KUNCI UTAMANYA!
                     resizable=True
                 )
                 
@@ -689,7 +698,7 @@ def render_pivot_fragment(df_scope_all, role):
                 }
                 """)
                 
-                for col in df_filtered.columns:
+                for col in df_clean.columns:
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
                 
@@ -705,15 +714,15 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                 }
                 
-                st.info("💡 **Tips Filter & Sortir:** Klik ikon kaca pembesar/tiga garis di judul kolom untuk memunculkan kotak filter yang bisa Anda ketik. Klik teks judul untuk mengurutkan angka.")
+                st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
                 
                 AgGrid(
-                    df_filtered,
+                    df_clean,
                     gridOptions=go,
                     theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True,
+                    enable_enterprise_modules=False, # Dimatikan agar 100% bebas blank screen
                     custom_css=custom_css
                 )
             else:
@@ -1634,33 +1643,32 @@ def main_dashboard():
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
 
                     # --- 1. DATA SANITIZATION SKU (ANTI BLANK/CRASH) ---
-                    for col in df_display_sku.columns:
+                    df_clean_sku = df_display_sku.copy()
+                    for col in df_clean_sku.columns:
                         if col in num_cols_sku:
-                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
+                            df_clean_sku[col] = pd.to_numeric(df_clean_sku[col], errors='coerce').fillna(0).astype(float)
                         else:
-                            df_display_sku[col] = df_display_sku[col].fillna("-").astype(str).replace('nan', '-').replace('None', '-')
+                            df_clean_sku[col] = df_clean_sku[col].astype(str).replace('nan', '')
 
                     # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
-                    total_dict_sku = {}
-                    for col in df_display_sku.columns:
-                        if col == df_display_sku.columns[0]:
-                            total_dict_sku[col] = "GRAND TOTAL"
-                        elif col in num_cols_sku:
-                            total_dict_sku[col] = float(df_display_sku[col].sum())
-                        else:
-                            total_dict_sku[col] = "-"
+                    total_dict_sku = {col: "" for col in df_clean_sku.columns}
+                    total_dict_sku[display_col] = "GRAND TOTAL"
+                    for col in num_cols_sku:
+                        if col in df_clean_sku.columns:
+                            total_dict_sku[col] = float(df_clean_sku[col].sum())
                             
                     # Data asli untuk diekspor ke Excel agar rapi
-                    df_export_sku = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    df_export_sku = pd.concat([df_clean_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
 
-                    # --- 3. IMPLEMENTASI AGGRID AMAN (SKU TABLE) ---
+                    # --- 3. IMPLEMENTASI AGGRID AMAN DENGAN FLOATING FILTER (SKU TABLE) ---
                     if AGGRID_AVAILABLE:
-                        gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
+                        gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
-                        # Filter Dropdown (agSetColumnFilter)
+                        # MENGAKTIFKAN FLOATING FILTER
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            filter='agSetColumnFilter', 
+                            filter=True, 
+                            floatingFilter=True, 
                             resizable=True
                         )
                         
@@ -1671,7 +1679,7 @@ def main_dashboard():
                         }
                         """)
                         
-                        for col in df_display_sku.columns:
+                        for col in df_clean_sku.columns:
                             if col in num_cols_sku:
                                 gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
                                 
@@ -1687,15 +1695,15 @@ def main_dashboard():
                             ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                         }
                         
-                        st.info("💡 **Tips Filter & Sortir:** Klik ikon kaca pembesar/tiga garis di judul kolom untuk memunculkan kotak filter yang bisa Anda ketik. Klik teks judul untuk mengurutkan angka.")
+                        st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
                         
                         AgGrid(
-                            df_display_sku,
+                            df_clean_sku,
                             gridOptions=go_sku,
                             theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True,
+                            enable_enterprise_modules=False,
                             custom_css=custom_css_sku
                         )
                     else:
