@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue + Injeksi Paksa Header AgGrid
+# Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
     .metric-card {
@@ -84,18 +84,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
-    
-    /* MEMAKSA AGGRID HEADER MENJADI CORPORATE BLUE DARI LUAR */
-    .ag-theme-streamlit .ag-header, .ag-theme-alpine .ag-header {
-        background-color: #2980b9 !important;
-    }
-    .ag-theme-streamlit .ag-header-cell-text, .ag-theme-alpine .ag-header-cell-text {
-        color: white !important;
-        font-weight: bold !important;
-    }
-    .ag-theme-streamlit .ag-icon, .ag-theme-alpine .ag-icon {
-        color: white !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -113,7 +101,22 @@ HOLIDAYS_2026 = [
 # ==========================================
 PROVINCE_MAPPING = {
     "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
-    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"]
+    "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
+    "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR", "LUBUK BASUNG", "SIMPANG EMPAT", "UJUNG GADING", "LUBUK SIKAPING", "MUARA LABUH", "PULAU PUNJUNG", "SUNGAI RUMBAI"],
+    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KUANTAN"],
+    "KEPULAUAN RIAU": ["BATAM", "TANJUNGPINANG", "BINTAN", "KARIMUN", "NATUNA", "LINGGA", "ANAMBAS"],
+    "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL", "RIMBO BUJANG", "SUNGAI BENGKAL"],
+    "SUMATERA SELATAN": ["PALEMBANG", "LUBUKLINGGAU", "PRABUMULIH", "PAGAR ALAM", "BANYUASIN", "EMPAT LAWANG", "LAHAT", "MUARA ENIM", "MUSI", "OGAN", "OKU", "OKI", "SEKAYU", "INDRALAYA"],
+    "BENGKULU": ["BENGKULU", "KAUR", "KEPAHIANG", "LEBONG", "MUKOMUKO", "REJANG LEBONG", "SELUMA", "BINTUHAN", "CURUP", "ARGA MAKMUR"],
+    "LAMPUNG": ["LAMPUNG", "METRO", "PESAWARAN", "PRINGSEWU", "TANGGAMUS", "TULANG BAWANG", "WAY KANAN", "MESUJI", "KALIANDA", "KOTABUMI", "LIWA", "MENGGALA", "GUNUNG SUGIH"],
+    "BANGKA BELITUNG": ["PANGKALPINANG", "BANGKA", "BELITUNG", "SUNGAILIAT", "MUNTOK", "KOBA", "TOBOALI", "TANJUNG PANDAN", "MANGGAR"],
+    "DKI JAKARTA": ["JAKARTA", "JKT"],
+    "JAWA BARAT": ["BANDUNG", "BEKASI", "BOGOR", "DEPOK", "CIMAHI", "CIREBON", "SUKABUMI", "TASIKMALAYA", "BANJAR", "GARUT", "CIANJUR", "CIAMIS", "KUNINGAN", "MAJALENGKA", "PANGANDARAN", "PURWAKARTA", "SUBANG", "SUMEDANG", "INDRAMAYU", "KARAWANG", "CIBINONG", "CISAAT", "SOREANG", "NGAMPRAH", "TAROGONG", "SINGAPARNA"],
+    "BANTEN": ["SERANG", "CILEGON", "TANGERANG", "LEBAK", "PANDEGLANG", "RANGKASBITUNG", "TIGARAKSA"],
+    "JAWA TENGAH": ["SEMARANG", "MAGELANG", "PEKALONGAN", "SALATIGA", "SURAKARTA", "SOLO", "TEGAL", "KUDUS", "PURWOKERTO", "DEMAK", "PATI", "BANJARNEGARA", "BANYUMAS", "BATANG", "BLORA", "BOYOLALI", "BREBES", "CILACAP", "GROBOGAN", "JEPARA", "KARANGANYAR", "KEBUMEN", "KENDAL", "KLATEN", "PEMALANG", "PURBALINGGA", "PURWOREJO", "REMBANG", "SRAGEN", "SUKOHARJO", "TEMANGGUNG", "WONOGIRI", "WONOSOBO", "MUNGKID", "KAJEN", "SLAWI", "PURWODADI", "UNGARAN"],
+    "DI YOGYAKARTA": ["YOGYAKARTA", "JOGJA", "SLEMAN", "BANTUL", "GUNUNGKIDUL", "KULON PROGO", "WONOSARI", "WATES"],
+    "JAWA TIMUR": ["SURABAYA", "KEDIRI", "MADIUN", "MALANG", "MOJOKERTO", "PASURUAN", "PROBOLINGGO", "BATU", "BLITAR", "SIDOARJO", "GRESIK", "JEMBER", "BANYUWANGI", "BOJONEGORO", "BONDOWOSO", "JOMBANG", "LAMONGAN", "LUMAJANG", "MAGETAN", "NGANJUK", "NGAWI", "PACITAN", "PAMEKASAN", "PONOROGO", "SAMPANG", "SITUBONDO", "SUMENEP", "TRENGGALEK", "TUBAN", "TULUNGAGUNG", "BANGKALAN", "KANIGORO", "NGASEM", "CARUBAN", "KEPANJEN", "MOJOSARI", "BANGIL", "KRAKSAAN"],
+    "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
 BRAND_PREFIXES = {
@@ -149,6 +152,16 @@ TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 400_000_000, "Inesia": 80_000_000, "Y2000": 250_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 20_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 30_000_000, "OtwooO": 180_000_000}
+}
+
+ESTIMASI_TARGET_BULANAN = {
+    "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
+    "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
+    "Mlen": 8_000_000, "COSLINE": 1_000_000, "Thai": 50_000_000, "Diosys": 55_000_000,
+    "Sociolla": 40_000_000, "Skin1004": 30_000_000, "Beautica": 10_000_000, "Claresta": 20_000_000,
+    "Masami": 10_000_000, "Cassandra": 4_000_000, "Clinelle": 15_000_000, "Honor": 10_000_000,
+    "The Face": 80_000_000, "Elizabeth Rose": 3_000_000, "Mad For Make Up": 4_000_000,
+    "Satto": 20_000_000, "Somethinc": 80_000_000, "SYB": 10_000_000
 }
 
 INDIVIDUAL_TARGETS = {
@@ -279,7 +292,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER
+# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
@@ -627,37 +640,37 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            
-            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. DATA SANITIZATION (ANTI BLANK / BROWSER CRASH) ---
             df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
+
+            # --- 1. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
+            # Mengamankan seluruh tipe data sebelum dilempar ke AgGrid Javascript
             for col in df_filtered.columns:
                 if col in num_cols:
-                    df_filtered[col] = pd.to_numeric(df_filtered[col], errors='coerce').fillna(0)
+                    df_filtered[col] = pd.to_numeric(df_filtered[col], errors='coerce').fillna(0).astype(float)
                 else:
-                    df_filtered[col] = df_filtered[col].fillna("-").astype(str)
-                    
-            # --- 3. PENYESUAIAN GRAND TOTAL (UNTUK EXCEL & PINNED ROW) ---
-            total_dict = {col: "" for col in df_filtered.columns}
-            if 'Kode Customer' in df_filtered.columns:
-                total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_filtered.columns) > 0:
-                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
-                
-            for col in num_cols:
-                if col in df_filtered.columns:
+                    df_filtered[col] = df_filtered[col].astype(str).replace('nan', '-').replace('None', '-')
+
+            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
+            # Grand Total dipisah dari dataframe agar tidak merusak tipe data (Tidak perlu dicomcat)
+            total_dict = {}
+            for col in df_filtered.columns:
+                if col == df_filtered.columns[0]:
+                    total_dict[col] = "GRAND TOTAL"
+                elif col in num_cols:
                     total_dict[col] = float(df_filtered[col].sum())
-            
+                else:
+                    total_dict[col] = "-"
+                    
             # Data asli untuk diekspor ke Excel agar rapi
             df_export = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
 
-            # --- 4. IMPLEMENTASI AGGRID (EXCEL LIKE: Header Biru, Total Kuning, Dropdown Filter, ANTI CRASH) ---
+            # --- 3. IMPLEMENTASI AGGRID (EXCEL LIKE & ANTI CRASH) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_filtered)
                 
@@ -668,14 +681,10 @@ def render_pivot_fragment(df_scope_all, role):
                     resizable=True
                 )
                 
-                # WAJIB UNTUK ANTI BLANK/CRASH: Mengaktifkan Pagination agar ringan!
-                gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=100)
-                
+                # Formatter Rupiah Cepat tanpa NaN Bug
                 rupiah_format = JsCode("""
                 function(params) {
-                    if (params.value === null || params.value === undefined || params.value === "") {
-                        return '-';
-                    }
+                    if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
                     return 'Rp ' + Number(params.value).toLocaleString('id-ID');
                 }
                 """)
@@ -688,15 +697,15 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 # Mengunci baris Grand Total di bawah
                 go['pinnedBottomRowData'] = [total_dict]
-                go['getRowStyle'] = JsCode("""
-                function(params) {
-                    if (params.node.rowPinned === 'bottom') {
-                        return {'background-color': '#FFFF00', 'color': 'black', 'font-weight': 'bold'};
-                    }
-                }
-                """)
                 
-                st.info("💡 **Tabel telah menggunakan Pagination (Halaman) di bagian bawah agar sistem tidak *Crash* saat memuat 10.000+ data.** Klik menu (garis tiga) di judul untuk Filter Dropdown.")
+                custom_css = {
+                    ".ag-header": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-icon": {"color": "white !important"},
+                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                }
+                
+                st.info("💡 **Tips Filter & Sortir:** Klik ikon kaca pembesar/tiga garis di judul kolom untuk memunculkan kotak filter yang bisa Anda ketik. Klik teks judul untuk mengurutkan angka.")
                 
                 AgGrid(
                     df_filtered,
@@ -704,7 +713,8 @@ def render_pivot_fragment(df_scope_all, role):
                     theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True
+                    enable_enterprise_modules=True,
+                    custom_css=custom_css
                 )
             else:
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
@@ -1621,25 +1631,29 @@ def main_dashboard():
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
 
-                    # --- 2. DATA SANITIZATION SKU (ANTI BLANK/CRASH) ---
-                    for col in df_display_sku.columns:
-                        if col in (list(bulan_indo_map.values()) + ['Total Penjualan']):
-                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0)
-                        else:
-                            df_display_sku[col] = df_display_sku[col].fillna("-").astype(str)
-
-                    # --- 3. PENYESUAIAN GRAND TOTAL (UNTUK EXCEL & PINNED ROW) ---
-                    total_dict_sku = {col: "" for col in df_display_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
-                    for col in num_cols_sku:
-                        if col in df_display_sku.columns:
+
+                    # --- 1. DATA SANITIZATION SKU (ANTI BLANK/CRASH) ---
+                    for col in df_display_sku.columns:
+                        if col in num_cols_sku:
+                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
+                        else:
+                            df_display_sku[col] = df_display_sku[col].fillna("-").astype(str).replace('nan', '-').replace('None', '-')
+
+                    # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
+                    total_dict_sku = {}
+                    for col in df_display_sku.columns:
+                        if col == df_display_sku.columns[0]:
+                            total_dict_sku[col] = "GRAND TOTAL"
+                        elif col in num_cols_sku:
                             total_dict_sku[col] = float(df_display_sku[col].sum())
+                        else:
+                            total_dict_sku[col] = "-"
                             
                     # Data asli untuk diekspor ke Excel agar rapi
                     df_export_sku = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
 
-                    # --- 4. IMPLEMENTASI AGGRID (SKU TABLE) ---
+                    # --- 3. IMPLEMENTASI AGGRID AMAN (SKU TABLE) ---
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                         
@@ -1650,35 +1664,30 @@ def main_dashboard():
                             resizable=True
                         )
                         
-                        # WAJIB UNTUK ANTI BLANK/CRASH!
-                        gb_sku.configure_pagination(paginationAutoPageSize=False, paginationPageSize=100)
-                        
                         rupiah_format_sku = JsCode("""
                         function(params) {
-                            if (params.value === null || params.value === undefined || params.value === "") {
-                                return '-';
-                            }
+                            if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
                             return 'Rp ' + Number(params.value).toLocaleString('id-ID');
                         }
                         """)
                         
                         for col in df_display_sku.columns:
-                            if col != display_col:
+                            if col in num_cols_sku:
                                 gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
                                 
                         go_sku = gb_sku.build()
                         
                         # Mengunci baris Grand Total di bawah
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
-                        go_sku['getRowStyle'] = JsCode("""
-                        function(params) {
-                            if (params.node.rowPinned === 'bottom') {
-                                return {'background-color': '#FFFF00', 'color': 'black', 'font-weight': 'bold'};
-                            }
-                        }
-                        """)
                         
-                        st.info("💡 **Tabel telah menggunakan Pagination (Halaman) di bagian bawah agar sistem tidak *Crash* saat memuat ribuan data.** Klik menu (garis tiga) di judul untuk Filter Dropdown.")
+                        custom_css_sku = {
+                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-icon": {"color": "white !important"},
+                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                        }
+                        
+                        st.info("💡 **Tips Filter & Sortir:** Klik ikon kaca pembesar/tiga garis di judul kolom untuk memunculkan kotak filter yang bisa Anda ketik. Klik teks judul untuk mengurutkan angka.")
                         
                         AgGrid(
                             df_display_sku,
@@ -1686,7 +1695,8 @@ def main_dashboard():
                             theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True
+                            enable_enterprise_modules=True,
+                            custom_css=custom_css_sku
                         )
                     else:
                         st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
