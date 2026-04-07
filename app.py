@@ -84,10 +84,11 @@ st.markdown("""
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
     
-    /* Mencegah background iframe menghalangi UI Dark Mode */
+    /* FIX KEBOCORAN AGGRID: Mengubah canvas iframe luar menjadi biru */
     iframe[title="streamlit_aggrid.agGrid"] {
         border: none !important;
-        background-color: transparent !important;
+        background-color: #2980b9 !important; 
+        border-radius: 8px 8px 0px 0px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -584,8 +585,6 @@ def render_pivot_fragment(df_scope_all, role):
         with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
         with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
         with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
-
-        maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
         
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
@@ -627,23 +626,8 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
-        if maximize_toggle:
-            st.markdown("""
-            <style>
-                header {display: none !important;}
-                [data-testid="stSidebar"] {display: none !important;}
-                .block-container {
-                    max-width: 100% !important;
-                    padding-top: 1rem !important;
-                    padding-right: 1rem !important;
-                    padding-left: 1rem !important;
-                    padding-bottom: 1rem !important;
-                }
-            </style>
-            """, unsafe_allow_html=True)
-            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-
         if not df_filtered.empty:
+            
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
@@ -697,17 +681,15 @@ def render_pivot_fragment(df_scope_all, role):
                 go['pinnedBottomRowData'] = [total_dict]
                 
                 custom_css = {
-                    ".ag-root-wrapper": {"background-color": "#2980b9 !important", "border": "none !important", "border-radius": "0px !important"},
-                    ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
-                    ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
-                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                    ".ag-root-wrapper": {"background-color": "#2980b9 !important", "border": "none !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                    ".ag-header-row": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-icon": {"color": "white !important"},
                     ".ag-body-viewport": {"background-color": "#ffffff !important"},
                     ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                     ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
-                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
+                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#f0f0f0 !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                 }
                 
                 st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -1139,7 +1121,7 @@ def main_dashboard():
             final_summary_data = []
             
             for idx, group in enumerate(temp_grouped_data, 1):
-                group['parent']['Rank'] = idx 
+                group['parent']['Rank'] = f"{idx}" 
                 final_summary_data.append(group['parent'])
                 final_summary_data.extend(group['children'])
 
@@ -1148,13 +1130,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
+                # --- PERBAIKAN FINAL: !important PADA TEKS HITAM DAN BOLD UNTUK RANKING BRAND ---
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
-                    if row["Supervisor"]: 
-                        return [f'background-color: #d1d8e0 !important; color: #000000 !important; font-weight: 900 !important; border-top: 2px solid #333 !important; border-bottom: 2px solid #333 !important;'] * len(row)
+                    if row["Supervisor"] != "": 
+                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: 900 !important; border-top: 1px solid #444 !important; border-bottom: 1px solid #444 !important;'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color} !important; color: #333333 !important; font-weight: normal !important; border-bottom: 1px solid #ccc !important;'] * len(row)
+                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: normal !important; border-top: none !important; border-bottom: 1px solid #ddd !important;'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1187,7 +1170,7 @@ def main_dashboard():
                 def style_indiv(row):
                     val = row['Pencapaian']
                     bg = get_color_achv(val)
-                    return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach (%)' else '' for col in row.index]
+                    return [f'background-color: {bg} !important; color: #000000 !important; font-weight: bold !important;' if col == 'Ach (%)' else '' for col in row.index]
                 st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
@@ -1269,7 +1252,7 @@ def main_dashboard():
                         try: val = float(row['Ach %'].replace('%', '')) / 100
                         except: val = 0
                         bg = get_color_achv(val)
-                        return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach %' else '' for col in row.index]
+                        return [f'background-color: {bg} !important; color: #000000 !important; font-weight: bold !important;' if col == 'Ach %' else '' for col in row.index]
                     
                     st.dataframe(df_sales_stats.style.apply(style_sales_stats, axis=1), use_container_width=True)
                     
@@ -1616,17 +1599,15 @@ def main_dashboard():
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
                         custom_css_sku = {
-                            ".ag-root-wrapper": {"background-color": "#2980b9 !important", "border": "none !important", "border-radius": "0px !important"},
-                            ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
-                            ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
-                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
-                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                            ".ag-header-row": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-icon": {"color": "white !important"},
                             ".ag-body-viewport": {"background-color": "#ffffff !important"},
                             ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                             ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
-                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
+                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#f0f0f0 !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                         }
                         
                         st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -1790,7 +1771,7 @@ def main_dashboard():
                                 base_style = 'border: 1px solid #dcdcdc; '
                                 if col == 'AO VS RO %':
                                     bg = get_color_achv(row[col])
-                                    styles.append(base_style + f'background-color: {bg}; color: black;')
+                                    styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important;')
                                 else:
                                     styles.append(base_style)
                             return styles
@@ -1841,13 +1822,13 @@ def main_dashboard():
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                            styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important; font-weight: bold !important;')
                                         else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                            styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: #000000 !important;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
+                                            styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important;')
                                         else:
                                             styles.append(base_style)
                                 return styles
@@ -1879,13 +1860,13 @@ def main_dashboard():
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                            styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important; font-weight: bold !important;')
                                         else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                            styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: #000000 !important;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
+                                            styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important;')
                                         else:
                                             styles.append(base_style)
                                 return styles
@@ -2005,13 +1986,13 @@ def main_dashboard():
                         if row['Costumer'] == 'Total Achievement':
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
+                                styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important; font-weight: bold !important;')
                             else:
-                                styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
+                                styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: #000000 !important;')
                         else:
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black;')
+                                styles.append(base_style + f'background-color: {bg} !important; color: #000000 !important;')
                             else:
                                 styles.append(base_style)
                     return styles
