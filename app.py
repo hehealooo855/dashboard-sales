@@ -11,7 +11,13 @@ import os
 import hashlib
 import numpy as np
 import pyotp  
-import qrcode
+import qrcode 
+from calendar import monthrange
+from itertools import combinations
+from collections import Counter
+import calendar
+import concurrent.futures
+import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -79,6 +85,7 @@ st.markdown("""
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
     
+    /* Mencegah background iframe menghalangi UI Dark Mode */
     iframe[title="streamlit_aggrid.agGrid"] {
         border: none !important;
         background-color: transparent !important;
@@ -605,7 +612,8 @@ def render_pivot_fragment(df_scope_all, role):
         
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        ren_dict = {'Kode_Global': 'Kode Customer'}
+        # PERBAIKAN: Menyamakan penamaan kolom agar filter nama outlet berfungsi kembali
+        ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
@@ -691,13 +699,26 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 go['pinnedBottomRowData'] = [total_dict]
                 
-                # CSS Dasar untuk Alpine Theme
+                # PLAN FINAL: Mewarnai fondasi dasar dengan biru agar menarik header ke atas tanpa batas
                 custom_css = {
-                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                    ".ag-header-row": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                    ".ag-icon": {"color": "white !important"}
+                    # 1. WARNA BIRU DITARIK KE ATAS (MENUTUPI KEBOCORAN)
+                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
+                    ".ag-root-wrapper-body": {"background-color": "transparent !important"},
+                    
+                    # 2. HEADER MENYATU
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
+                    ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                    ".ag-icon": {"color": "white !important"},
+                    
+                    # 3. AREA DATA PUTIH BERSIH
+                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
+                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
+                    ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
+                    
+                    # 4. KOTAK PENCARIAN
+                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
                 }
                 
                 st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -715,7 +736,7 @@ def render_pivot_fragment(df_scope_all, role):
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
                 st.dataframe(df_export)
             
-            # Download button
+            # PERBAIKAN: Download Excel hanya diproses JIKA data tidak kosong (Menghindari KeyError)
             user_role_lower = role.lower()
             if user_role_lower in ['direktur', 'manager', 'supervisor']:
                 if 'df_export' in locals() and not df_export.empty:
