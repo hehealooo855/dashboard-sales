@@ -84,11 +84,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
-    
-    /* MEMAKSA AGGRID HEADER MENJADI CORPORATE BLUE DARI LUAR (BACKUP) */
-    .ag-theme-alpine .ag-header { background-color: #2980b9 !important; }
-    .ag-theme-alpine .ag-header-cell-text { color: white !important; font-weight: bold !important; }
-    .ag-theme-alpine .ag-icon { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -543,7 +538,6 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
-@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -656,7 +650,6 @@ def render_pivot_fragment(df_scope_all, role):
             df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
 
             # --- 2. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
-            # Mengamankan seluruh tipe data sebelum dilempar ke AgGrid Javascript
             df_clean = df_filtered.copy()
             for col in df_clean.columns:
                 if col in num_cols:
@@ -682,11 +675,11 @@ def render_pivot_fragment(df_scope_all, role):
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_clean)
                 
-                # MENGAKTIFKAN FLOATING FILTER (KOTAK KETIK DI BAWAH HEADER SEPERTI GAMBAR ANDA)
+                # MENGAKTIFKAN FLOATING FILTER DAN EXCEL-LIKE DROPDOWN FILTER
                 gb.configure_default_column(
                     sortable=True, 
-                    filter=True, # Menggunakan text/number filter standar yang anti-crash
-                    floatingFilter=True, # <--- INI KUNCI UTAMANYA!
+                    filter='agSetColumnFilter', # Mengubah tipe filter menjadi checkbox dropdown
+                    floatingFilter=True,
                     resizable=True
                 )
                 
@@ -711,10 +704,15 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-header": {"background-color": "#2980b9 !important"},
                     ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-icon": {"color": "white !important"},
-                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
+                    # Memaksa body tabel putih dan border seperti excel
+                    ".ag-root-wrapper": {"background-color": "#ffffff !important"},
+                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #d3d3d3 !important"},
+                    ".ag-cell": {"border-right": "1px solid #d3d3d3 !important", "color": "#000000 !important"},
+                    ".ag-header-cell": {"border-right": "1px solid #ffffff !important"}
                 }
                 
-                st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
+                st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
                 
                 AgGrid(
                     df_clean,
@@ -722,7 +720,7 @@ def render_pivot_fragment(df_scope_all, role):
                     theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=False, # Dimatikan agar 100% bebas blank screen
+                    enable_enterprise_modules=True, # Dinyalakan agar Set Filter (Checkbox list) berfungsi
                     custom_css=custom_css
                 )
             else:
@@ -1215,13 +1213,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
+                # --- MODIFIKASI RAPOR BRAND (FONT BOLD & WARNA HITAM PEKAT) ---
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: 900; border-top: 2px solid #555; border-bottom: 2px solid #555; font-size: 15px'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color}; color: #333; opacity: 0.9; border-bottom: 1px solid #eee'] * len(row)
+                        return [f'background-color: {bg_color}; color: #222; font-weight: 600; border-bottom: 1px solid #ccc'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1251,7 +1250,7 @@ def main_dashboard():
                 def style_indiv(row):
                     val = row['Pencapaian']
                     bg = get_color_achv(val)
-                    return [f'background-color: {bg}; color: black;' if col == 'Ach (%)' else '' for col in row.index]
+                    return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach (%)' else '' for col in row.index]
                 st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
@@ -1333,7 +1332,7 @@ def main_dashboard():
                         try: val = float(row['Ach %'].replace('%', '')) / 100
                         except: val = 0
                         bg = get_color_achv(val)
-                        return [f'background-color: {bg}; color: black;' if col == 'Ach %' else '' for col in row.index]
+                        return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach %' else '' for col in row.index]
                     
                     st.dataframe(df_sales_stats.style.apply(style_sales_stats, axis=1), use_container_width=True)
                     
@@ -1401,7 +1400,6 @@ def main_dashboard():
             st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
             with st.expander("Lihat Daftar Toko Tidur"):
                 last_trx = []
-                # Vectorization for sleeping outlets
                 sleeping_df = df_scope_all[df_scope_all['Nama Outlet'].isin(sleeping_outlets)]
                 last_dates = sleeping_df.groupby('Nama Outlet')['Tanggal'].max()
                 sales_handlers = sleeping_df.groupby('Nama Outlet')['Penjualan'].first()
@@ -1568,7 +1566,6 @@ def main_dashboard():
             with st.form(key='sku_filter_form'):
                 st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
-                # --- OPSI A: KOLOM KODE/NAMA/PROVINSI/KOTA DI ATAS, SKU DI BAWAH (FULL WIDTH) ---
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1: filter_kode_sku = st.multiselect("Kode Customer:", list_kode_all_sku, placeholder="Pilih Kode...")
                 with col_f2: filter_nama_sku = st.multiselect("Nama Customer:", list_nama_all_sku, placeholder="Pilih Customer...")
@@ -1616,7 +1613,6 @@ def main_dashboard():
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
-                    # --- 🚀 FITUR: Tabel SKU Bunglon ---
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
                         display_col = 'Nama Toko'
@@ -1642,7 +1638,6 @@ def main_dashboard():
 
                     num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
 
-                    # --- 1. DATA SANITIZATION SKU (ANTI BLANK/CRASH) ---
                     df_clean_sku = df_display_sku.copy()
                     for col in df_clean_sku.columns:
                         if col in num_cols_sku:
@@ -1650,24 +1645,20 @@ def main_dashboard():
                         else:
                             df_clean_sku[col] = df_clean_sku[col].astype(str).replace('nan', '')
 
-                    # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
                     total_dict_sku = {col: "" for col in df_clean_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     for col in num_cols_sku:
                         if col in df_clean_sku.columns:
                             total_dict_sku[col] = float(df_clean_sku[col].sum())
                             
-                    # Data asli untuk diekspor ke Excel agar rapi
                     df_export_sku = pd.concat([df_clean_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
 
-                    # --- 3. IMPLEMENTASI AGGRID AMAN DENGAN FLOATING FILTER (SKU TABLE) ---
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
-                        # MENGAKTIFKAN FLOATING FILTER
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            filter=True, 
+                            filter='agSetColumnFilter', # Mengubah tipe filter menjadi checkbox dropdown
                             floatingFilter=True, 
                             resizable=True
                         )
@@ -1684,18 +1675,21 @@ def main_dashboard():
                                 gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
                                 
                         go_sku = gb_sku.build()
-                        
-                        # Mengunci baris Grand Total di bawah
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
                         custom_css_sku = {
                             ".ag-header": {"background-color": "#2980b9 !important"},
                             ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-icon": {"color": "white !important"},
-                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
+                            # Memaksa body tabel putih dan border seperti excel
+                            ".ag-root-wrapper": {"background-color": "#ffffff !important"},
+                            ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #d3d3d3 !important"},
+                            ".ag-cell": {"border-right": "1px solid #d3d3d3 !important", "color": "#000000 !important"},
+                            ".ag-header-cell": {"border-right": "1px solid #ffffff !important"}
                         }
                         
-                        st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
+                        st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
                         
                         AgGrid(
                             df_clean_sku,
@@ -1703,7 +1697,7 @@ def main_dashboard():
                             theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=False,
+                            enable_enterprise_modules=True, # Dinyalakan agar Set Filter (Checkbox list) berfungsi
                             custom_css=custom_css_sku
                         )
                     else:
@@ -1749,7 +1743,6 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # --- PIPA DATA RAW KHUSUS GROWTH ---
                 df_team_all = df.copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1769,7 +1762,6 @@ def main_dashboard():
                 prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                 prefix_tuple = tuple(prefixes)
                 
-                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
                 is_target_brand = df_team_all['Merk'] == brand_growth
                 is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 is_valid_ro = is_target_brand | is_target_prefix
