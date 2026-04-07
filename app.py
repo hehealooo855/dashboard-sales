@@ -84,6 +84,12 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    
+    /* Mencegah background putih bawaan iframe yang bocor di Dark Mode */
+    iframe[title="streamlit_aggrid.agGrid"] {
+        border: none !important;
+        background-color: transparent !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -640,7 +646,6 @@ def render_pivot_fragment(df_scope_all, role):
 
         if not df_filtered.empty:
             
-            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
@@ -649,7 +654,6 @@ def render_pivot_fragment(df_scope_all, role):
             
             df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
 
-            # --- 2. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
             df_clean = df_filtered.copy()
             for col in df_clean.columns:
                 if col in num_cols:
@@ -657,7 +661,6 @@ def render_pivot_fragment(df_scope_all, role):
                 else:
                     df_clean[col] = df_clean[col].astype(str).replace('nan', '')
 
-            # --- 3. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
             total_dict = {col: "" for col in df_clean.columns}
             if 'Kode Customer' in df_clean.columns:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
@@ -668,22 +671,18 @@ def render_pivot_fragment(df_scope_all, role):
                 if col in df_clean.columns:
                     total_dict[col] = float(df_clean[col].sum())
                     
-            # Data asli untuk diekspor ke Excel agar rapi
             df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
 
-            # --- 4. IMPLEMENTASI AGGRID DENGAN FLOATING FILTER (EXCEL LIKE) ---
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_clean)
                 
-                # MENGAKTIFKAN FLOATING FILTER DAN EXCEL-LIKE DROPDOWN FILTER
                 gb.configure_default_column(
                     sortable=True, 
-                    filter='agSetColumnFilter', # Mengubah tipe filter menjadi checkbox dropdown
+                    filter='agSetColumnFilter', 
                     floatingFilter=True,
                     resizable=True
                 )
                 
-                # Formatter Rupiah Cepat tanpa NaN Bug
                 rupiah_format = JsCode("""
                 function(params) {
                     if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
@@ -697,19 +696,25 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 go = gb.build()
                 
-                # Mengunci baris Grand Total di bawah
                 go['pinnedBottomRowData'] = [total_dict]
                 
                 custom_css = {
-                    ".ag-header": {"background-color": "#2980b9 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                    ".ag-header-row": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
                     ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-icon": {"color": "white !important"},
                     ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
-                    # Memaksa body tabel putih dan border seperti excel
-                    ".ag-root-wrapper": {"background-color": "#ffffff !important"},
-                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #d3d3d3 !important"},
-                    ".ag-cell": {"border-right": "1px solid #d3d3d3 !important", "color": "#000000 !important"},
-                    ".ag-header-cell": {"border-right": "1px solid #ffffff !important"}
+                    
+                    # PERBAIKAN: Menghilangkan kebocoran putih di luar tabel
+                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
+                    ".ag-root-wrapper-body": {"background-color": "#ffffff !important"},
+                    
+                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
+                    ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
+                    
+                    # Styling khusus untuk kotak input filter agar tidak menabrak warnanya
+                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                 }
                 
                 st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -720,7 +725,7 @@ def render_pivot_fragment(df_scope_all, role):
                     theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True, # Dinyalakan agar Set Filter (Checkbox list) berfungsi
+                    enable_enterprise_modules=True, 
                     custom_css=custom_css
                 )
             else:
@@ -730,7 +735,6 @@ def render_pivot_fragment(df_scope_all, role):
         else:
             st.info("Data Kosong setelah difilter.")
             
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -812,7 +816,7 @@ def login_page():
                                     log_activity(username, "FAILED LOGIN - WRONG PASS")
                                     st.session_state['failed_attempts'][username] = st.session_state['failed_attempts'].get(username, 0) + 1
                                     if st.session_state['failed_attempts'][username] >= 3:
-                                        st.session_state['lockout_until'][username] = time.time() + 600 # 10 menit
+                                        st.session_state['lockout_until'][username] = time.time() + 600 
                                         st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
                                 else:
                                     st.session_state['failed_attempts'][username] = 0
@@ -1156,7 +1160,6 @@ def main_dashboard():
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'IJL' else ''}")
             
-            # --- SUPER VECTORIZATION (PRE-AGGREGATION) UNTUK KECEPATAN ---
             dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
             
             def get_salesmen_dict(df_to_group):
@@ -1170,7 +1173,6 @@ def main_dashboard():
                 return res
                 
             salesmen_mtd_master = get_salesmen_dict(df_active_tab)
-            # -------------------------------------------------------------
             
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
@@ -1213,14 +1215,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # --- MODIFIKASI RAPOR BRAND (FONT BOLD & WARNA HITAM PEKAT) ---
+                # --- PERBAIKAN: Font Bold hanya untuk Induk, Salesman Normal ---
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: 900; border-top: 2px solid #555; border-bottom: 2px solid #555; font-size: 15px'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid #555; border-bottom: 2px solid #555; font-size: 15px'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color}; color: #222; font-weight: 600; border-bottom: 1px solid #ccc'] * len(row)
+                        return [f'background-color: {bg_color}; color: #222; font-weight: normal; border-bottom: 1px solid #ccc'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1400,6 +1402,7 @@ def main_dashboard():
             st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
             with st.expander("Lihat Daftar Toko Tidur"):
                 last_trx = []
+                # Vectorization for sleeping outlets
                 sleeping_df = df_scope_all[df_scope_all['Nama Outlet'].isin(sleeping_outlets)]
                 last_dates = sleeping_df.groupby('Nama Outlet')['Tanggal'].max()
                 sales_handlers = sleeping_df.groupby('Nama Outlet')['Penjualan'].first()
@@ -1658,7 +1661,7 @@ def main_dashboard():
                         
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            filter='agSetColumnFilter', # Mengubah tipe filter menjadi checkbox dropdown
+                            filter='agSetColumnFilter', 
                             floatingFilter=True, 
                             resizable=True
                         )
@@ -1678,15 +1681,22 @@ def main_dashboard():
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
                         custom_css_sku = {
-                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                            ".ag-header-row": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
                             ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-icon": {"color": "white !important"},
                             ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
-                            # Memaksa body tabel putih dan border seperti excel
-                            ".ag-root-wrapper": {"background-color": "#ffffff !important"},
-                            ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #d3d3d3 !important"},
-                            ".ag-cell": {"border-right": "1px solid #d3d3d3 !important", "color": "#000000 !important"},
-                            ".ag-header-cell": {"border-right": "1px solid #ffffff !important"}
+                            
+                            # PERBAIKAN: Menghilangkan kebocoran putih di luar tabel
+                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
+                            ".ag-root-wrapper-body": {"background-color": "#ffffff !important"},
+                            
+                            ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
+                            ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
+                            
+                            # Styling khusus untuk kotak input filter agar tidak menabrak warnanya
+                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                         }
                         
                         st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -1697,7 +1707,7 @@ def main_dashboard():
                             theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True, # Dinyalakan agar Set Filter (Checkbox list) berfungsi
+                            enable_enterprise_modules=True,
                             custom_css=custom_css_sku
                         )
                     else:
