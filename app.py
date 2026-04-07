@@ -17,6 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -47,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue
+# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs & Hilangkan Logo Streamlit)
 st.markdown("""
 <style>
     .metric-card {
@@ -61,6 +62,7 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -69,6 +71,7 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
+    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
         font-size: 18px !important;
         font-weight: 600 !important;
@@ -78,16 +81,21 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
-    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
-    
-    /* Mencegah background iframe menghalangi UI Dark Mode */
-    iframe[title="streamlit_aggrid.agGrid"] {
-        border: none !important;
-        background-color: transparent !important;
+    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
+    div[data-baseweb="tab-list"] button[aria-selected="true"] {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-highlight"] {
+        background-color: #2980b9 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        border-bottom-color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover span {
+        color: #2980b9 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -297,7 +305,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER
+# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
@@ -435,7 +443,7 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE
+# PIVOT FAST ENGINE (DIHAPUS CACHE-NYA AGAR TIDAK STUCK)
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
@@ -543,6 +551,7 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
+@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -611,7 +620,7 @@ def render_pivot_fragment(df_scope_all, role):
         
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
+        ren_dict = {'Kode_Global': 'Kode Customer'}
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
@@ -644,124 +653,172 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            
+            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
-
-            df_clean = df_filtered.copy()
-            for col in df_clean.columns:
-                if col in num_cols:
-                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0).astype(float)
-                else:
-                    df_clean[col] = df_clean[col].astype(str).replace('nan', '')
-
-            total_dict = {col: "" for col in df_clean.columns}
-            if 'Kode Customer' in df_clean.columns:
+            # --- 2. PENYESUAIAN GRAND TOTAL ---
+            total_dict = {col: "" for col in df_filtered.columns}
+            if 'Kode Customer' in total_dict:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_clean.columns) > 0:
-                total_dict[df_clean.columns[0]] = "GRAND TOTAL"
+            elif len(df_filtered.columns) > 0:
+                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
                 
             for col in num_cols:
-                if col in df_clean.columns:
-                    total_dict[col] = float(df_clean[col].sum())
+                if col in df_filtered.columns:
+                    total_dict[col] = df_filtered[col].sum()
                     
-            df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
-
-            if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_clean)
-                
-                gb.configure_default_column(
-                    sortable=True, 
-                    filter='agSetColumnFilter', 
-                    floatingFilter=True,
-                    resizable=True
-                )
-                
-                rupiah_format = JsCode("""
-                function(params) {
-                    if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
-                    return 'Rp ' + Number(params.value).toLocaleString('id-ID');
-                }
-                """)
-                
-                for col in df_clean.columns:
-                    if col in num_cols:
-                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
-                
-                go = gb.build()
-                
-                go['pinnedBottomRowData'] = [total_dict]
-                
-                custom_css = {
-                    # Mencegah kebocoran putih dengan mengunci root background ke transparent
-                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
-                    ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                    
-                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
-                    ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
-                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
-                    ".ag-icon": {"color": "white !important"},
-                    
-                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
-                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                    ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
-                    
-                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
-                }
-                
-                st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
-                
-                AgGrid(
-                    df_clean,
-                    gridOptions=go,
-                    theme='alpine', 
-                    height=600,
-                    allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True, 
-                    custom_css=custom_css
-                )
-            else:
-                st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
-                st.dataframe(df_export)
+            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            user_role_lower = role.lower()
-            if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                if 'df_export' in locals() and not df_export.empty:
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        df_export.to_excel(writer, index=False, sheet_name='Master Data')
-                        
-                        workbook = writer.book
-                        worksheet = writer.sheets['Master Data']
-                        
-                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                        
-                        worksheet.set_header(f'&C&10{watermark_text}')
-                        worksheet.set_footer(f'&RPage &P of &N')
-                        
-                        format1 = workbook.add_format({'num_format': '#,##0'})
-                        worksheet.set_column('D:P', None, format1) 
-                        
-                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                        last_row_idx = len(df_export) 
-                        worksheet.set_row(last_row_idx, None, bold_format)
+            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
+            html_table = """
+            <style>
+                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
+                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                /* Styling untuk Dropdown Filter */
+                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
+            </style>
+            <div style="overflow-x: auto; max-height: 800px;">
+                <table class="pivot-table" id="table-pivot-main">
+                    <thead>
+                        <tr>
+            """
+            
+            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
+            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
+            
+            for col in df_display.columns:
+                if col in categorical_cols:
+                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
+                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
                     
-                    st.download_button(
-                        label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                        data=output.getvalue(),
-                        file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                    options_html = "<option value=''>Semua</option>"
+                    for val in unique_vals:
+                        options_html += f"<option value='{val}'>{val}</option>"
+                    
+                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
+                else:
+                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
+                    html_table += f"<th>{col}</th>"
+                    
+            html_table += "</tr></thead><tbody>"
+            
+            for _, row in df_display.iterrows():
+                is_gt = False
+                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
+                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
+                
+                tr_class = "grand-total-row" if is_gt else ""
+                html_table += f'<tr class="{tr_class}">'
+                
+                for col in df_display.columns:
+                    val = row[col]
+                    if col in num_cols:
+                        if pd.isna(val) or val == "":
+                            val_str = "-"
+                        else:
+                            try:
+                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                            except:
+                                val_str = str(val)
+                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                    else:
+                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
+                            html_table += f'<td style="text-align: center;">{val_str}</td>'
+                        else:
+                            html_table += f'<td>{val_str}</td>'
+                html_table += "</tr>"
+                
+            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
+            html_table += """
+            </tbody></table></div><br>
+            <script>
+            function filterTableDropdown(tableId) {
+                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                if (!table) return;
+                var tr = table.getElementsByTagName("tr");
+                var ths = table.getElementsByTagName("th");
+                var selects = [];
+                
+                // Kumpulkan semua elemen select
+                for (var i = 0; i < ths.length; i++) {
+                    var sel = ths[i].getElementsByTagName("select")[0];
+                    selects.push(sel ? sel : null);
+                }
+                
+                // Eksekusi filter
+                for (var i = 1; i < tr.length; i++) {
+                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                    
+                    var displayRow = true;
+                    for (var j = 0; j < selects.length; j++) {
+                        if (selects[j] && selects[j].value !== "") {
+                            var filterVal = selects[j].value.toUpperCase();
+                            var td = tr[i].getElementsByTagName("td")[j];
+                            if (td) {
+                                var txtValue = td.textContent || td.innerText;
+                                // Pencarian Exact Match (Sama Persis)
+                                if (txtValue.toUpperCase() !== filterVal) {
+                                    displayRow = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    tr[i].style.display = displayRow ? "" : "none";
+                }
+            }
+            </script>
+            """
+            
+            st.markdown(html_table, unsafe_allow_html=True)
+            
         else:
             st.info("Data Kosong setelah difilter.")
+            
+        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
+        user_role_lower = role.lower()
+        if user_role_lower in ['direktur', 'manager', 'supervisor']:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                if 'df_display' in locals() and not df_display.empty:
+                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                
+                workbook = writer.book
+                worksheet = writer.sheets['Master Data']
+                
+                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                
+                worksheet.set_header(f'&C&10{watermark_text}')
+                worksheet.set_footer(f'&RPage &P of &N')
+                
+                format1 = workbook.add_format({'num_format': '#,##0'})
+                worksheet.set_column('D:P', None, format1) 
+                
+                if 'df_display' in locals() and not df_display.empty:
+                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                    last_row_idx = len(df_display) 
+                    worksheet.set_row(last_row_idx, None, bold_format)
+            
+            st.download_button(
+                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                data=output.getvalue(),
+                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    else:
+        st.info("Data Kosong.")
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -810,7 +867,7 @@ def login_page():
                                     log_activity(username, "FAILED LOGIN - WRONG PASS")
                                     st.session_state['failed_attempts'][username] = st.session_state['failed_attempts'].get(username, 0) + 1
                                     if st.session_state['failed_attempts'][username] >= 3:
-                                        st.session_state['lockout_until'][username] = time.time() + 600 
+                                        st.session_state['lockout_until'][username] = time.time() + 600 # 10 menit
                                         st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
                                 else:
                                     st.session_state['failed_attempts'][username] = 0
@@ -883,6 +940,26 @@ def main_dashboard():
         except:
             return ''
 
+    def add_aggressive_watermark():
+        user_name = st.session_state.get('sales_name', 'User')
+        role_name = st.session_state.get('role', 'staff')
+        
+        if role_name != 'direktur':
+            st.markdown(f"""
+            <style>
+            .watermark-container {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none; overflow: hidden; display: flex; flex-wrap: wrap; opacity: 0.15; }}
+            .watermark-text {{ font-family: 'Arial', sans-serif; font-size: 16px; color: #555; font-weight: 700; transform: rotate(-30deg); white-space: nowrap; margin: 20px; user-select: none; }}
+            </style>
+            <div class="watermark-container">{''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}</div>
+            <script>
+            window.addEventListener('blur', () => {{ document.body.style.filter = 'blur(20px) brightness(0.4)'; document.body.style.backgroundColor = '#000'; }});
+            window.addEventListener('focus', () => {{ document.body.style.filter = 'none'; document.body.style.backgroundColor = '#fff'; }});
+            document.addEventListener('keydown', (e) => {{ if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{ e.preventDefault(); alert('⚠️ Action Disabled for Security Reasons!'); }} }});
+            </script>
+            """, unsafe_allow_html=True)
+    
+    add_aggressive_watermark()
+
     if st.session_state['role'] != 'direktur':
         st.markdown("<style>@media print { body { display: none !important; } } body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } img { pointer-events: none; }</style>", unsafe_allow_html=True)
 
@@ -892,6 +969,41 @@ def main_dashboard():
         
         fast_mode = st.toggle("⚡ Mode Performa Tinggi", value=True, help="Membaca data dari memori (Cache). Matikan jika Anda baru saja menambah data di Google Sheets dan ingin sistem menarik data terbaru.")
         
+        st.markdown("---")
+        st.write("### 🎬 Mode Presentasi")
+        is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False)
+        
+        if is_presentation_mode:
+            components.html("""
+            <script>
+                const overlay = window.parent.document.createElement('div');
+                overlay.id = 'presentation-spotlight';
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.pointerEvents = 'none';
+                overlay.style.zIndex = '99998';
+                overlay.style.background = 'radial-gradient(circle 250px at 50vw 50vh, transparent 0%, rgba(0, 0, 0, 0.8) 100%)';
+                
+                const existing = window.parent.document.getElementById('presentation-spotlight');
+                if (existing) existing.remove();
+                window.parent.document.body.appendChild(overlay);
+
+                window.parent.document.addEventListener('mousemove', function(e) {
+                    overlay.style.background = `radial-gradient(circle 250px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0, 0, 0, 0.8) 100%)`;
+                });
+            </script>
+            """, height=0, width=0)
+        else:
+            components.html("""
+            <script>
+                const existing = window.parent.document.getElementById('presentation-spotlight');
+                if (existing) existing.remove();
+            </script>
+            """, height=0, width=0)
+
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             with st.expander("🔐 Admin Zone", expanded=False):
@@ -1099,6 +1211,7 @@ def main_dashboard():
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'IJL' else ''}")
             
+            # --- SUPER VECTORIZATION (PRE-AGGREGATION) UNTUK KECEPATAN ---
             dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
             
             def get_salesmen_dict(df_to_group):
@@ -1112,6 +1225,7 @@ def main_dashboard():
                 return res
                 
             salesmen_mtd_master = get_salesmen_dict(df_active_tab)
+            # -------------------------------------------------------------
             
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
@@ -1121,7 +1235,6 @@ def main_dashboard():
                 for brand, target in brands_dict.items():
                     realisasi_brand = dict_mtd_brand.get(brand, 0.0) 
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
-                    
                     brand_row = {
                         "Rank": 0, "Brand / Salesman": brand, "Supervisor": spv, "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
@@ -1159,9 +1272,9 @@ def main_dashboard():
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid black;'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid white'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color}; color: #333333; font-weight: normal; border-bottom: 1px solid #ccc;'] * len(row)
+                        return [f'background-color: {bg_color}; color: #333; opacity: 0.9; border-bottom: 1px solid #eee'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1191,7 +1304,7 @@ def main_dashboard():
                 def style_indiv(row):
                     val = row['Pencapaian']
                     bg = get_color_achv(val)
-                    return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach (%)' else '' for col in row.index]
+                    return [f'background-color: {bg}; color: black;' if col == 'Ach (%)' else '' for col in row.index]
                 st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
@@ -1273,7 +1386,7 @@ def main_dashboard():
                         try: val = float(row['Ach %'].replace('%', '')) / 100
                         except: val = 0
                         bg = get_color_achv(val)
-                        return [f'background-color: {bg}; color: black; font-weight: bold;' if col == 'Ach %' else '' for col in row.index]
+                        return [f'background-color: {bg}; color: black;' if col == 'Ach %' else '' for col in row.index]
                     
                     st.dataframe(df_sales_stats.style.apply(style_sales_stats, axis=1), use_container_width=True)
                     
@@ -1508,6 +1621,7 @@ def main_dashboard():
             with st.form(key='sku_filter_form'):
                 st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
+                # --- OPSI A: KOLOM KODE/NAMA/PROVINSI/KOTA DI ATAS, SKU DI BAWAH (FULL WIDTH) ---
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1: filter_kode_sku = st.multiselect("Kode Customer:", list_kode_all_sku, placeholder="Pilih Kode...")
                 with col_f2: filter_nama_sku = st.multiselect("Nama Customer:", list_nama_all_sku, placeholder="Pilih Customer...")
@@ -1555,6 +1669,8 @@ def main_dashboard():
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
+                    # --- 🚀 FITUR: Tabel SKU Bunglon ---
+                    # Jika user mencari SKU spesifik, balik tabelnya menjadi berbasis Toko
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
                         display_col = 'Nama Toko'
@@ -1575,99 +1691,124 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    df_display_sku = pivot_sku.copy()
-                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-
-                    num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
-
-                    df_clean_sku = df_display_sku.copy()
-                    for col in df_clean_sku.columns:
-                        if col in num_cols_sku:
-                            df_clean_sku[col] = pd.to_numeric(df_clean_sku[col], errors='coerce').fillna(0).astype(float)
-                        else:
-                            df_clean_sku[col] = df_clean_sku[col].astype(str).replace('nan', '')
-
-                    total_dict_sku = {col: "" for col in df_clean_sku.columns}
+                    # Grand Total Row
+                    total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in num_cols_sku:
-                        if col in df_clean_sku.columns:
-                            total_dict_sku[col] = float(df_clean_sku[col].sum())
-                            
-                    df_export_sku = pd.concat([df_clean_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-
-                    if AGGRID_AVAILABLE:
-                        gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
-                        
-                        gb_sku.configure_default_column(
-                            sortable=True, 
-                            filter='agSetColumnFilter', 
-                            floatingFilter=True, 
-                            resizable=True
-                        )
-                        
-                        rupiah_format_sku = JsCode("""
-                        function(params) {
-                            if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
-                            return 'Rp ' + Number(params.value).toLocaleString('id-ID');
-                        }
-                        """)
-                        
-                        for col in df_clean_sku.columns:
-                            if col in num_cols_sku:
-                                gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
-                                
-                        go_sku = gb_sku.build()
-                        go_sku['pinnedBottomRowData'] = [total_dict_sku]
-                        
-                        custom_css_sku = {
-                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                            ".ag-header": {"background-color": "#2980b9 !important"},
-                            ".ag-header-row": {"background-color": "#2980b9 !important"},
-                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                            ".ag-icon": {"color": "white !important"}
-                        }
-                        
-                        st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
-                        
-                        AgGrid(
-                            df_clean_sku,
-                            gridOptions=go_sku,
-                            theme='alpine',
-                            height=600,
-                            allow_unsafe_jscode=True,
-                            enable_enterprise_modules=True,
-                            custom_css=custom_css_sku
-                        )
-                    else:
-                        st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
-                        st.dataframe(df_export_sku)
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                        total_dict_sku[col] = pivot_sku[col].sum()
                     
-                    if role.lower() in ['direktur', 'manager', 'supervisor']:
-                        if 'df_export_sku' in locals() and not df_export_sku.empty:
-                            output_sku = io.BytesIO()
-                            with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                                df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
-                                
-                                workbook = writer.book
-                                worksheet = writer.sheets['Detail SKU']
-                                
-                                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                                worksheet.set_header(f'&C&10{watermark_text}')
-                                
-                                format1 = workbook.add_format({'num_format': '#,##0'})
-                                worksheet.set_column('B:N', None, format1)
-                                
-                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                                worksheet.set_row(len(df_export_sku)-1, None, bold_format)
-                                
-                            st.download_button(
-                                label="📥 Download Detail SKU (Excel)",
-                                data=output_sku.getvalue(),
-                                file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            )
+                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    
+                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                    
+                    # HTML Table Rendering
+                    html_table_sku = """
+                    <style>
+                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
+                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                        /* Styling untuk input Filter Corong */
+                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                    </style>
+                    <div style="overflow-x: auto; max-height: 800px;">
+                        <table class="sku-table" id="table-sku-main">
+                            <thead>
+                                <tr>
+                    """
+                    for col in df_display_sku.columns:
+                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
+                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
+                    html_table_sku += "</tr></thead><tbody>"
+                    
+                    for _, row in df_display_sku.iterrows():
+                        is_gt = row.get(display_col) == 'GRAND TOTAL'
+                        tr_class = "grand-total-row" if is_gt else ""
+                        html_table_sku += f'<tr class="{tr_class}">'
+                        
+                        for col in df_display_sku.columns:
+                            val = row[col]
+                            if col != display_col:
+                                if pd.isna(val) or val == 0 or val == "":
+                                    val_str = "-"
+                                else:
+                                    try:
+                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                                    except:
+                                        val_str = str(val)
+                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                            else:
+                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                                if is_gt:
+                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
+                                else:
+                                    html_table_sku += f'<td>{val_str}</td>'
+                        html_table_sku += "</tr>"
+                        
+                    html_table_sku += """
+                    </tbody></table></div><br>
+                    <script>
+                    function filterTableData(tableId) {
+                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                        if (!table) return;
+                        var tr = table.getElementsByTagName("tr");
+                        var ths = table.getElementsByTagName("th");
+                        var inputs = [];
+                        for (var i=0; i<ths.length; i++) {
+                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                        }
+                        
+                        for (var i = 1; i < tr.length; i++) {
+                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                            var displayRow = true;
+                            for (var j = 0; j < inputs.length; j++) {
+                                if (inputs[j] && inputs[j].value !== "") {
+                                    var filter = inputs[j].value.toUpperCase();
+                                    var td = tr[i].getElementsByTagName("td")[j];
+                                    if (td) {
+                                        var txtValue = td.textContent || td.innerText;
+                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                            displayRow = false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            tr[i].style.display = displayRow ? "" : "none";
+                        }
+                    }
+                    </script>
+                    """
+                    
+                    st.markdown(html_table_sku, unsafe_allow_html=True)
+                    
+                    user_role_lower = role.lower()
+                    if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                        output_sku = io.BytesIO()
+                        with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            workbook = writer.book
+                            worksheet = writer.sheets['Detail SKU']
+                            
+                            user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                            worksheet.set_header(f'&C&10{watermark_text}')
+                            
+                            format1 = workbook.add_format({'num_format': '#,##0'})
+                            worksheet.set_column('B:N', None, format1)
+                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            
+                        st.download_button(
+                            label="📥 Download Detail SKU (Excel)",
+                            data=output_sku.getvalue(),
+                            file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
                 else:
                     st.warning("Tidak ada transaksi untuk filter tersebut.")
 
@@ -1679,6 +1820,7 @@ def main_dashboard():
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
+                # --- PIPA DATA RAW KHUSUS GROWTH ---
                 df_team_all = df.copy()
                 
                 if target_sales_filter != "SEMUA":
@@ -1698,6 +1840,7 @@ def main_dashboard():
                 prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
                 prefix_tuple = tuple(prefixes)
                 
+                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
                 is_target_brand = df_team_all['Merk'] == brand_growth
                 is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
                 is_valid_ro = is_target_brand | is_target_prefix
