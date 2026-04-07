@@ -401,7 +401,7 @@ def load_data_from_url():
 
     def normalize_brand(raw_brand):
         raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items(): 
+        for target_brand, keywords in BRAND_ALIitems(): 
             for keyword in keywords:
                 if keyword in raw_upper: return target_brand
         return raw_brand
@@ -646,6 +646,7 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
+            
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
@@ -695,26 +696,29 @@ def render_pivot_fragment(df_scope_all, role):
                         gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
                 
                 go = gb.build()
+                
                 go['pinnedBottomRowData'] = [total_dict]
                 
-                # PERBAIKAN: Tema Alpine anti bocor (Background tabel 100% tembus pandang menyatu dengan streamlt)
+                # PLAN FINAL: Mewarnai fondasi dasar dengan biru agar menarik header ke atas tanpa batas
                 custom_css = {
-                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                    ".ag-header-row": {"background-color": "#2980b9 !important"},
-                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                    ".ag-icon": {"color": "white !important"},
-                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
-                    
-                    # Penghancur kebocoran putih di luar tabel
-                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                    # 1. WARNA BIRU DITARIK KE ATAS (MENUTUPI KEBOCORAN)
+                    ".ag-root-wrapper": {"background-color": "#2980b9 !important", "border": "none !important", "border-radius": "6px 6px 0px 0px !important", "overflow": "hidden !important"},
                     ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                    ".ag-body-viewport": {"background-color": "transparent !important"}, 
                     
+                    # 2. HEADER MENYATU
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
+                    ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                    ".ag-icon": {"color": "white !important"},
+                    
+                    # 3. AREA DATA PUTIH BERSIH
+                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
                     ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                    ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
+                    ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
                     
-                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
+                    # 4. KOTAK PENCARIAN
+                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
                 }
                 
                 st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -722,7 +726,7 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_clean,
                     gridOptions=go,
-                    theme='alpine',
+                    theme='streamlit',
                     height=600,
                     allow_unsafe_jscode=True,
                     enable_enterprise_modules=True, 
@@ -731,37 +735,38 @@ def render_pivot_fragment(df_scope_all, role):
             else:
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
                 st.dataframe(df_export)
-                
+            
             # PERBAIKAN: Download Excel hanya diproses JIKA data tidak kosong (Menghindari KeyError)
             user_role_lower = role.lower()
             if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_export.to_excel(writer, index=False, sheet_name='Master Data')
+                if 'df_export' in locals() and not df_export.empty:
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name='Master Data')
+                        
+                        workbook = writer.book
+                        worksheet = writer.sheets['Master Data']
+                        
+                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        worksheet.set_footer(f'&RPage &P of &N')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        worksheet.set_column('D:P', None, format1) 
+                        
+                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                        last_row_idx = len(df_export) 
+                        worksheet.set_row(last_row_idx, None, bold_format)
                     
-                    workbook = writer.book
-                    worksheet = writer.sheets['Master Data']
-                    
-                    user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                    time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                    
-                    worksheet.set_header(f'&C&10{watermark_text}')
-                    worksheet.set_footer(f'&RPage &P of &N')
-                    
-                    format1 = workbook.add_format({'num_format': '#,##0'})
-                    worksheet.set_column('D:P', None, format1) 
-                    
-                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_export) 
-                    worksheet.set_row(last_row_idx, None, bold_format)
-                
-                st.download_button(
-                    label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                    data=output.getvalue(),
-                    file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                    st.download_button(
+                        label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                        data=output.getvalue(),
+                        file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
         else:
             st.info("Data Kosong setelah difilter.")
 
@@ -1202,7 +1207,6 @@ def main_dashboard():
 
             temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
             final_summary_data = []
-            
             for idx, group in enumerate(temp_grouped_data, 1):
                 group['parent']['Rank'] = idx 
                 final_summary_data.append(group['parent'])
@@ -1213,14 +1217,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # PERBAIKAN: Pengaturan font-weight bold yang aman untuk pandas styler di Streamlit
+                # --- PERBAIKAN: Font Bold hanya untuk Induk, Salesman Normal ---
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid black;'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid #555; border-bottom: 2px solid #555; font-size: 15px'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color}; color: #333333; font-weight: normal; border-bottom: 1px solid #ccc;'] * len(row)
+                        return [f'background-color: {bg_color}; color: #222; font-weight: normal; border-bottom: 1px solid #ccc'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1680,21 +1684,20 @@ def main_dashboard():
                         
                         # PERBAIKAN: Tema Alpine anti bocor (Background tabel 100% tembus pandang menyatu dengan streamlt)
                         custom_css_sku = {
-                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                            ".ag-header-row": {"background-color": "#2980b9 !important"},
-                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
-                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                            ".ag-icon": {"color": "white !important"},
-                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
-                            
-                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                            ".ag-root-wrapper": {"background-color": "#2980b9 !important", "border": "none !important", "border-radius": "6px 6px 0px 0px !important", "overflow": "hidden !important"},
                             ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                            ".ag-body-viewport": {"background-color": "transparent !important"},
                             
+                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
+                            ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
+                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
+                            ".ag-icon": {"color": "white !important"},
+                            
+                            ".ag-body-viewport": {"background-color": "#ffffff !important"},
                             ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                            ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
+                            ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
                             
-                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
+                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
                         }
                         
                         st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -1702,7 +1705,7 @@ def main_dashboard():
                         AgGrid(
                             df_clean_sku,
                             gridOptions=go_sku,
-                            theme='alpine',
+                            theme='streamlit',
                             height=600,
                             allow_unsafe_jscode=True,
                             enable_enterprise_modules=True,
@@ -1715,30 +1718,31 @@ def main_dashboard():
                     # PERBAIKAN: Download Excel hanya diproses JIKA data tidak kosong
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                        output_sku = io.BytesIO()
-                        with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
-                            
-                            workbook = writer.book
-                            worksheet = writer.sheets['Detail SKU']
-                            
-                            user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                            worksheet.set_header(f'&C&10{watermark_text}')
-                            
-                            format1 = workbook.add_format({'num_format': '#,##0'})
-                            worksheet.set_column('B:N', None, format1)
-                            
-                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_export_sku)-1, None, bold_format)
-                            
-                        st.download_button(
-                            label="📥 Download Detail SKU (Excel)",
-                            data=output_sku.getvalue(),
-                            file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                        if 'df_export_sku' in locals() and not df_export_sku.empty:
+                            output_sku = io.BytesIO()
+                            with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                                df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                                
+                                workbook = writer.book
+                                worksheet = writer.sheets['Detail SKU']
+                                
+                                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                                worksheet.set_header(f'&C&10{watermark_text}')
+                                
+                                format1 = workbook.add_format({'num_format': '#,##0'})
+                                worksheet.set_column('B:N', None, format1)
+                                
+                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                                worksheet.set_row(len(df_export_sku)-1, None, bold_format)
+                                
+                            st.download_button(
+                                label="📥 Download Detail SKU (Excel)",
+                                data=output_sku.getvalue(),
+                                file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
                 else:
                     st.warning("Tidak ada transaksi untuk filter tersebut.")
 
