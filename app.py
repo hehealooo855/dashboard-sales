@@ -1172,14 +1172,14 @@ def main_dashboard():
                     realisasi_brand = dict_mtd_brand.get(brand, 0.0) 
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
                     
-                    # PLAN C (MARKDOWN BOLD): Memaksa seluruh sel di baris utama dibungkus dengan ** agar pasti tebal
+                    # DIKEMBALIKAN KE STRING BIASA (TANPA MARKDOWN ** ASTERISK)
                     brand_row = {
                         "Rank": "", 
-                        "Brand / Salesman": f"**{brand}**", 
+                        "Brand / Salesman": f"{brand}", 
                         "Supervisor": spv, 
-                        "Target": f"**{format_idr(target)}**",
-                        "Realisasi": f"**{format_idr(realisasi_brand)}**", 
-                        "Ach (%)": f"**{pct_brand:.0f}%**",
+                        "Target": f"{format_idr(target)}",
+                        "Realisasi": f"{format_idr(realisasi_brand)}", 
+                        "Ach (%)": f"{pct_brand:.0f}%",
                         "Bar": pct_brand / 100, 
                         "Progress (Detail %)": pct_brand / 100 
                     }
@@ -1203,7 +1203,7 @@ def main_dashboard():
             final_summary_data = []
             
             for idx, group in enumerate(temp_grouped_data, 1):
-                group['parent']['Rank'] = f"**{idx}**" # Memberikan Rank dengan huruf tebal Markdown
+                group['parent']['Rank'] = f"{idx}" # Dikembalikan tanpa asterisk
                 final_summary_data.append(group['parent'])
                 final_summary_data.extend(group['children'])
 
@@ -1212,24 +1212,26 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # STYLER: Kini hanya fokus pada warna, font-weight sudah ditangani Markdown di atas
+                # STYLER KITA TEGASKAN DI BACKGROUND & WARNA SUPAYA TETAP TERLIHAT HIERARKINYA
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color} !important; color: #000000 !important; border-top: 2px solid #555 !important; border-bottom: 2px solid #555 !important;'] * len(row)
+                        # BARIS INDUK (BRAND) -> Diberikan background yang sedikit lebih tegas dan font weight
+                        return [f'background-color: #d1d8e0 !important; color: #000000 !important; font-weight: 900 !important; border-top: 2px solid #333 !important; border-bottom: 2px solid #333 !important;'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color} !important; color: #222222 !important; border-bottom: 1px solid #ccc !important;'] * len(row)
+                        # BARIS ANAK (SALES) -> Sesuai achievement
+                        return [f'background-color: {bg_color} !important; color: #333333 !important; font-weight: normal !important; border-bottom: 1px solid #ccc !important;'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
                     use_container_width=True, hide_index=True,
                     column_config={
-                        "Rank": st.column_config.TextColumn("🏆 Rank", width="small", markdown=True),
-                        "Brand / Salesman": st.column_config.TextColumn("Brand / Salesman", width="medium", markdown=True),
-                        "Target": st.column_config.TextColumn("Target", markdown=True),
-                        "Realisasi": st.column_config.TextColumn("Realisasi", markdown=True),
-                        "Ach (%)": st.column_config.TextColumn("Ach (%)", markdown=True),
+                        "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
+                        "Brand / Salesman": st.column_config.TextColumn("Brand / Salesman", width="medium"),
+                        "Target": st.column_config.TextColumn("Target"),
+                        "Realisasi": st.column_config.TextColumn("Realisasi"),
+                        "Ach (%)": st.column_config.TextColumn("Ach (%)"),
                         "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=0, max_value=1)
                     }
                 )
