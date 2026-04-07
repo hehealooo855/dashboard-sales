@@ -17,7 +17,6 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
-import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -612,7 +611,6 @@ def render_pivot_fragment(df_scope_all, role):
         
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        # PERBAIKAN: Menyamakan penamaan kolom agar filter nama outlet berfungsi kembali
         ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
         master_pivot = master_pivot.rename(columns=ren_dict)
         
@@ -699,25 +697,21 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 go['pinnedBottomRowData'] = [total_dict]
                 
-                # PLAN FINAL: Mewarnai fondasi dasar dengan biru agar menarik header ke atas tanpa batas
                 custom_css = {
-                    # 1. WARNA BIRU DITARIK KE ATAS (MENUTUPI KEBOCORAN)
+                    # Mencegah kebocoran putih dengan mengunci root background ke transparent
                     ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
                     ".ag-root-wrapper-body": {"background-color": "transparent !important"},
                     
-                    # 2. HEADER MENYATU
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important", "border-top": "none !important"},
                     ".ag-header-row": {"background-color": "#2980b9 !important", "border": "none !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.2) !important"},
                     ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important", "font-size": "14px !important"},
                     ".ag-icon": {"color": "white !important"},
                     
-                    # 3. AREA DATA PUTIH BERSIH
                     ".ag-body-viewport": {"background-color": "#ffffff !important"},
                     ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                     ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
                     
-                    # 4. KOTAK PENCARIAN
                     ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important", "padding": "2px 5px !important"}
                 }
                 
@@ -726,7 +720,7 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_clean,
                     gridOptions=go,
-                    theme='alpine',
+                    theme='alpine', 
                     height=600,
                     allow_unsafe_jscode=True,
                     enable_enterprise_modules=True, 
@@ -736,7 +730,6 @@ def render_pivot_fragment(df_scope_all, role):
                 st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
                 st.dataframe(df_export)
             
-            # PERBAIKAN: Download Excel hanya diproses JIKA data tidak kosong (Menghindari KeyError)
             user_role_lower = role.lower()
             if user_role_lower in ['direktur', 'manager', 'supervisor']:
                 if 'df_export' in locals() and not df_export.empty:
@@ -890,26 +883,6 @@ def main_dashboard():
         except:
             return ''
 
-    def add_aggressive_watermark():
-        user_name = st.session_state.get('sales_name', 'User')
-        role_name = st.session_state.get('role', 'staff')
-        
-        if role_name != 'direktur':
-            st.markdown(f"""
-            <style>
-            .watermark-container {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none; overflow: hidden; display: flex; flex-wrap: wrap; opacity: 0.15; }}
-            .watermark-text {{ font-family: 'Arial', sans-serif; font-size: 16px; color: #555; font-weight: 700; transform: rotate(-30deg); white-space: nowrap; margin: 20px; user-select: none; }}
-            </style>
-            <div class="watermark-container">{''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}</div>
-            <script>
-            window.addEventListener('blur', () => {{ document.body.style.filter = 'blur(20px) brightness(0.4)'; document.body.style.backgroundColor = '#000'; }});
-            window.addEventListener('focus', () => {{ document.body.style.filter = 'none'; document.body.style.backgroundColor = '#fff'; }});
-            document.addEventListener('keydown', (e) => {{ if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{ e.preventDefault(); alert('⚠️ Action Disabled for Security Reasons!'); }} }});
-            </script>
-            """, unsafe_allow_html=True)
-    
-    add_aggressive_watermark()
-
     if st.session_state['role'] != 'direktur':
         st.markdown("<style>@media print { body { display: none !important; } } body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } img { pointer-events: none; }</style>", unsafe_allow_html=True)
 
@@ -919,41 +892,6 @@ def main_dashboard():
         
         fast_mode = st.toggle("⚡ Mode Performa Tinggi", value=True, help="Membaca data dari memori (Cache). Matikan jika Anda baru saja menambah data di Google Sheets dan ingin sistem menarik data terbaru.")
         
-        st.markdown("---")
-        st.write("### 🎬 Mode Presentasi")
-        is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False)
-        
-        if is_presentation_mode:
-            components.html("""
-            <script>
-                const overlay = window.parent.document.createElement('div');
-                overlay.id = 'presentation-spotlight';
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0';
-                overlay.style.left = '0';
-                overlay.style.width = '100vw';
-                overlay.style.height = '100vh';
-                overlay.style.pointerEvents = 'none';
-                overlay.style.zIndex = '99998';
-                overlay.style.background = 'radial-gradient(circle 250px at 50vw 50vh, transparent 0%, rgba(0, 0, 0, 0.8) 100%)';
-                
-                const existing = window.parent.document.getElementById('presentation-spotlight');
-                if (existing) existing.remove();
-                window.parent.document.body.appendChild(overlay);
-
-                window.parent.document.addEventListener('mousemove', function(e) {
-                    overlay.style.background = `radial-gradient(circle 250px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0, 0, 0, 0.8) 100%)`;
-                });
-            </script>
-            """, height=0, width=0)
-        else:
-            components.html("""
-            <script>
-                const existing = window.parent.document.getElementById('presentation-spotlight');
-                if (existing) existing.remove();
-            </script>
-            """, height=0, width=0)
-
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             with st.expander("🔐 Admin Zone", expanded=False):
@@ -1183,6 +1121,7 @@ def main_dashboard():
                 for brand, target in brands_dict.items():
                     realisasi_brand = dict_mtd_brand.get(brand, 0.0) 
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
+                    
                     brand_row = {
                         "Rank": 0, "Brand / Salesman": brand, "Supervisor": spv, "Target": format_idr(target),
                         "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
