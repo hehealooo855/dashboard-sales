@@ -85,12 +85,9 @@ st.markdown("""
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
     
-    /* RESET AGRESIF: Mencegah background putih bawaan iframe dan block Streamlit */
+    /* Mencegah background putih bawaan iframe yang bocor di Dark Mode */
     iframe[title="streamlit_aggrid.agGrid"] {
         border: none !important;
-        background-color: transparent !important;
-    }
-    div[data-testid="stBlock"] {
         background-color: transparent !important;
     }
 </style>
@@ -701,7 +698,6 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 go['pinnedBottomRowData'] = [total_dict]
                 
-                # PLAN B: CSS Balham yang sangat agresif melawan background putih
                 custom_css = {
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
                     ".ag-header-row": {"background-color": "#2980b9 !important"},
@@ -710,14 +706,14 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-icon": {"color": "white !important"},
                     ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
                     
-                    # NUKING ROOT WRAPPER BACKGROUND
-                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                    ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
+                    # PERBAIKAN: Menghilangkan kebocoran putih di luar tabel
+                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
+                    ".ag-root-wrapper-body": {"background-color": "#ffffff !important"},
                     
                     ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                     ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
                     
+                    # Styling khusus untuk kotak input filter agar tidak menabrak warnanya
                     ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                 }
                 
@@ -726,7 +722,7 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_clean,
                     gridOptions=go,
-                    theme='balham', # <--- PLAN B: TEMA BALHAM
+                    theme='alpine',
                     height=600,
                     allow_unsafe_jscode=True,
                     enable_enterprise_modules=True, 
@@ -1219,14 +1215,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # PANDAS STYLER: Pastikan Font Weight ditulis dengan syntax standar agar tidak diblokir Streamlit
+                # --- PERBAIKAN: Font Bold hanya untuk Induk, Salesman Normal ---
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid #555; border-bottom: 2px solid #555;'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid #555; border-bottom: 2px solid #555; font-size: 15px'] * len(row)
                     else: 
-                        return [f'background-color: {bg_color}; color: #222; font-weight: normal; border-bottom: 1px solid #ccc;'] * len(row)
+                        return [f'background-color: {bg_color}; color: #222; font-weight: normal; border-bottom: 1px solid #ccc'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1684,7 +1680,6 @@ def main_dashboard():
                         go_sku = gb_sku.build()
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
-                        # PLAN B: CSS Balham untuk Tab SKU
                         custom_css_sku = {
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
                             ".ag-header-row": {"background-color": "#2980b9 !important"},
@@ -1693,13 +1688,14 @@ def main_dashboard():
                             ".ag-icon": {"color": "white !important"},
                             ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
                             
-                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                            ".ag-root-wrapper-body": {"background-color": "transparent !important"},
-                            ".ag-body-viewport": {"background-color": "#ffffff !important"},
+                            # PERBAIKAN: Menghilangkan kebocoran putih di luar tabel
+                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important", "border-radius": "0px !important"},
+                            ".ag-root-wrapper-body": {"background-color": "#ffffff !important"},
                             
                             ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                             ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
                             
+                            # Styling khusus untuk kotak input filter agar tidak menabrak warnanya
                             ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                         }
                         
@@ -1708,7 +1704,7 @@ def main_dashboard():
                         AgGrid(
                             df_clean_sku,
                             gridOptions=go_sku,
-                            theme='balham', # <--- PLAN B: TEMA BALHAM
+                            theme='alpine',
                             height=600,
                             allow_unsafe_jscode=True,
                             enable_enterprise_modules=True,
