@@ -84,6 +84,15 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
     div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    
+    /* RESET AGRESIF: Mencegah background putih bawaan iframe dan block Streamlit */
+    iframe[title="streamlit_aggrid.agGrid"] {
+        border: none !important;
+        background-color: transparent !important;
+    }
+    div[data-testid="stBlock"] {
+        background-color: transparent !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -692,18 +701,24 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 go['pinnedBottomRowData'] = [total_dict]
                 
-                # PLAN C: TEMA STREAMLIT NATIVE - ANTI BOCOR
+                # PLAN B: CSS Balham yang sangat agresif melawan background putih
                 custom_css = {
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                    ".ag-header-row": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
                     ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-icon": {"color": "white !important"},
+                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
                     
-                    # Memaksa baris tabel menjadi warna terang agar sesuai permintaan, sementara luarnya mengikuti UI Hitam
+                    # NUKING ROOT WRAPPER BACKGROUND
+                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                    ".ag-root-wrapper-body": {"background-color": "transparent !important"},
+                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
+                    
                     ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                    ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
+                    ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
                     
-                    # Filter box styling
-                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#f0f0f0 !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
+                    ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                 }
                 
                 st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -711,7 +726,7 @@ def render_pivot_fragment(df_scope_all, role):
                 AgGrid(
                     df_clean,
                     gridOptions=go,
-                    theme='streamlit', # <--- MAGIC BULLET ANTI BOCOR
+                    theme='balham', # <--- PLAN B: TEMA BALHAM
                     height=600,
                     allow_unsafe_jscode=True,
                     enable_enterprise_modules=True, 
@@ -1171,17 +1186,10 @@ def main_dashboard():
                 for brand, target in brands_dict.items():
                     realisasi_brand = dict_mtd_brand.get(brand, 0.0) 
                     pct_brand = (realisasi_brand / target * 100) if target > 0 else 0
-                    
-                    # DIKEMBALIKAN KE STRING BIASA (TANPA MARKDOWN ** ASTERISK)
                     brand_row = {
-                        "Rank": "", 
-                        "Brand / Salesman": f"{brand}", 
-                        "Supervisor": spv, 
-                        "Target": f"{format_idr(target)}",
-                        "Realisasi": f"{format_idr(realisasi_brand)}", 
-                        "Ach (%)": f"{pct_brand:.0f}%",
-                        "Bar": pct_brand / 100, 
-                        "Progress (Detail %)": pct_brand / 100 
+                        "Rank": 0, "Brand / Salesman": brand, "Supervisor": spv, "Target": format_idr(target),
+                        "Realisasi": format_idr(realisasi_brand), "Ach (%)": f"{pct_brand:.0f}%",
+                        "Bar": pct_brand / 100, "Progress (Detail %)": pct_brand / 100 
                     }
                     sales_rows_list = []
                     
@@ -1201,9 +1209,8 @@ def main_dashboard():
 
             temp_grouped_data.sort(key=lambda x: x['sort_val'], reverse=True)
             final_summary_data = []
-            
             for idx, group in enumerate(temp_grouped_data, 1):
-                group['parent']['Rank'] = f"{idx}" # Dikembalikan tanpa asterisk
+                group['parent']['Rank'] = idx 
                 final_summary_data.append(group['parent'])
                 final_summary_data.extend(group['children'])
 
@@ -1212,16 +1219,14 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # STYLER KITA TEGASKAN DI BACKGROUND & WARNA SUPAYA TETAP TERLIHAT HIERARKINYA
+                # PANDAS STYLER: Pastikan Font Weight ditulis dengan syntax standar agar tidak diblokir Streamlit
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        # BARIS INDUK (BRAND) -> Diberikan background yang sedikit lebih tegas dan font weight
-                        return [f'background-color: #d1d8e0 !important; color: #000000 !important; font-weight: 900 !important; border-top: 2px solid #333 !important; border-bottom: 2px solid #333 !important;'] * len(row)
+                        return [f'background-color: {bg_color}; color: black; font-weight: bold; border-top: 2px solid #555; border-bottom: 2px solid #555;'] * len(row)
                     else: 
-                        # BARIS ANAK (SALES) -> Sesuai achievement
-                        return [f'background-color: {bg_color} !important; color: #333333 !important; font-weight: normal !important; border-bottom: 1px solid #ccc !important;'] * len(row)
+                        return [f'background-color: {bg_color}; color: #222; font-weight: normal; border-bottom: 1px solid #ccc;'] * len(row)
                         
                 st.dataframe(
                     df_summ.style.apply(style_rows, axis=1).hide(axis="columns", subset=['Progress (Detail %)']),
@@ -1229,9 +1234,6 @@ def main_dashboard():
                     column_config={
                         "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
                         "Brand / Salesman": st.column_config.TextColumn("Brand / Salesman", width="medium"),
-                        "Target": st.column_config.TextColumn("Target"),
-                        "Realisasi": st.column_config.TextColumn("Realisasi"),
-                        "Ach (%)": st.column_config.TextColumn("Ach (%)"),
                         "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=0, max_value=1)
                     }
                 )
@@ -1682,16 +1684,23 @@ def main_dashboard():
                         go_sku = gb_sku.build()
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
-                        # PLAN C: TEMA STREAMLIT NATIVE - ANTI BOCOR
+                        # PLAN B: CSS Balham untuk Tab SKU
                         custom_css_sku = {
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                            ".ag-header-row": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid rgba(255,255,255,0.3) !important"},
                             ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-icon": {"color": "white !important"},
+                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"},
+                            
+                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                            ".ag-root-wrapper-body": {"background-color": "transparent !important"},
+                            ".ag-body-viewport": {"background-color": "#ffffff !important"},
                             
                             ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                            ".ag-cell": {"color": "#000000 !important", "border-right": "1px solid #e0e0e0 !important"},
+                            ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
                             
-                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#f0f0f0 !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
+                            ".ag-floating-filter-input .ag-input-wrapper input": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-radius": "4px !important", "border": "1px solid #ccc !important"}
                         }
                         
                         st.info("💡 **Tips:** Klik ikon garis tiga di dalam kolom pencarian untuk melihat semua opsi centang layaknya Excel.")
@@ -1699,7 +1708,7 @@ def main_dashboard():
                         AgGrid(
                             df_clean_sku,
                             gridOptions=go_sku,
-                            theme='streamlit', # <--- MAGIC BULLET ANTI BOCOR
+                            theme='balham', # <--- PLAN B: TEMA BALHAM
                             height=600,
                             allow_unsafe_jscode=True,
                             enable_enterprise_modules=True,
