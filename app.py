@@ -17,7 +17,6 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
-import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -65,25 +64,6 @@ st.markdown("""
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
-    .stDeployButton {display: none !important;}
-    [data-testid="stAppDeployButton"] {display: none !important;}
-    .viewerBadge_container__1QSob {display: none !important;}
-    div[data-testid="manage-app-button"] {display: none !important;}
-    
-    [data-testid="stMetricLabel"] p {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-    }
-    [data-testid="stMetricValue"] div {
-        font-size: 36px !important;
-        font-weight: bold !important;
-    }
-    
-    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
-    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
     
     /* Mencegah background iframe menghalangi UI Dark Mode (Anti-Bocor) */
     iframe[title="streamlit_aggrid.agGrid"] {
@@ -92,15 +72,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-# ==========================================
-# MASTER KALENDER LIBUR NASIONAL 2026 (INDONESIA)
-# ==========================================
-HOLIDAYS_2026 = [
-    '2026-01-01', '2026-02-14', '2026-02-17', '2026-03-19', '2026-03-20', 
-    '2026-04-03', '2026-05-01', '2026-05-14', '2026-05-26', '2026-06-01', 
-    '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
-]
 
 # ==========================================
 # KAMUS GEOGRAFIS & PREFIX BRAND
@@ -152,22 +123,12 @@ def map_city_to_province(city_name):
     return "LAIN-LAIN"
 
 # ==========================================
-# 2. KONFIGURASI DATABASE & TARGET
+# KONFIGURASI DATABASE & TARGET
 # ==========================================
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
     "AKBAR": { "Sociolla": 600_000_000, "Thai": 400_000_000, "Inesia": 80_000_000, "Y2000": 250_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 20_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 30_000_000, "OtwooO": 180_000_000}
-}
-
-ESTIMASI_TARGET_BULANAN = {
-    "Bonavie": 5_000_000, "Whitelab": 5_000_000, "Dorskin": 3_000_000, "Gloow & Be": 10_000_000,
-    "Javinci": 90_000_000, "Careso": 30_000_000, "Artist Inc": 8_000_000, "Newlab": 7_000_000,
-    "Mlen": 8_000_000, "COSLINE": 1_000_000, "Thai": 50_000_000, "Diosys": 55_000_000,
-    "Sociolla": 40_000_000, "Skin1004": 30_000_000, "Beautica": 10_000_000, "Claresta": 20_000_000,
-    "Masami": 10_000_000, "Cassandra": 4_000_000, "Clinelle": 15_000_000, "Honor": 10_000_000,
-    "The Face": 80_000_000, "Elizabeth Rose": 3_000_000, "Mad For Make Up": 4_000_000,
-    "Satto": 20_000_000, "Somethinc": 80_000_000, "SYB": 10_000_000
 }
 
 INDIVIDUAL_TARGETS = {
@@ -276,7 +237,7 @@ def render_custom_progress(title, current, target):
     visual_pct = min(pct, 100)
     
     if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    elif 50 <= pct < 85: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
@@ -297,9 +258,6 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# =========================================================================
-# CACHE & DATA LOADER
-# =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
     urls = [
@@ -435,9 +393,6 @@ def load_data(fast_mode=False):
             pass
     return load_data_from_url()
 
-# =========================================================================
-# PIVOT FAST ENGINE
-# =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
     
@@ -543,222 +498,6 @@ def get_cross_sell_recommendations(df):
             recommendations.append({'Toko': outlet, 'Sales': sales, 'Rekomendasi': rec_text})
     if recommendations: return pd.DataFrame(recommendations)
     return None
-
-def render_pivot_fragment(df_scope_all, role):
-    list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
-    list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
-    
-    grp_cols = []
-    if 'Kode_Global' in df_scope_all.columns: 
-        grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
-    else:
-        df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
-        
-    if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
-    elif 'Nama Outlet' in df_scope_all.columns: 
-        grp_cols.append('Nama Outlet')
-        df_scope_all['Nama Customer'] = df_scope_all['Nama Outlet']
-    else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
-    
-    if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
-    else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
-    
-    if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
-    else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
-
-    with st.form(key='pivot_filter_form'):
-        col_piv1, col_piv2 = st.columns(2)
-        with col_piv1:
-            selected_merk_excel = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_excel)
-        with col_piv2:
-            selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun:", list_tahun, default=list_tahun)
-            
-        st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
-        
-        list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
-        list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
-        list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
-        list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
-
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-        with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
-        with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
-        with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
-        with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
-
-        maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
-        
-        submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
-
-    master_pivot = generate_pivot_fast(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols), BRAND_PREFIXES)
-
-    if not master_pivot.empty:
-        bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-        for i in range(1, 13):
-            if i not in master_pivot.columns: master_pivot[i] = 0
-        
-        cols_to_keep = []
-        for c in grp_cols:
-            if c in master_pivot.columns: cols_to_keep.append(c)
-        cols_to_keep.extend(list(range(1, 13)))
-        
-        master_pivot = master_pivot[cols_to_keep]
-        
-        new_cols = []
-        for c in cols_to_keep:
-            if isinstance(c, int): new_cols.append(bulan_indo_map[c])
-            else: new_cols.append(c)
-        master_pivot.columns = new_cols
-        
-        master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
-        
-        # 4. FIX NAMA CUSTOMER HILANG
-        ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
-        master_pivot = master_pivot.rename(columns=ren_dict)
-        
-        if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-        if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
-        if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
-        if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
-
-        df_filtered = master_pivot.copy()
-        if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
-        if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
-        if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
-
-        st.caption(f"Menampilkan {len(df_filtered)} data customer.")
-
-        if maximize_toggle:
-            st.markdown("""
-            <style>
-                header {display: none !important;}
-                [data-testid="stSidebar"] {display: none !important;}
-                .block-container {
-                    max-width: 100% !important;
-                    padding-top: 1rem !important;
-                    padding-right: 1rem !important;
-                    padding-left: 1rem !important;
-                    padding-bottom: 1rem !important;
-                }
-            </style>
-            """, unsafe_allow_html=True)
-            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-
-        if not df_filtered.empty:
-            
-            # 3. PEMUSNAHAN KOLOM DUPLIKAT SECARA AMAN
-            bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-            num_cols = bulan_indo_list + ['Total Penjualan']
-            
-            df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
-
-            df_clean = df_filtered.copy()
-            for col in df_clean.columns:
-                if col in num_cols:
-                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0).astype(float)
-                else:
-                    df_clean[col] = df_clean[col].astype(str).replace('nan', '')
-
-            total_dict = {col: "" for col in df_clean.columns}
-            if 'Kode Customer' in df_clean.columns:
-                total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_clean.columns) > 0:
-                total_dict[df_clean.columns[0]] = "GRAND TOTAL"
-                
-            for col in num_cols:
-                if col in df_clean.columns:
-                    total_dict[col] = float(df_clean[col].sum())
-                    
-            df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
-
-            if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_clean)
-                
-                # 1. FILTER CORONG (GAYA A - Menyatu di header, tanpa baris tambahan)
-                gb.configure_default_column(
-                    sortable=True, 
-                    filter='agSetColumnFilter', 
-                    floatingFilter=False, 
-                    resizable=True,
-                    menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
-                )
-                
-                rupiah_format = JsCode("""
-                function(params) {
-                    if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
-                    return 'Rp ' + Number(params.value).toLocaleString('id-ID');
-                }
-                """)
-                
-                for col in df_clean.columns:
-                    if col in num_cols:
-                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
-                
-                go = gb.build()
-                
-                go['pinnedBottomRowData'] = [total_dict]
-                
-                # 5. EVOLUSI TABEL ANTI-BOCOR
-                custom_css = {
-                    ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                    ".ag-header-row": {"background-color": "#2980b9 !important"},
-                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                    ".ag-icon": {"color": "white !important"},
-                    ".ag-body-viewport": {"background-color": "#ffffff !important"},
-                    ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                    ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
-                    ".ag-theme-alpine .ag-filter-toolpanel-body": {"background-color": "white !important", "color": "black !important"}
-                }
-                
-                st.info("💡 **Tips:** Klik ikon garis tiga (Menu) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
-                
-                AgGrid(
-                    df_clean,
-                    gridOptions=go,
-                    theme='alpine',
-                    height=600,
-                    allow_unsafe_jscode=True,
-                    enable_enterprise_modules=True, 
-                    custom_css=custom_css
-                )
-            else:
-                st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
-                st.dataframe(df_export)
-            
-            user_role_lower = role.lower()
-            if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                if 'df_export' in locals() and not df_export.empty:
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        df_export.to_excel(writer, index=False, sheet_name='Master Data')
-                        
-                        workbook = writer.book
-                        worksheet = writer.sheets['Master Data']
-                        
-                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                        
-                        worksheet.set_header(f'&C&10{watermark_text}')
-                        worksheet.set_footer(f'&RPage &P of &N')
-                        
-                        format1 = workbook.add_format({'num_format': '#,##0'})
-                        worksheet.set_column('D:P', None, format1) 
-                        
-                        bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                        last_row_idx = len(df_export) 
-                        worksheet.set_row(last_row_idx, None, bold_format)
-                    
-                    st.download_button(
-                        label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                        data=output.getvalue(),
-                        file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-        else:
-            st.info("Data Kosong setelah difilter.")
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -874,15 +613,11 @@ def login_page():
 def main_dashboard():
     def get_color_achv(val):
         try:
-            if val < 0.50: return '#f8d7da' # Merah (Di bawah 50%)
-            elif val < 0.85: return '#fff3cd' # Kuning (Di atas sama dengan 50% dan di bawah 85%)
-            else: return '#d1e7dd' # Hijau (Di atas sama dengan 85%)
+            if val < 0.50: return '#f8d7da' 
+            elif val < 0.85: return '#fff3cd' 
+            else: return '#d1e7dd' 
         except:
             return ''
-
-    # 1. MENGHAPUS TOTAL JAVASCRIPT BERBAHAYA (ANTI-SERVER CRASH)
-    if st.session_state['role'] != 'direktur':
-        st.markdown("<style>@media print { body { display: none !important; } } body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } img { pointer-events: none; }</style>", unsafe_allow_html=True)
 
     with st.sidebar:
         st.write("## 👤 User Profile")
@@ -1154,12 +889,11 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
-                # 6. HUKUM MUTLAK: Rapor Brand Bold Induk, Teks Hitam, Warna Akurat!
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: bold !important; border-top: 2px solid #555 !important; border-bottom: 2px solid #555 !important;'] * len(row)
+                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: 900 !important; border-top: 2px solid #555 !important; border-bottom: 2px solid #555 !important;'] * len(row)
                     else: 
                         return [f'background-color: {bg_color} !important; color: #333333 !important; font-weight: normal !important; border-bottom: 1px solid #ccc !important;'] * len(row)
                         
@@ -1475,7 +1209,202 @@ def main_dashboard():
         tab_pivot, tab_sku, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "🛒 Detail SKU per Toko", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
         
         with tab_pivot:
-            render_pivot_fragment(df_scope_all, role)
+            list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
+            list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
+            
+            grp_cols = []
+            kd_asal = 'Kode Customer'
+            if 'Kode_Global' in df_scope_all.columns: 
+                grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
+            else:
+                df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global')
+                
+            if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
+            elif 'Nama Outlet' in df_scope_all.columns: 
+                grp_cols.append('Nama Outlet')
+                df_scope_all['Nama Customer'] = df_scope_all['Nama Outlet']
+            else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+            
+            if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
+            else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
+            
+            if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
+            else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
+
+            with st.form(key='pivot_filter_form'):
+                col_piv1, col_piv2 = st.columns(2)
+                with col_piv1:
+                    selected_merk_excel = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_excel)
+                with col_piv2:
+                    selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun:", list_tahun, default=list_tahun)
+                    
+                st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
+                
+                list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
+                list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
+                list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
+                list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
+
+                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
+                with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
+                with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
+                with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
+                
+                submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
+
+            master_pivot = generate_pivot_fast(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols), BRAND_PREFIXES)
+
+            if not master_pivot.empty:
+                bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                for i in range(1, 13):
+                    if i not in master_pivot.columns: master_pivot[i] = 0
+                
+                cols_to_keep = []
+                for c in grp_cols:
+                    if c in master_pivot.columns: cols_to_keep.append(c)
+                cols_to_keep.extend(list(range(1, 13)))
+                
+                master_pivot = master_pivot[cols_to_keep]
+                
+                new_cols = []
+                for c in cols_to_keep:
+                    if isinstance(c, int): new_cols.append(bulan_indo_map[c])
+                    else: new_cols.append(c)
+                master_pivot.columns = new_cols
+                
+                master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
+                
+                # BUG NAMA CUSTOMER HILANG DIPERBAIKI DI SINI
+                ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
+                master_pivot = master_pivot.rename(columns=ren_dict)
+                
+                # PEMUSNAHAN KOLOM DUPLIKAT SEBELUM FILTER
+                master_pivot = master_pivot.loc[:, ~master_pivot.columns.duplicated()]
+                
+                if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
+                if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+                if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
+                if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
+
+                df_filtered = master_pivot.copy()
+                if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
+                if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
+                if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
+                if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
+
+                st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+
+                if not df_filtered.empty:
+                    bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+                    num_cols = bulan_indo_list + ['Total Penjualan']
+
+                    df_clean = df_filtered.copy()
+                    for col in df_clean.columns:
+                        if col in num_cols:
+                            df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0).astype(float)
+                        else:
+                            df_clean[col] = df_clean[col].astype(str).replace('nan', '')
+
+                    total_dict = {col: "" for col in df_clean.columns}
+                    if 'Kode Customer' in df_clean.columns:
+                        total_dict['Kode Customer'] = "GRAND TOTAL"
+                    elif len(df_clean.columns) > 0:
+                        total_dict[df_clean.columns[0]] = "GRAND TOTAL"
+                        
+                    for col in num_cols:
+                        if col in df_clean.columns:
+                            total_dict[col] = float(df_clean[col].sum())
+                            
+                    df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
+
+                    if AGGRID_AVAILABLE:
+                        gb = GridOptionsBuilder.from_dataframe(df_clean)
+                        
+                        # FILTER CORONG GAYA A DENGAN KOTAK CENTANG
+                        gb.configure_default_column(
+                            sortable=True, 
+                            filter='agSetColumnFilter', 
+                            floatingFilter=False, 
+                            resizable=True,
+                            menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
+                        )
+                        
+                        rupiah_format = JsCode("""
+                        function(params) {
+                            if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
+                            return 'Rp ' + Number(params.value).toLocaleString('id-ID');
+                        }
+                        """)
+                        
+                        for col in df_clean.columns:
+                            if col in num_cols:
+                                gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
+                        
+                        go = gb.build()
+                        go['pinnedBottomRowData'] = [total_dict]
+                        
+                        # AGGRID UI ANTI-BOCOR
+                        custom_css = {
+                            ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
+                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header-row": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-icon": {"color": "white !important"},
+                            ".ag-body-viewport": {"background-color": "#ffffff !important"},
+                            ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
+                            ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
+                            ".ag-theme-alpine .ag-filter-toolpanel-body": {"background-color": "white !important", "color": "black !important"},
+                            ".ag-theme-alpine .ag-popup": {"background-color": "white !important", "color": "black !important"}
+                        }
+                        
+                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
+                        
+                        AgGrid(
+                            df_clean,
+                            gridOptions=go,
+                            theme='alpine',
+                            height=600,
+                            allow_unsafe_jscode=True,
+                            enable_enterprise_modules=True, 
+                            custom_css=custom_css
+                        )
+                    else:
+                        st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
+                        st.dataframe(df_export)
+                    
+                    user_role_lower = role.lower()
+                    if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                        if 'df_export' in locals() and not df_export.empty:
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                df_export.to_excel(writer, index=False, sheet_name='Master Data')
+                                
+                                workbook = writer.book
+                                worksheet = writer.sheets['Master Data']
+                                
+                                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                                
+                                worksheet.set_header(f'&C&10{watermark_text}')
+                                worksheet.set_footer(f'&RPage &P of &N')
+                                
+                                format1 = workbook.add_format({'num_format': '#,##0'})
+                                worksheet.set_column('D:P', None, format1) 
+                                
+                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                                last_row_idx = len(df_export) 
+                                worksheet.set_row(last_row_idx, None, bold_format)
+                            
+                            st.download_button(
+                                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                                data=output.getvalue(),
+                                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                else:
+                    st.info("Data Kosong setelah difilter.")
 
         with tab_sku:
             st.markdown("### 🛒 Detail SKU per Toko")
@@ -1517,7 +1446,6 @@ def main_dashboard():
                 
                 filter_sku_spesifik = st.multiselect("📦 Nama Barang (SKU):", list_sku_cascading, placeholder="Pilih SKU spesifik (Kosongkan untuk melihat semua)...")
 
-                maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
                 submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
             df_sku_filtered = df_sku_for_options.copy() 
@@ -1536,29 +1464,13 @@ def main_dashboard():
             else:
                 st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
 
-                if maximize_toggle_sku:
-                    st.markdown("""
-                    <style>
-                        header {display: none !important;}
-                        [data-testid="stSidebar"] {display: none !important;}
-                        .block-container {
-                            max-width: 100% !important;
-                            padding-top: 1rem !important;
-                            padding-right: 1rem !important;
-                            padding-left: 1rem !important;
-                            padding-bottom: 1rem !important;
-                        }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
-                    # 2. LOGIKA BUNGLON SKU (BERFUNGSI)
+                    # LOGIKA BUNGLON SKU (Chameleon Logic)
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
-                        display_col = 'Nama Toko'
+                        display_col = 'Nama Customer'
                     else:
                         index_col = 'Nama Barang'
                         display_col = 'Nama Barang'
@@ -1599,11 +1511,10 @@ def main_dashboard():
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
-                        # 1. FILTER CORONG (AGGRID)
                         gb_sku.configure_default_column(
                             sortable=True, 
                             filter='agSetColumnFilter', 
-                            floatingFilter=False, # GAYA A
+                            floatingFilter=False, 
                             resizable=True,
                             menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
                         )
@@ -1622,20 +1533,20 @@ def main_dashboard():
                         go_sku = gb_sku.build()
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
                         
-                        # 5. TABEL ANTI-BOCOR
                         custom_css_sku = {
                             ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
+                            ".ag-header": {"background-color": "#2980b9 !important"},
                             ".ag-header-row": {"background-color": "#2980b9 !important"},
                             ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-icon": {"color": "white !important"},
                             ".ag-body-viewport": {"background-color": "#ffffff !important"},
                             ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
                             ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
-                            ".ag-theme-alpine .ag-filter-toolpanel-body": {"background-color": "white !important", "color": "black !important"}
+                            ".ag-theme-alpine .ag-filter-toolpanel-body": {"background-color": "white !important", "color": "black !important"},
+                            ".ag-theme-alpine .ag-popup": {"background-color": "white !important", "color": "black !important"}
                         }
                         
-                        st.info("💡 **Tips:** Klik ikon garis tiga (Menu) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
+                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
                         
                         AgGrid(
                             df_clean_sku,
@@ -1796,7 +1707,7 @@ def main_dashboard():
                                 base_style = 'border: 1px solid #dcdcdc; '
                                 if col == 'AO VS RO %':
                                     bg = get_color_achv(row[col])
-                                    styles.append(base_style + f'background-color: {bg} !important; color: black !important;')
+                                    styles.append(base_style + f'background-color: {bg}; color: black;')
                                 else:
                                     styles.append(base_style)
                             return styles
@@ -1847,13 +1758,13 @@ def main_dashboard():
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg} !important; color: black !important; font-weight: bold !important;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                                         else:
-                                            styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: black !important;')
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg} !important; color: black !important;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
                                         else:
                                             styles.append(base_style)
                                 return styles
@@ -1885,13 +1796,13 @@ def main_dashboard():
                                     if row['MONTH'] == 'Total Sales':
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg} !important; color: black !important; font-weight: bold !important;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                                         else:
-                                            styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: black !important;')
+                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                                     else:
                                         if col == 'Growth MTM':
                                             bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg} !important; color: black !important;')
+                                            styles.append(base_style + f'background-color: {bg}; color: black;')
                                         else:
                                             styles.append(base_style)
                                 return styles
@@ -2011,13 +1922,13 @@ def main_dashboard():
                         if row['Costumer'] == 'Total Achievement':
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg} !important; color: black !important; font-weight: bold !important;')
+                                styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
                             else:
-                                styles.append(base_style + 'background-color: lightblue !important; font-weight: bold !important; color: black !important;')
+                                styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
                         else:
                             if col == 'ACHV':
                                 bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg} !important; color: black !important;')
+                                styles.append(base_style + f'background-color: {bg}; color: black;')
                             else:
                                 styles.append(base_style)
                     return styles
@@ -2093,244 +2004,6 @@ def main_dashboard():
                                         
                     except Exception as e:
                         st.error(f"Koneksi gagal. Detail: {e}")
-
-def render_pivot_fragment(df_scope_all, role):
-    list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
-    list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
-    
-    # 1. MENYIAPKAN WADAH PIVOT
-    grp_cols = []
-    kd_asal = 'Kode Customer'
-    if 'Kode Outlet' in df_scope_all.columns: 
-        grp_cols.append('Kode Outlet'); kd_asal = 'Kode Outlet'
-    elif 'Kode Customer' in df_scope_all.columns: 
-        grp_cols.append('Kode Customer'); kd_asal = 'Kode Customer'
-    elif 'Kode Costumer' in df_scope_all.columns: 
-        grp_cols.append('Kode Costumer'); kd_asal = 'Kode Costumer'
-    else:
-        df_scope_all['Kode Customer'] = "-"; grp_cols.append('Kode Customer')
-        
-    if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
-    elif 'Nama Outlet' in df_scope_all.columns: grp_cols.append('Nama Outlet')
-    else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
-    
-    if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
-    else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
-    
-    if 'Kota' in df_scope_all.columns: grp_cols.append('Kota')
-    else: df_scope_all['Kota'] = "-"; grp_cols.append('Kota')
-
-    # 2. BUNGKUS SEMUA FILTER KE DALAM "FORM"
-    with st.form(key='pivot_filter_form'):
-        col_piv1, col_piv2 = st.columns(2)
-        with col_piv1:
-            selected_merk_excel = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_excel)
-        with col_piv2:
-            selected_tahun_excel = st.multiselect("🗓️ Pilih Tahun:", list_tahun, default=list_tahun)
-            
-        st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
-        
-        list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
-        list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
-        list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
-        list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
-
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-        with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
-        with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
-        with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
-        with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
-
-        maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
-        submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
-
-    json_data = df_scope_all.to_json(date_format='iso', orient='split')
-    master_pivot = generate_pivot(json_data, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
-
-    if not master_pivot.empty:
-        bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-        for i in range(1, 13):
-            if i not in master_pivot.columns: master_pivot[i] = 0
-        cols_to_keep = grp_cols + list(range(1, 13))
-        master_pivot = master_pivot[cols_to_keep]
-        master_pivot.columns = grp_cols + [bulan_indo_map[i] for i in range(1, 13)]
-        master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
-        
-        # 3. PASTIKAN TIDAK ADA DUPLIKAT SAAT RENAME
-        ren_dict = {}
-        for col in master_pivot.columns:
-            c_low = str(col).lower()
-            if 'kode' in c_low: ren_dict[col] = 'Kode Customer'
-            elif 'nama' in c_low and 'barang' not in c_low and 'sales' not in c_low: ren_dict[col] = 'Nama Customer'
-        master_pivot = master_pivot.rename(columns=ren_dict)
-        
-        if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-        if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
-        if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
-        if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
-
-        df_filtered = master_pivot.copy()
-        if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
-        if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
-        if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
-        
-        # PEMUSNAHAN KOLOM DUPLIKAT SEBELUM DITAMPILKAN
-        df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
-        
-        st.caption(f"Menampilkan {len(df_filtered)} data customer.")
-
-        if maximize_toggle:
-            st.markdown("""
-            <style>
-                iframe[title="streamlit_aggrid.agGrid"] {
-                    position: fixed !important;
-                    top: 0 !important; left: 0 !important;
-                    width: 100vw !important; height: 100vh !important;
-                    z-index: 999999 !important; background-color: white !important;
-                }
-                header {visibility: hidden !important;}
-                [data-testid="stSidebar"] {display: none !important;}
-            </style>
-            """, unsafe_allow_html=True)
-            grid_height = 800 
-        else:
-            grid_height = 450
-
-        if not df_filtered.empty:
-            bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-            num_cols = bulan_indo_list + ['Total Penjualan']
-            total_dict = {col: "" for col in df_filtered.columns}
-            total_dict['Nama Customer'] = "GRAND TOTAL" 
-            for col in num_cols:
-                total_dict[col] = df_filtered[col].sum()
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-        else:
-            df_display = df_filtered.copy()
-
-        if AGGRID_AVAILABLE:
-            gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_pagination(paginationAutoPageSize=True)
-            gb.configure_side_bar()
-            
-            # GAYA A: FLOATING FILTER DIMATIKAN AGAR MENU MUNCUL DI HEADER
-            gb.configure_default_column(
-                filter='agSetColumnFilter', 
-                sortable=True, 
-                resizable=True, 
-                floatingFilter=False, 
-                menuTabs=['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'], 
-                minWidth=160
-            )
-            
-            for col in num_cols:
-                gb.configure_column(col, type=["numericColumn","numberColumnFilter"], valueFormatter="x.toLocaleString('id-ID', {style: 'currency', currency: 'IDR', minimumFractionDigits: 0})")
-            
-            jscode = JsCode("""
-            function(params) {
-                if (params.data['Nama Customer'] === 'GRAND TOTAL') {
-                    return {
-                        'font-weight': 'bold',
-                        'background-color': '#eef2f5',
-                        'border-top': '2px solid #2980b9'
-                    }
-                }
-            }
-            """)
-            gb.configure_grid_options(getRowStyle=jscode)
-            gridOptions = gb.build()
-            
-            # 5. TABEL ANTI-BOCOR + WARNA PUTIH + HEADER BIRU
-            grid_css = {
-                ".ag-root-wrapper": {"background-color": "transparent !important", "border": "none !important"},
-                ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "none !important"},
-                ".ag-header-row": {"background-color": "#2980b9 !important"},
-                ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
-                ".ag-icon": {"color": "white !important"},
-                ".ag-body-viewport": {"background-color": "#ffffff !important"},
-                ".ag-row": {"background-color": "#ffffff !important", "color": "#000000 !important", "border-bottom": "1px solid #e0e0e0 !important"},
-                ".ag-cell": {"border-right": "1px solid #e0e0e0 !important", "color": "#000000 !important"},
-                ".ag-theme-alpine .ag-filter-toolpanel-body": {"background-color": "white !important", "color": "black !important"}
-            }
-            
-            st.info("💡 **Tips:** Klik ikon garis tiga (Menu) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
-            
-            AgGrid(
-                df_display, 
-                gridOptions=gridOptions, 
-                enable_enterprise_modules=True, 
-                height=grid_height, 
-                theme='alpine', 
-                allow_unsafe_jscode=True,
-                custom_css=grid_css,
-                update_mode='NO_UPDATE', 
-                data_return_mode='FILTERED_AND_SORTED'
-            )
-        else:
-            def style_fallback(row):
-                return ['border: 1px solid #dcdcdc;' for _ in row]
-            format_dict = {col: "Rp {:,.0f}" for col in num_cols}
-            st.dataframe(df_display.style.format(format_dict).apply(style_fallback, axis=1), use_container_width=True, hide_index=True, height=grid_height)
-    else:
-        st.info("Data Kosong.")
-
-    user_role_lower = role.lower()
-    if user_role_lower in ['direktur', 'manager', 'supervisor']:
-        if 'df_display' in locals() and not df_display.empty:
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df_display.to_excel(writer, index=False, sheet_name='Master Data')
-                
-                workbook = writer.book
-                worksheet = writer.sheets['Master Data']
-                
-                user_identity = f"{st.session_state['sales_name']} ({st.session_state['role'].upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
-                format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) 
-                
-                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                last_row_idx = len(df_display) 
-                worksheet.set_row(last_row_idx, None, bold_format)
-            
-            st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                data=output.getvalue(),
-                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-@st.cache_data(show_spinner=False)
-def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
-    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
-    df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
-    df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
-    
-    group_cols = list(group_cols_tuple)
-    master_pivot = pd.DataFrame()
-    
-    if not df_pivot_source.empty:
-        if selected_merk_excel != "SEMUA":
-            df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
-            base_customers = df_historical_brand[group_cols].drop_duplicates()
-            df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
-            if not df_excel.empty:
-                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-                master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
-            else:
-                master_pivot = base_customers.copy()
-                for i in range(1, 13): master_pivot[i] = 0
-        else:
-            df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
-            if not df_excel.empty:
-                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-
-    return master_pivot
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
