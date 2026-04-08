@@ -665,13 +665,30 @@ def render_pivot_fragment(df_scope_all, role):
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_clean)
                 
+                # ========================================================
+                # 1. LOGIKA DEFAULT: NONAKTIFKAN KLIK CORONG (HANYA HIASAN)
+                # ========================================================
                 gb.configure_default_column(
-                    sortable=True, 
-                    filter='agSetColumnFilter', 
-                    floatingFilter=True,
-                    resizable=True
+                    sortable=True,
+                    resizable=True,
+                    suppressMenu=True  # KUNCI 1: Mematikan menu pop-up jika ikon corong di header diklik
                 )
                 
+                # ========================================================
+                # 2. LOGIKA FILTER TEXT: KETIK BEBAS & MUNCUL PILIHAN (EXCEL-LIKE)
+                # ========================================================
+                kolom_teks = ['Kode Customer', 'Provinsi', 'Kota', 'Nama Customer', 'Nama Barang']
+                for col in kolom_teks:
+                    if col in df_clean.columns:
+                        gb.configure_column(
+                            col, 
+                            filter='agSetColumnFilter', # KUNCI 2: Memunculkan daftar pilihan kata yang ada di data
+                            floatingFilter=True         # KUNCI 3: Memunculkan kotak input ketik persis di bawah header
+                        )
+                
+                # ========================================================
+                # 3. LOGIKA FILTER ANGKA: LEBIH BESAR / LEBIH KECIL (OPSIONAL)
+                # ========================================================
                 rupiah_format = JsCode("""
                 function(params) {
                     if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
@@ -681,7 +698,13 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 for col in df_clean.columns:
                     if col in num_cols:
-                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
+                        gb.configure_column(
+                            col, 
+                            type=["numericColumn"], 
+                            filter='agNumberColumnFilter', 
+                            floatingFilter=True, 
+                            valueFormatter=rupiah_format
+                        )
                 
                 go = gb.build()
                 
@@ -863,12 +886,70 @@ def main_dashboard():
         except:
             return ''
 
+    def add_aggressive_watermark():
+        user_name = st.session_state.get('sales_name', 'User')
+        role_name = st.session_state.get('role', 'staff')
+        
+        if role_name != 'direktur':
+            st.markdown(f"""
+            <style>
+            .watermark-container {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none; overflow: hidden; display: flex; flex-wrap: wrap; opacity: 0.15; }}
+            .watermark-text {{ font-family: 'Arial', sans-serif; font-size: 16px; color: #555; font-weight: 700; transform: rotate(-30deg); white-space: nowrap; margin: 20px; user-select: none; }}
+            </style>
+            <div class="watermark-container">{''.join([f'<div class="watermark-text">{user_name} • CONFIDENTIAL • {get_current_time_wib().strftime("%H:%M")}</div>' for _ in range(300)])}</div>
+            <script>
+            window.addEventListener('blur', () => {{ document.body.style.filter = 'blur(20px) brightness(0.4)'; document.body.style.backgroundColor = '#000'; }});
+            window.addEventListener('focus', () => {{ document.body.style.filter = 'none'; document.body.style.backgroundColor = '#fff'; }});
+            document.addEventListener('keydown', (e) => {{ if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {{ e.preventDefault(); alert('⚠️ Action Disabled for Security Reasons!'); }} }});
+            </script>
+            """, unsafe_allow_html=True)
+    
+    add_aggressive_watermark()
+
+    if st.session_state['role'] != 'direktur':
+        st.markdown("<style>@media print { body { display: none !important; } } body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } img { pointer-events: none; }</style>", unsafe_allow_html=True)
+
     with st.sidebar:
         st.write("## 👤 User Profile")
         st.info(f"**{st.session_state['sales_name']}**\n\nRole: {st.session_state['role'].upper()}")
         
         fast_mode = st.toggle("⚡ Mode Performa Tinggi", value=True, help="Membaca data dari memori (Cache). Matikan jika Anda baru saja menambah data di Google Sheets dan ingin sistem menarik data terbaru.")
         
+        st.markdown("---")
+        st.write("### 🎬 Mode Presentasi")
+        is_presentation_mode = st.toggle("🔦 Aktifkan Sorotan Layar", value=False)
+        
+        if is_presentation_mode:
+            components.html("""
+            <script>
+                const overlay = window.parent.document.createElement('div');
+                overlay.id = 'presentation-spotlight';
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.pointerEvents = 'none';
+                overlay.style.zIndex = '99998';
+                overlay.style.background = 'radial-gradient(circle 250px at 50vw 50vh, transparent 0%, rgba(0, 0, 0, 0.8) 100%)';
+                
+                const existing = window.parent.document.getElementById('presentation-spotlight');
+                if (existing) existing.remove();
+                window.parent.document.body.appendChild(overlay);
+
+                window.parent.document.addEventListener('mousemove', function(e) {
+                    overlay.style.background = `radial-gradient(circle 250px at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0, 0, 0, 0.8) 100%)`;
+                });
+            </script>
+            """, height=0, width=0)
+        else:
+            components.html("""
+            <script>
+                const existing = window.parent.document.getElementById('presentation-spotlight');
+                if (existing) existing.remove();
+            </script>
+            """, height=0, width=0)
+
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             with st.expander("🔐 Admin Zone", expanded=False):
@@ -1575,16 +1656,30 @@ def main_dashboard():
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
+                        # ========================================================
+                        # 1. LOGIKA DEFAULT: NONAKTIFKAN KLIK CORONG (HANYA HIASAN)
+                        # ========================================================
                         gb_sku.configure_default_column(
                             sortable=True, 
-                            floatingFilter=True, 
                             resizable=True,
                             suppressMenu=True
                         )
                         
-                        if display_col in df_clean_sku.columns:
-                            gb_sku.configure_column(display_col, filter='agSetColumnFilter')
+                        # ========================================================
+                        # 2. LOGIKA FILTER TEXT: KETIK BEBAS & MUNCUL PILIHAN (EXCEL-LIKE)
+                        # ========================================================
+                        kolom_teks_sku = ['Kode Customer', 'Provinsi', 'Kota', 'Nama Customer', 'Nama Toko', 'Nama Barang']
+                        for col in kolom_teks_sku:
+                            if col in df_clean_sku.columns:
+                                gb_sku.configure_column(
+                                    col, 
+                                    filter='agSetColumnFilter', 
+                                    floatingFilter=True
+                                )
                         
+                        # ========================================================
+                        # 3. LOGIKA FILTER ANGKA: LEBIH BESAR / LEBIH KECIL (OPSIONAL)
+                        # ========================================================
                         rupiah_format_sku = JsCode("""
                         function(params) {
                             if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
@@ -1594,7 +1689,13 @@ def main_dashboard():
                         
                         for col in df_clean_sku.columns:
                             if col in num_cols_sku:
-                                gb_sku.configure_column(col, type=["numericColumn"], filter='agNumberColumnFilter', valueFormatter=rupiah_format_sku)
+                                gb_sku.configure_column(
+                                    col, 
+                                    type=["numericColumn"], 
+                                    filter='agNumberColumnFilter', 
+                                    floatingFilter=True, 
+                                    valueFormatter=rupiah_format_sku
+                                )
                                 
                         go_sku = gb_sku.build()
                         go_sku['pinnedBottomRowData'] = [total_dict_sku]
