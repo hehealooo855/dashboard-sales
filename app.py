@@ -656,7 +656,7 @@ def render_pivot_fragment(df_scope_all, role):
             st.download_button(label="📥 Download Laporan Excel (XLSX)", data=output.getvalue(), file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else: st.info("Data Kosong.")
 
-        with tab_sku:
+    with tab_sku:
             st.markdown("### 🛒 Detail SKU per Toko")
             df_sku_base = df_scope_all.copy()
             kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
