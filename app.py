@@ -1593,36 +1593,21 @@ def main_dashboard():
 
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
-                    
-                    # --- CHAMELEON TABLE LOGIC (TABEL BUNGLON) ---
-                    if filter_sku_spesifik and not filter_nama_sku:
-                        pivot_idx = 'Nama Outlet'
-                        display_label = 'Nama Customer'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet']
-                    elif filter_nama_sku and not filter_sku_spesifik:
-                        pivot_idx = 'Nama Barang'
-                        display_label = 'Nama Barang'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Barang']
-                    else:
-                        pivot_idx = 'Pivot_Index'
-                        display_label = 'Customer ➔ SKU'
-                        df_sku_filtered['Pivot_Index'] = df_sku_filtered['Nama Outlet'].astype(str) + " ➔ " + df_sku_filtered['Nama Barang'].astype(str)
-                        
-                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Pivot_Index', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index='Nama Barang', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
                     
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
                         if i not in pivot_sku.columns: pivot_sku[i] = 0
                         
-                    cols_sku = ['Pivot_Index'] + list(range(1, 13))
+                    cols_sku = ['Nama Barang'] + list(range(1, 13))
                     pivot_sku = pivot_sku[cols_sku]
-                    pivot_sku.columns = [display_label] + [bulan_indo_map[i] for i in range(1, 13)]
+                    pivot_sku.columns = ['Nama Barang'] + [bulan_indo_map[i] for i in range(1, 13)]
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
                     # Grand Total Row
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_label] = "GRAND TOTAL"
+                    total_dict_sku['Nama Barang'] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
@@ -1648,13 +1633,13 @@ def main_dashboard():
                     html_table_sku += "</tr></thead><tbody>"
                     
                     for _, row in df_display_sku.iterrows():
-                        is_gt = row.get(display_label) == 'GRAND TOTAL'
+                        is_gt = row.get('Nama Barang') == 'GRAND TOTAL'
                         tr_class = "grand-total-row" if is_gt else ""
                         html_table_sku += f'<tr class="{tr_class}">'
                         
                         for col in df_display_sku.columns:
                             val = row[col]
-                            if col != display_label:
+                            if col != 'Nama Barang':
                                 if pd.isna(val) or val == 0 or val == "":
                                     val_str = "-"
                                 else:
