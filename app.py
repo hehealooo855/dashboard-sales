@@ -1711,17 +1711,29 @@ def main_dashboard():
                         .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
                         .sku-table tr:hover td { background-color: #e3f2fd !important; }
                         .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        /* Styling untuk input Filter Corong */
-                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
+                        /* Styling untuk Dropdown Filter */
+                        .filter-dropdown-sku { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
                     </style>
                     <div style="overflow-x: auto; max-height: 800px;">
                         <table class="sku-table" id="table-sku-main">
                             <thead>
                                 <tr>
                     """
+                    
+                    # --- INJEKSI DROPDOWN CERDAS KE HEADER SKU ---
                     for col in df_display_sku.columns:
-                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
-                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
+                        if col == display_col: # Hanya pasang dropdown di kolom Nama Barang / Nama Toko
+                            # Ambil nilai unik dari data mentah agar urut & rapi
+                            unique_vals_sku = sorted(list(set([str(x) for x in df_sku_filtered[col].dropna() if str(x).strip() != ""])))
+                            
+                            options_html_sku = "<option value=''>Semua</option>"
+                            for val in unique_vals_sku:
+                                options_html_sku += f"<option value='{val}'>{val}</option>"
+                                
+                            html_table_sku += f"<th>{col}<br><select class='filter-dropdown-sku' onchange=\"filterTableDropdownSKU('table-sku-main')\">{options_html_sku}</select></th>"
+                        else:
+                            html_table_sku += f"<th>{col}</th>"
+                            
                     html_table_sku += "</tr></thead><tbody>"
                     
                     for _, row in df_display_sku.iterrows():
@@ -1748,29 +1760,35 @@ def main_dashboard():
                                     html_table_sku += f'<td>{val_str}</td>'
                         html_table_sku += "</tr>"
                         
+                    # --- SCRIPT JAVASCRIPT KHUSUS TABEL SKU ---
                     html_table_sku += """
                     </tbody></table></div><br>
                     <script>
-                    function filterTableData(tableId) {
+                    function filterTableDropdownSKU(tableId) {
                         var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
                         if (!table) return;
                         var tr = table.getElementsByTagName("tr");
                         var ths = table.getElementsByTagName("th");
-                        var inputs = [];
-                        for (var i=0; i<ths.length; i++) {
-                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                        var selects = [];
+                        
+                        // Kumpulkan elemen select di header
+                        for (var i = 0; i < ths.length; i++) {
+                            var sel = ths[i].getElementsByTagName("select")[0];
+                            selects.push(sel ? sel : null);
                         }
                         
+                        // Eksekusi filter baris per baris
                         for (var i = 1; i < tr.length; i++) {
                             if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                            
                             var displayRow = true;
-                            for (var j = 0; j < inputs.length; j++) {
-                                if (inputs[j] && inputs[j].value !== "") {
-                                    var filter = inputs[j].value.toUpperCase();
+                            for (var j = 0; j < selects.length; j++) {
+                                if (selects[j] && selects[j].value !== "") {
+                                    var filterVal = selects[j].value.toUpperCase();
                                     var td = tr[i].getElementsByTagName("td")[j];
                                     if (td) {
                                         var txtValue = td.textContent || td.innerText;
-                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
+                                        if (txtValue.toUpperCase() !== filterVal) {
                                             displayRow = false;
                                             break;
                                         }
