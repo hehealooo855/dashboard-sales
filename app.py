@@ -674,25 +674,31 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # ================= RENDER DENGAN AG-GRID (FILTER SEPERTI EXCEL) =================
+            # ================= RENDER DENGAN AG-GRID (CUSTOM TEMA #2980b9) =================
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_display)
                 
-                # Mengaktifkan Filter Box (Corong) di bawah Header seperti di JPG
+                # Mengaktifkan filter "Ketik Bebas" & menonaktifkan klik pada corong (hanya desain)
                 gb.configure_default_column(
                     filterable=True,
-                    floatingFilter=True, # Ini kunci utama untuk memunculkan kotak filter
+                    floatingFilter=True,
+                    suppressMenu=True, # KUNCI: Corong hanya jadi desain visual, tidak buka menu popup
                     sortable=True,
                     resizable=True
                 )
 
-                # Format kolom angka menjadi Rupiah agar tetap rapi dan bisa disortir dengan benar
+                # Format angka Rupiah untuk kolom bulan
                 for col in num_cols:
                     if col in df_display.columns:
                         gb.configure_column(col, type=["numericColumn", "numberColumnFilter"], 
                                             valueFormatter="x ? 'Rp ' + x.toLocaleString('id-ID') : '-'")
 
-                # Mempertahankan warna kuning (Highlight) untuk baris GRAND TOTAL
+                # KUNCI: Filter Text yang memunculkan pilihan saat diketik
+                for col in ['Kode Customer', 'Provinsi', 'Kota']:
+                    if col in df_display.columns:
+                        gb.configure_column(col, filter='agSetColumnFilter')
+
+                # Highlight baris GRAND TOTAL
                 first_col_name = df_display.columns[0]
                 jscode_style = JsCode(f"""
                 function(params) {{
@@ -704,13 +710,21 @@ def render_pivot_fragment(df_scope_all, role):
 
                 gridOptions = gb.build()
                 gridOptions['getRowStyle'] = jscode_style
+                
+                # KUNCI: CSS Custom untuk mengembalikan warna Corporate Blue #2980b9 ke Header
+                custom_css = {
+                    ".ag-header": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-icon": {"color": "white !important"}
+                }
 
                 AgGrid(
                     df_display,
                     gridOptions=gridOptions,
-                    theme='balham', # Tema 'balham' adalah tampilan padat ala Excel
+                    theme='balham', 
                     height=600,
                     allow_unsafe_jscode=True,
+                    custom_css=custom_css,
                     columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
                 )
             else:
@@ -1636,26 +1650,29 @@ def main_dashboard():
                     # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # ================= RENDER DENGAN AG-GRID (FILTER SEPERTI EXCEL) =================
+                    # ================= RENDER DENGAN AG-GRID (CUSTOM TEMA #2980b9) =================
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                         
-                        # Mengaktifkan Filter Box
                         gb_sku.configure_default_column(
                             filterable=True,
                             floatingFilter=True,
+                            suppressMenu=True, # Corong hanya desain
                             sortable=True,
                             resizable=True
                         )
 
-                        # Format angka Rupiah
                         cols_sku_num = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
                         for col in cols_sku_num:
                             if col in df_display_sku.columns:
                                 gb_sku.configure_column(col, type=["numericColumn", "numberColumnFilter"], 
                                                         valueFormatter="x ? 'Rp ' + x.toLocaleString('id-ID') : '-'")
+                                                        
+                        # KUNCI: Filter teks (Ketik + Pilihan) untuk Nama Barang / Nama Toko
+                        if display_col in df_display_sku.columns:
+                            gb_sku.configure_column(display_col, filter='agSetColumnFilter')
 
-                        # Highlight GRAND TOTAL
+                        # Highlight baris GRAND TOTAL
                         jscode_style_sku = JsCode(f"""
                         function(params) {{
                             if (params.data['{display_col}'] === 'GRAND TOTAL') {{
@@ -1666,6 +1683,13 @@ def main_dashboard():
 
                         gridOptions_sku = gb_sku.build()
                         gridOptions_sku['getRowStyle'] = jscode_style_sku
+                        
+                        # KUNCI: CSS Custom untuk mengembalikan warna Corporate Blue #2980b9 ke Header
+                        custom_css = {
+                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-icon": {"color": "white !important"}
+                        }
 
                         AgGrid(
                             df_display_sku,
@@ -1673,6 +1697,7 @@ def main_dashboard():
                             theme='balham',
                             height=600,
                             allow_unsafe_jscode=True,
+                            custom_css=custom_css,
                             columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
                         )
                     else:
