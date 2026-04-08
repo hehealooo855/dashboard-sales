@@ -17,6 +17,7 @@ from itertools import combinations
 from collections import Counter
 import calendar
 import concurrent.futures
+import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
 try:
@@ -55,7 +56,7 @@ st.markdown("""
         background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .stProgress > div > div > div > div {
-        background-image: linear-gradient(to right, #3498db, #f1c40f, #2ecc71);
+        background-image: linear-gradient(to right, #e74c3c, #f1c40f, #2ecc71);
     }
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
@@ -64,14 +65,42 @@ st.markdown("""
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
+    .stDeployButton {display: none !important;}
+    [data-testid="stAppDeployButton"] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="manage-app-button"] {display: none !important;}
     
-    /* Mencegah background iframe menghalangi UI Dark Mode (Anti-Bocor) */
+    [data-testid="stMetricLabel"] p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"] div {
+        font-size: 36px !important;
+        font-weight: bold !important;
+    }
+    
+    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
+    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    
+    /* Mencegah background putih bawaan iframe yang bocor di Dark Mode */
     iframe[title="streamlit_aggrid.agGrid"] {
         border: none !important;
         background-color: transparent !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# MASTER KALENDER LIBUR NASIONAL 2026 (INDONESIA)
+# ==========================================
+HOLIDAYS_2026 = [
+    '2026-01-01', '2026-02-14', '2026-02-17', '2026-03-19', '2026-03-20', 
+    '2026-04-03', '2026-05-01', '2026-05-14', '2026-05-26', '2026-06-01', 
+    '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
+]
 
 # ==========================================
 # KAMUS GEOGRAFIS & PREFIX BRAND
@@ -96,22 +125,6 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
-BRAND_PREFIXES = {
-    "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
-    "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
-    "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"], "Maskit": ["MSK", "MAS"], 
-    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"], 
-    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"], 
-    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"], 
-    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"], 
-    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], "Avione": ["AV"], 
-    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
-    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
-    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong":["SOMBONG"], "Everpure":["EVERPURE"]
-}
-
 def map_city_to_province(city_name):
     if pd.isna(city_name): return "LAIN-LAIN"
     c = str(city_name).upper().strip()
@@ -123,20 +136,21 @@ def map_city_to_province(city_name):
     return "LAIN-LAIN"
 
 # ==========================================
-# KONFIGURASI DATABASE & TARGET
+# 2. KONFIGURASI DATABASE & TARGET
 # ==========================================
+
 TARGET_DATABASE = {
-    "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
-    "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
-    "AKBAR": { "Sociolla": 600_000_000, "Thai": 400_000_000, "Inesia": 80_000_000, "Y2000": 250_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 20_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 30_000_000, "OtwooO": 180_000_000}
+    "MADONG": { "Somethinc": 1_200_000_000, "SYB": 150_000_000, "Sekawan": 600_000_000, "Avione": 300_000_000, "Honor": 125_000_000, "Vlagio": 75_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 25_000_000, "Satto": 500_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 450_000_000, "Milano": 50_000_000, "Remar": 0, "Walnutt": 30_000_000, "Elizabeth Rose": 50_000_000},
+    "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 150_000_000, "Gloow & Be": 130_000_000, "Dorskin": 20_000_000, "Whitelab": 150_000_000, "Bonavie": 50_000_000, "Goute": 50_000_000, "Mlen": 100_000_000, "Artist Inc": 130_000_000, "Maskit": 30_000_000, "Birth Beyond": 120_000_000},
+    "AKBAR": { "Sociolla": 600_000_000, "Thai": 300_000_000, "Inesia": 100_000_000, "Y2000": 180_000_000, "Diosys": 520_000_000, "Masami": 40_000_000, "Cassandra": 50_000_000, "Clinelle": 80_000_000,"Beautica": 100_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 200_000_000}
 }
 
 INDIVIDUAL_TARGETS = {
     "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000, "Elizabeth Rose": 30_000_000, "Walnutt": 20_000_000 },
     "HAMZAH": { "Somethinc": 540_000_000, "SYB": 75_000_000, "Sekawan": 60_000_000, "Avione": 60_000_000, "Honor": 37_500_000, "Vlagio": 22_500_000 },
     "ROZY": { "Sekawan": 100_000_000, "Avione": 100_000_000 },
-    "RAPI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
-    "SRI RAMADHANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
+    "NOVI": { "Sekawan": 90_000_000, "Avione": 90_000_000 },
+    "DANI": { "Sekawan": 50_000_000, "Avione": 50_000_000 },
     "FERI": { "Honor": 50_000_000, "Thai": 200_000_000, "Vlagio": 30_000_000, "Inesia": 30_000_000 },
     "NAUFAL": { "Javinci": 550_000_000 },
     "RIZKI": { "Javinci": 450_000_000 },
@@ -162,33 +176,32 @@ TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], "Y2000": ["Y2000", "Y 2000", "Y-2000"],
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
-    "Thai": ["THAI", "JINSU"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
+    "Thai": ["THAI"], "Inesia": ["INESIA"], "Honor": ["HONOR"], "Vlagio": ["VLAGIO"],
     "Sociolla": ["SOCIOLLA"], "Skin1004": ["SKIN1004", "SKIN 1004"], "Oimio": ["OIMIO"],
     "Clinelle": ["CLINELLE", "CLIN"], "Ren & R & L": ["REN", "R & L", "R&L"], "Sekawan": ["SEKAWAN", "AINIE"],
     "Mad For Make Up": ["MAD FOR", "MAKE UP", "MAJU", "MADFORMAKEUP"], "Avione": ["AVIONE"],
     "SYB": ["SYB"], "Satto": ["SATTO"], "Liora": ["LIORA"], "Mykonos": ["MYKONOS"],
     "Somethinc": ["SOMETHINC"], "Gloow & Be": ["GLOOW", "GLOOWBI", "GLOW", "GLOWBE"],
     "Artist Inc": ["ARTIST", "ARTIS"], "Bonavie": ["BONAVIE"], "Whitelab": ["WHITELAB"],
-    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madame G": ["MADAM", "MADAME"],
+    "Goute": ["GOUTE"], "Dorskin": ["DORSKIN"], "Javinci": ["JAVINCI"], "Madam G": ["MADAM", "MADAME"],
     "Careso": ["CARESO"], "Newlab": ["NEWLAB"], "Mlen": ["MLEN"], "Walnutt": ["WALNUT", "WALNUTT"],
     "Elizabeth Rose": ["ELIZABETH"], "OtwooO": ["OTWOOO", "O.TWO.O", "O TWO O"],
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG"]
 }
 
 SALES_MAPPING = {
-    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA", "WIRA SBG": "WIRA", 
-    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH", "HAMZA SBG": "HAMZAH",
+    "WIRA VG": "WIRA", "WIRA - VG": "WIRA", "WIRA VLAGIO": "WIRA", "WIRA HONOR": "WIRA", "WIRA - HONOR": "WIRA", "WIRA HR": "WIRA", "WIRA SYB": "WIRA", "WIRA - SYB": "WIRA", "WIRA SOMETHINC": "WIRA", "PMT-WIRA": "WIRA", "WIRA ELIZABETH": "WIRA", "WIRA WALNUTT": "WIRA", "WIRA ELZ": "WIRA",
+    "HAMZAH VG": "HAMZAH", "HAMZAH - VG": "HAMZAH", "HAMZAH HONOR": "HAMZAH", "HAMZAH - HONOR": "HAMZAH", "HAMZAH SYB": "HAMZAH", "HAMZAH AV": "HAMZAH", "HAMZAH AINIE": "HAMZAH", "HAMZAH RAMADANI": "HAMZAH", "HAMZAH RAMADANI ": "HAMZAH", "HAMZA AV": "HAMZAH",
     "FERI VG": "FERI", "FERI - VG": "FERI", "FERI HONOR": "FERI", "FERI - HONOR": "FERI", "FERI THAI": "FERI", "FERI - INESIA": "FERI",
     "YOGI TF": "YOGI", "YOGI THE FACE": "YOGI", "YOGI YCM": "YOGI", "YOGI MILANO": "YOGI", "MILANO - YOGI": "YOGI", "YOGI REMAR": "YOGI",
     "GANI CASANDRA": "GANI", "GANI REN": "GANI", "GANI R & L": "GANI", "GANI TF": "GANI", "GANI - YCM": "GANI", "GANI - MILANO": "GANI", "GANI - HONOR": "GANI", "GANI - VG": "GANI", "GANI - TH": "GANI", "GANI INESIA": "GANI", "GANI - KSM": "GANI", "SSL - GANI": "GANI", "GANI ELIZABETH": "GANI", "GANI WALNUTT": "GANI",
     "MITHA MASKIT": "MITHA", "MITHA RAD": "MITHA", "MITHA CLA": "MITHA", "MITHA OT": "MITHA", "MAS - MITHA": "MITHA", "SSL BABY - MITHA ": "MITHA", "SAVIOSA - MITHA": "MITHA", "MITHA ": "MITHA",
     "LYDIA KITO": "LYDIA", "LYDIA K": "LYDIA", "LYDIA BB": "LYDIA", "LYDIA - KITO": "LYDIA",
-    "RAPI": "RAPI", "RAPI AV": "RAPI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAPI AV":"RAPI", "RAPI SBG": "RAPI", 
+    "NOVI AINIE": "NOVI", "NOVI AV": "NOVI", "NOVI DAN RAFFI": "NOVI", "NOVI & RAFFI": "NOVI", "RAFFI": "NOVI", "RAFI": "NOVI", "RAPI": "NOVI", "RAPI AV":"NOVI",
     "ROZY AINIE": "ROZY", "ROZY AV": "ROZY",
-    "SRI RAMADHANI": "SRI RAMADHANI", "SRI RAMADHANI": "SRI RAMADHANI", "SRI RAMADHANI SEKAWAN": "SRI RAMADHANI", "SRI RAMADHANI SBG": "SRI RAMADHANI",
+    "DANI AINIE": "DANI", "DANI AV": "DANI", "DANI SEKAWAN": "DANI",
     "MADONG - MYKONOS": "MADONG", "MADONG - MAJU": "MADONG", "MADONG MYK": "MADONG",
     "RISKA AV": "RISKA", "RISKA BN": "RISKA", "RISKA CRS": "RISKA", "RISKA E-WL": "RISKA", "RISKA JV": "RISKA", "RISKA REN": "RISKA", "RISKA R&L": "RISKA", "RISKA SMT": "RISKA", "RISKA ST": "RISKA", "RISKA SYB": "RISKA", "RISKA - MILANO": "RISKA", "RISKA TF": "RISKA", "RISKA - YCM": "RISKA", "RISKA HONOR": "RISKA", "RISKA - VG": "RISKA", "RISKA TH": "RISKA", "RISKA - INESIA": "RISKA", "SSL - RISKA": "RISKA", "SKIN - RIZKA": "RISKA", 
     "ADE CLA": "ADE", "ADE CRS": "ADE", "GLOOW - ADE": "ADE", "ADE JAVINCI": "ADE", "ADE JV": "ADE", "ADE SVD": "ADE", "ADE RAM PUTRA M.GIE": "ADE", "ADE - MLEN1": "ADE", "ADE NEWLAB": "ADE", "DORS - ADE": "ADE",
@@ -237,7 +250,7 @@ def render_custom_progress(title, current, target):
     visual_pct = min(pct, 100)
     
     if pct < 50: bar_color = "linear-gradient(90deg, #e74c3c, #c0392b)" 
-    elif 50 <= pct < 85: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
+    elif 50 <= pct < 80: bar_color = "linear-gradient(90deg, #f1c40f, #f39c12)" 
     else: bar_color = "linear-gradient(90deg, #2ecc71, #27ae60)" 
     
     st.markdown(f"""
@@ -258,16 +271,26 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=43200) 
-def load_data_from_url():
+@st.cache_data(ttl=3600) 
+def load_data():
+    PARQUET_FILE = "master_database_penjualan.parquet"
+    CACHE_AGE_LIMIT = 3600 
+    
+    if os.path.exists(PARQUET_FILE):
+        file_age = time.time() - os.path.getmtime(PARQUET_FILE)
+        if file_age < CACHE_AGE_LIMIT:
+            try:
+                return pd.read_parquet(PARQUET_FILE)
+            except Exception as e:
+                pass 
+
     urls = [
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv"  
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv"  
     ]
     
     def fetch_url(url):
@@ -291,36 +314,38 @@ def load_data_from_url():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
-    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
-        if alt_col in df.columns:
-            if 'Penjualan' in df.columns:
-                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
-            else:
-                df['Penjualan'] = df[alt_col]
-                
-    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-        if col_name in df.columns:
-            if 'Kode_Global' not in df.columns:
-                df['Kode_Global'] = df[col_name]
-            else:
-                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
-
     faktur_col = None
     for col in df.columns:
         if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
             faktur_col = col; break
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
-    if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
-        df['Nama Barang'] = df['Nama Barang'].fillna("-")
-
+    required_cols = ['Penjualan', 'Merk', 'Jumlah', 'Tanggal']
+    if not all(col in df.columns for col in required_cols): return None
+    
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
 
+    if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
+        df = df[df['Nama Barang'].astype(str).str.strip() != ''] 
+
+    df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+    valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+    valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
+    df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+    df['Penjualan'] = df['Penjualan'].astype('category')
+
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items():
+            for keyword in keywords:
+                if keyword in raw_upper: return target_brand
+        return raw_brand
+    df['Merk'] = df['Merk'].apply(normalize_brand).astype('category')
+    
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
         x = re.sub(r'\s+', '', x) 
@@ -330,46 +355,16 @@ def load_data_from_url():
         try: return float(x)
         except: return 0.0
 
-    if 'Jumlah' in df.columns:
-        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-    else:
-        df['Jumlah'] = 0.0
-
-    if 'Tanggal' in df.columns:
-        tanggal_raw = df['Tanggal'].astype(str).str.strip()
-        d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
-        d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
-        d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-        df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
-    else:
-        df['Tanggal'] = pd.to_datetime('2000-01-01')
-
-    if 'Penjualan' in df.columns:
-        df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-        valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-        valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
-        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
-        df_valid = df[df['Penjualan'] != 'Non-Sales']
-        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
-        mask_non = df['Penjualan'] == 'Non-Sales'
-        df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
-        df['Penjualan'] = df['Penjualan'].astype('category')
-    else:
-        df['Penjualan'] = 'Non-Sales'
-
-    def normalize_brand(raw_brand):
-        raw_upper = str(raw_brand).upper()
-        for target_brand, keywords in BRAND_ALIASES.items(): 
-            for keyword in keywords:
-                if keyword in raw_upper: return target_brand
-        return raw_brand
-        
-    if 'Merk' in df.columns:
-        df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
-    else:
-        df['Merk'] = "-"
+    df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
     
-    cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
+    tanggal_raw = df['Tanggal'].astype(str).str.strip()
+    d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
+    d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
+    d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
+    df['Tanggal'] = d1.fillna(d2).fillna(d3)
+    df = df.dropna(subset=['Tanggal'])
+    
+    cols_to_convert = ['Kota', 'Nama Outlet', 'Nama Barang', 'No Faktur', 'Kode Outlet', 'Kode Customer']
     for col in cols_to_convert:
         if col in df.columns: 
             df[col] = df[col].fillna("-").astype(str).str.strip()
@@ -380,67 +375,37 @@ def load_data_from_url():
     else:
         df['Provinsi'] = "-"
     
-    try: df.to_parquet("master_database_penjualan.parquet", index=False)
+    try: df.to_parquet(PARQUET_FILE, index=False)
     except: pass 
             
     return df
 
-def load_data(fast_mode=False):
-    if fast_mode and os.path.exists("master_database_penjualan.parquet"):
-        try:
-            return pd.read_parquet("master_database_penjualan.parquet")
-        except Exception:
-            pass
-    return load_data_from_url()
-
-def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
-    group_cols = list(group_cols_tuple)
+@st.cache_data(show_spinner=False)
+def generate_pivot(df_source_json, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
+    df_pivot_source = pd.read_json(io.StringIO(df_source_json), orient='split') 
+    df_pivot_source['Tanggal'] = pd.to_datetime(df_pivot_source['Tanggal'])
+    df_pivot_source['Bulan Angka'] = df_pivot_source['Tanggal'].dt.month
     
-    if 'Nama Outlet' in df_pivot_source.columns and 'Nama Customer' not in df_pivot_source.columns:
-        df_pivot_source = df_pivot_source.rename(columns={'Nama Outlet': 'Nama Customer'})
-        if 'Nama Outlet' in group_cols:
-            group_cols[group_cols.index('Nama Outlet')] = 'Nama Customer'
-
-    invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-    df_pivot_source['ID_Patokan'] = np.where(
-        df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().isin(invalid_codes),
-        df_pivot_source['Nama Customer'].astype(str).str.strip(),
-        df_pivot_source['Kode_Global'].astype(str).str.strip()
-    )
-
+    group_cols = list(group_cols_tuple)
+    master_pivot = pd.DataFrame()
+    
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
-            prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
-            prefix_tuple = tuple(prefixes)
-            
-            mask_history = df_pivot_source['Merk'] == selected_merk_excel
-            kd_col = 'Kode_Global'
-            mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-            final_mask = mask_history | mask_prefix
+            df_historical_brand = df_pivot_source[df_pivot_source['Merk'] == selected_merk_excel].copy()
+            base_customers = df_historical_brand[group_cols].drop_duplicates()
+            df_excel = df_historical_brand[df_historical_brand['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                master_pivot = pd.merge(base_customers, master_pivot, on=group_cols, how='left').fillna(0)
+            else:
+                master_pivot = base_customers.copy()
+                for i in range(1, 13): master_pivot[i] = 0
         else:
-            final_mask = pd.Series(True, index=df_pivot_source.index)
-            
-        df_filtered = df_pivot_source[final_mask].copy()
-        
-        if df_filtered.empty: return pd.DataFrame()
+            df_excel = df_pivot_source[df_pivot_source['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
+            if not df_excel.empty:
+                master_pivot = pd.pivot_table(df_excel, values='Jumlah', index=group_cols, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
 
-        df_filtered = df_filtered.sort_values('Tanggal', ascending=False)
-        base_customers = df_filtered.drop_duplicates(subset=['ID_Patokan'], keep='first')[['ID_Patokan'] + group_cols]
-        
-        df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
-        
-        if not df_excel.empty:
-            df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='ID_Patokan', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-            master_pivot = pd.merge(base_customers, pivot_sales, on='ID_Patokan', how='left').fillna(0)
-        else:
-            master_pivot = base_customers.copy()
-            for i in range(1, 13): master_pivot[i] = 0
-            
-        master_pivot = master_pivot.drop(columns=['ID_Patokan'])
-        return master_pivot
-        
-    return pd.DataFrame()
+    return master_pivot
 
 def load_users():
     try: return pd.read_csv('users.csv')
@@ -893,7 +858,7 @@ def main_dashboard():
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
                     if row["Supervisor"]: 
-                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: 900 !important; border-top: 2px solid #555 !important; border-bottom: 2px solid #555 !important;'] * len(row)
+                        return [f'background-color: {bg_color} !important; color: #000000 !important; font-weight: bold !important; border-top: 2px solid white !important; border-bottom: 2px solid white !important;'] * len(row)
                     else: 
                         return [f'background-color: {bg_color} !important; color: #333333 !important; font-weight: normal !important; border-bottom: 1px solid #ccc !important;'] * len(row)
                         
@@ -1219,11 +1184,14 @@ def main_dashboard():
             else:
                 df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global')
                 
-            if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
-            elif 'Nama Outlet' in df_scope_all.columns: 
+            # PEMBENAHAN NAMA CUSTOMER YANG HILANG
+            if 'Nama Outlet' in df_scope_all.columns: 
                 grp_cols.append('Nama Outlet')
-                df_scope_all['Nama Customer'] = df_scope_all['Nama Outlet']
-            else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+            elif 'Nama Customer' in df_scope_all.columns: 
+                grp_cols.append('Nama Customer')
+            else: 
+                df_scope_all['Nama Customer'] = "-"
+                grp_cols.append('Nama Customer')
             
             if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
             else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
@@ -1275,12 +1243,10 @@ def main_dashboard():
                 
                 master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
                 
-                # BUG NAMA CUSTOMER HILANG DIPERBAIKI DI SINI
-                ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
+                # PEMBASMIAN KOLOM DUPLIKAT DAN PENGAMANAN NAMA CUSTOMER
+                ren_dict = {'Kode_Global': 'Kode Customer', 'Kode Costumer': 'Kode Customer', 'Kode Outlet': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
                 master_pivot = master_pivot.rename(columns=ren_dict)
-                
-                # PEMUSNAHAN KOLOM DUPLIKAT SEBELUM FILTER
-                master_pivot = master_pivot.loc[:, ~master_pivot.columns.duplicated()]
+                master_pivot = master_pivot.loc[:, ~master_pivot.columns.duplicated(keep='first')]
                 
                 if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
                 if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
@@ -1321,7 +1287,7 @@ def main_dashboard():
                     if AGGRID_AVAILABLE:
                         gb = GridOptionsBuilder.from_dataframe(df_clean)
                         
-                        # FILTER CORONG GAYA A DENGAN KOTAK CENTANG
+                        # FILTER CORONG GAYA A DENGAN KOTAK CENTANG (TIDAK MEMAKAN BARIS BARU)
                         gb.configure_default_column(
                             sortable=True, 
                             filter='agSetColumnFilter', 
@@ -1358,7 +1324,7 @@ def main_dashboard():
                             ".ag-theme-alpine .ag-popup": {"background-color": "white !important", "color": "black !important"}
                         }
                         
-                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
+                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter Corong.")
                         
                         AgGrid(
                             df_clean,
@@ -1467,7 +1433,7 @@ def main_dashboard():
                 if not df_sku_filtered.empty:
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
-                    # LOGIKA BUNGLON SKU (Chameleon Logic)
+                    # LOGIKA TABEL BUNGLON (Chameleon Logic)
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
                         display_col = 'Nama Customer'
@@ -1511,6 +1477,7 @@ def main_dashboard():
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
+                        # FILTER CORONG GAYA A
                         gb_sku.configure_default_column(
                             sortable=True, 
                             filter='agSetColumnFilter', 
@@ -1546,7 +1513,7 @@ def main_dashboard():
                             ".ag-theme-alpine .ag-popup": {"background-color": "white !important", "color": "black !important"}
                         }
                         
-                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter (Gaya Excel).")
+                        st.info("💡 **Tips:** Klik ikon Menu (Tiga Garis) di judul kolom untuk mengaktifkan kotak Filter Corong.")
                         
                         AgGrid(
                             df_clean_sku,
