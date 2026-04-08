@@ -305,104 +305,6 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# DATATABLES HTML GENERATOR DENGAN COLUMN FILTER (CORONG DI SAMPING TEKS)
-# =========================================================================
-def get_datatable_html(df, num_cols, table_id):
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-        <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-        <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: white; margin: 0; padding: 0; }}
-            #{table_id} {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-            #{table_id} thead th {{ background-color: #2980b9; color: white; border: 1px solid #555; padding: 10px; text-align: center; position: sticky; top: 0; z-index: 10; white-space: nowrap; }}
-            #{table_id} tbody td {{ border: 1px solid #ddd; padding: 8px; color: #333; }}
-            #{table_id} tbody tr:nth-child(even) {{ background-color: #f9f9f9; }}
-            #{table_id} tbody tr:hover {{ background-color: #e3f2fd !important; }}
-            .grand-total {{ background-color: #FFFF00 !important; font-weight: bold; color: black !important; }}
-            .grand-total td {{ border-top: 2px solid #333 !important; border-bottom: 2px solid #333 !important; color: black !important;}}
-            .dataTables_wrapper .dataTables_filter input {{ border: 1px solid #aaa; border-radius: 4px; padding: 5px; margin-left: 5px; outline: none; }}
-            .dataTables_wrapper .dataTables_filter input:focus {{ border-color: #2980b9; box-shadow: 0 0 3px #2980b9; }}
-            /* Style khusus untuk kotak filter di samping judul kolom */
-            thead input {{ width: 70px; padding: 3px 5px; margin-left: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: normal; font-size: 11px; color: black; display: inline-block; box-sizing: border-box; }}
-            .th-content {{ display: flex; align-items: center; justify-content: space-between; }}
-        </style>
-    </head>
-    <body>
-        <table id="{table_id}" class="display nowrap" style="width:100%">
-            <thead>
-                <tr>
-    """
-    for col in df.columns:
-        html += f'<th><div class="th-content"><span>{col}</span> <input type="text" placeholder="🔍" /></div></th>'
-            
-    html += "</tr>\n</thead><tbody>"
-    
-    for _, row in df.iterrows():
-        is_gt = False
-        for col in df.columns:
-            if str(row[col]) == 'GRAND TOTAL': 
-                is_gt = True; break
-        
-        tr_class = "grand-total" if is_gt else ""
-        html += f'<tr class="{tr_class}">'
-        
-        for col in df.columns:
-            val = row[col]
-            if col in num_cols:
-                if pd.isna(val) or val == 0 or val == "": val_str = "-"
-                else:
-                    try: val_str = f"Rp {float(val):,.0f}".replace(',', '.')
-                    except: val_str = str(val)
-                html += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
-            else:
-                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                align = 'center' if is_gt else 'left'
-                html += f'<td style="text-align: {align}; white-space: nowrap;">{val_str}</td>'
-        html += "</tr>"
-    
-    html += f"""
-            </tbody>
-        </table>
-        <script>
-            $(document).ready(function() {{
-                var table = $('#{table_id}').DataTable({{
-                    "paging": false,
-                    "info": false,
-                    "searching": true,
-                    "ordering": true,
-                    "order": [],
-                    "scrollX": true,
-                    "scrollY": "500px",
-                    "scrollCollapse": true,
-                    "language": {{ "search": "🔍 Global Search:" }}
-                }});
-                
-                // Mencegah sorting saat mengklik kotak input filter
-                $('#{table_id} thead input').on('click keyup change', function(e) {{
-                    e.stopPropagation();
-                }});
-
-                // Mengaktifkan filter spesifik per kolom
-                table.columns().every(function() {{
-                    var that = this;
-                    $('input', this.header()).on('keyup change clear', function() {{
-                        if (that.search() !== this.value) {{
-                            that.search(this.value).draw();
-                        }}
-                    }});
-                }});
-            }});
-        </script>
-    </body>
-    </html>
-    """
-    return html
-
-# =========================================================================
 # CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
 # =========================================================================
 @st.cache_data(ttl=43200) 
@@ -734,6 +636,22 @@ def render_pivot_fragment(df_scope_all, role):
 
         st.caption(f"Menampilkan {len(df_filtered)} data customer.")
 
+        if maximize_toggle:
+            st.markdown("""
+            <style>
+                header {display: none !important;}
+                [data-testid="stSidebar"] {display: none !important;}
+                .block-container {
+                    max-width: 100% !important;
+                    padding-top: 1rem !important;
+                    padding-right: 1rem !important;
+                    padding-left: 1rem !important;
+                    padding-bottom: 1rem !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+
         if not df_filtered.empty:
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
@@ -743,30 +661,49 @@ def render_pivot_fragment(df_scope_all, role):
                 total_dict[col] = df_filtered[col].sum()
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # --- PENGHANCUR BUG KOLOM GANDA ---
+            # --- PENGHANCUR KOLOM GANDA ---
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
 
-            # --- RENDER DATATABLES (OPSI B: DENGAN KOTAK PENCARIAN DI SAMPING TEKS) ---
-            html_table = get_datatable_html(df_display, num_cols, "pivotDataTbl")
-            
-            if maximize_toggle:
-                st.markdown("""
-                <style>
-                    header {display: none !important;}
-                    [data-testid="stSidebar"] {display: none !important;}
-                    .block-container {
-                        max-width: 100% !important;
-                        padding-top: 1rem !important;
-                        padding-right: 1rem !important;
-                        padding-left: 1rem !important;
-                        padding-bottom: 1rem !important;
+            # --- RENDER AGGRID ---
+            if AGGRID_AVAILABLE:
+                gb = GridOptionsBuilder.from_dataframe(df_display)
+                gb.configure_default_column(filter=True, sortable=True, resizable=True)
+                
+                for col in df_display.columns:
+                    if col in num_cols:
+                        gb.configure_column(
+                            col, 
+                            type=["numericColumn", "numberColumnFilter"],
+                            valueFormatter=JsCode("function(params) { return params.value != null ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
+                        )
+                    else:
+                        if col == df_display.columns[0]:
+                            gb.configure_column(col, pinned='left')
+                            
+                getRowStyle = JsCode("""
+                function(params) {
+                    for (var key in params.data) {
+                        if (params.data[key] === 'GRAND TOTAL') {
+                            return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
+                        }
                     }
-                </style>
-                """, unsafe_allow_html=True)
-                st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
-                components.html(html_table, height=800, scrolling=True)
+                    return null;
+                }
+                """)
+                gb.configure_grid_options(getRowStyle=getRowStyle)
+                gridOptions = gb.build()
+                
+                AgGrid(
+                    df_display,
+                    gridOptions=gridOptions,
+                    allow_unsafe_jscode=True,
+                    theme='balham', 
+                    height=800 if maximize_toggle else 500,
+                    fit_columns_on_grid_load=False
+                )
             else:
-                components.html(html_table, height=600, scrolling=True)
+                st.warning("Library 'streamlit-aggrid' tidak ditemukan. Menampilkan tabel standar.")
+                st.dataframe(df_display)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1676,16 +1613,56 @@ def main_dashboard():
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
                     # Grand Total Row
-                    total_dict_sku = {col: pivot_sku[col].sum() for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']}
+                    total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku[display_label] = "GRAND TOTAL"
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                        total_dict_sku[col] = pivot_sku[col].sum()
+                    
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
                     # --- PENGHANCUR BUG KOLOM GANDA ---
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # --- RENDER DATATABLES ---
-                    html_table_sku = get_datatable_html(df_display_sku, list(bulan_indo_map.values()) + ['Total Penjualan'], "skuDataTbl")
-                    components.html(html_table_sku, height=600, scrolling=True)
+                    # --- RENDER AGGRID ---
+                    if AGGRID_AVAILABLE:
+                        gb = GridOptionsBuilder.from_dataframe(df_display_sku)
+                        gb.configure_default_column(filter=True, sortable=True, resizable=True)
+                        
+                        for col in df_display_sku.columns:
+                            if col in list(bulan_indo_map.values()) + ['Total Penjualan']:
+                                gb.configure_column(
+                                    col, 
+                                    type=["numericColumn", "numberColumnFilter"],
+                                    valueFormatter=JsCode("function(params) { return params.value != null && params.value !== '' ? 'Rp ' + params.value.toLocaleString('id-ID') : '-'; }")
+                                )
+                            else:
+                                if col == df_display_sku.columns[0]:
+                                    gb.configure_column(col, pinned='left')
+                                    
+                        getRowStyle = JsCode("""
+                        function(params) {
+                            for (var key in params.data) {
+                                if (params.data[key] === 'GRAND TOTAL') {
+                                    return {'backgroundColor': '#FFFF00', 'color': 'black', 'fontWeight': 'bold', 'borderTop': '2px solid black'};
+                                }
+                            }
+                            return null;
+                        }
+                        """)
+                        gb.configure_grid_options(getRowStyle=getRowStyle)
+                        gridOptions = gb.build()
+                        
+                        AgGrid(
+                            df_display_sku,
+                            gridOptions=gridOptions,
+                            allow_unsafe_jscode=True,
+                            theme='balham', 
+                            height=800 if maximize_toggle_sku else 500,
+                            fit_columns_on_grid_load=False
+                        )
+                    else:
+                        st.warning("Library 'streamlit-aggrid' tidak ditemukan. Menampilkan tabel standar.")
+                        st.dataframe(df_display_sku)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
