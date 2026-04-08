@@ -1,11 +1,11 @@
-streamlit>=1.40.0
+streamlit
 pandas
 plotly
 pytz
 pyotp
 qrcode
 pillow
-streamlit-aggrid==0.3.4.post3
+streamlit-aggrid
 xlsxwriter
 pyarrow
 google-generativeai
