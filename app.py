@@ -428,7 +428,6 @@ def get_cross_sell_recommendations(df):
 # =====================================================================
 # ⚡ THE ULTIMATE SPEED BOOSTER: FORM ARCHITECTURE UNTUK PIVOT TABLE
 # =====================================================================
-@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
