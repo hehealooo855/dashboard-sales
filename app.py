@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs & Hilangkan Logo Streamlit)
+# Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
     .metric-card {
@@ -62,7 +62,6 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
-    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -71,7 +70,6 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
-    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
     [data-testid="stMetricLabel"] p {
         font-size: 18px !important;
         font-weight: 600 !important;
@@ -81,22 +79,16 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
-    div[data-baseweb="tab-list"] button[aria-selected="true"] {
-        color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-highlight"] {
-        background-color: #2980b9 !important;
-    }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-        border-bottom-color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover {
-        color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover span {
-        color: #2980b9 !important;
-    }
+    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
+    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    
+    /* MEMAKSA AGGRID HEADER MENJADI CORPORATE BLUE DARI LUAR (BACKUP) */
+    .ag-theme-alpine .ag-header { background-color: #2980b9 !important; }
+    .ag-theme-alpine .ag-header-cell-text { color: white !important; font-weight: bold !important; }
+    .ag-theme-alpine .ag-icon { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -305,7 +297,7 @@ def render_custom_progress(title, current, target):
     """, unsafe_allow_html=True)
 
 # =========================================================================
-# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
+# CACHE & DATA LOADER
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
@@ -443,7 +435,7 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE (DIHAPUS CACHE-NYA AGAR TIDAK STUCK)
+# PIVOT FAST ENGINE
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
@@ -653,6 +645,7 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
+            
             # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
             if 'Nama Customer' in df_filtered.columns:
                 df_filtered = df_filtered.drop(columns=['Nama Customer'])
@@ -660,127 +653,81 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL ---
-            total_dict = {col: "" for col in df_filtered.columns}
-            if 'Kode Customer' in total_dict:
+            df_filtered = df_filtered.loc[:, ~df_filtered.columns.duplicated()]
+
+            # --- 2. DATA SANITIZATION MUTLAK (ANTI BLANK/CRASH) ---
+            # Mengamankan seluruh tipe data sebelum dilempar ke AgGrid Javascript
+            df_clean = df_filtered.copy()
+            for col in df_clean.columns:
+                if col in num_cols:
+                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0).astype(float)
+                else:
+                    df_clean[col] = df_clean[col].astype(str).replace('nan', '')
+
+            # --- 3. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
+            total_dict = {col: "" for col in df_clean.columns}
+            if 'Kode Customer' in df_clean.columns:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_filtered.columns) > 0:
-                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
+            elif len(df_clean.columns) > 0:
+                total_dict[df_clean.columns[0]] = "GRAND TOTAL"
                 
             for col in num_cols:
-                if col in df_filtered.columns:
-                    total_dict[col] = df_filtered[col].sum()
+                if col in df_clean.columns:
+                    total_dict[col] = float(df_clean[col].sum())
                     
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
-            df_display = df_display.loc[:, ~df_display.columns.duplicated()]
-            
-            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
-            html_table = """
-            <style>
-                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
-                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                /* Styling untuk Dropdown Filter */
-                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
-            </style>
-            <div style="overflow-x: auto; max-height: 800px;">
-                <table class="pivot-table" id="table-pivot-main">
-                    <thead>
-                        <tr>
-            """
-            
-            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
-            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
-            
-            for col in df_display.columns:
-                if col in categorical_cols:
-                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
-                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
-                    
-                    options_html = "<option value=''>Semua</option>"
-                    for val in unique_vals:
-                        options_html += f"<option value='{val}'>{val}</option>"
-                    
-                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
-                else:
-                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
-                    html_table += f"<th>{col}</th>"
-                    
-            html_table += "</tr></thead><tbody>"
-            
-            for _, row in df_display.iterrows():
-                is_gt = False
-                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
-                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
+            # Data asli untuk diekspor ke Excel agar rapi
+            df_export = pd.concat([df_clean, pd.DataFrame([total_dict])], ignore_index=True)
+
+            # --- 4. IMPLEMENTASI AGGRID DENGAN FLOATING FILTER (EXCEL LIKE) ---
+            if AGGRID_AVAILABLE:
+                gb = GridOptionsBuilder.from_dataframe(df_clean)
                 
-                tr_class = "grand-total-row" if is_gt else ""
-                html_table += f'<tr class="{tr_class}">'
+                # MENGAKTIFKAN FLOATING FILTER (KOTAK KETIK DI BAWAH HEADER SEPERTI GAMBAR ANDA)
+                gb.configure_default_column(
+                    sortable=True, 
+                    filter=True, # Menggunakan text/number filter standar yang anti-crash
+                    floatingFilter=True, # <--- INI KUNCI UTAMANYA!
+                    resizable=True
+                )
                 
-                for col in df_display.columns:
-                    val = row[col]
+                # Formatter Rupiah Cepat tanpa NaN Bug
+                rupiah_format = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
+                    return 'Rp ' + Number(params.value).toLocaleString('id-ID');
+                }
+                """)
+                
+                for col in df_clean.columns:
                     if col in num_cols:
-                        if pd.isna(val) or val == "":
-                            val_str = "-"
-                        else:
-                            try:
-                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
-                            except:
-                                val_str = str(val)
-                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
-                    else:
-                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
-                            html_table += f'<td style="text-align: center;">{val_str}</td>'
-                        else:
-                            html_table += f'<td>{val_str}</td>'
-                html_table += "</tr>"
+                        gb.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format)
                 
-            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
-            html_table += """
-            </tbody></table></div><br>
-            <script>
-            function filterTableDropdown(tableId) {
-                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
-                if (!table) return;
-                var tr = table.getElementsByTagName("tr");
-                var ths = table.getElementsByTagName("th");
-                var selects = [];
+                go = gb.build()
                 
-                // Kumpulkan semua elemen select
-                for (var i = 0; i < ths.length; i++) {
-                    var sel = ths[i].getElementsByTagName("select")[0];
-                    selects.push(sel ? sel : null);
+                # Mengunci baris Grand Total di bawah
+                go['pinnedBottomRowData'] = [total_dict]
+                
+                custom_css = {
+                    ".ag-header": {"background-color": "#2980b9 !important"},
+                    ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-icon": {"color": "white !important"},
+                    ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                 }
                 
-                // Eksekusi filter
-                for (var i = 1; i < tr.length; i++) {
-                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
-                    
-                    var displayRow = true;
-                    for (var j = 0; j < selects.length; j++) {
-                        if (selects[j] && selects[j].value !== "") {
-                            var filterVal = selects[j].value.toUpperCase();
-                            var td = tr[i].getElementsByTagName("td")[j];
-                            if (td) {
-                                var txtValue = td.textContent || td.innerText;
-                                // Pencarian Exact Match (Sama Persis)
-                                if (txtValue.toUpperCase() !== filterVal) {
-                                    displayRow = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    tr[i].style.display = displayRow ? "" : "none";
-                }
-            }
-            </script>
-            """
-            
-            st.markdown(html_table, unsafe_allow_html=True)
+                st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
+                
+                AgGrid(
+                    df_clean,
+                    gridOptions=go,
+                    theme='alpine',
+                    height=600,
+                    allow_unsafe_jscode=True,
+                    enable_enterprise_modules=False, # Dimatikan agar 100% bebas blank screen
+                    custom_css=custom_css
+                )
+            else:
+                st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
+                st.dataframe(df_export)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -790,8 +737,8 @@ def render_pivot_fragment(df_scope_all, role):
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                if 'df_export' in locals() and not df_export.empty:
+                    df_export.to_excel(writer, index=False, sheet_name='Master Data')
                 
                 workbook = writer.book
                 worksheet = writer.sheets['Master Data']
@@ -806,9 +753,9 @@ def render_pivot_fragment(df_scope_all, role):
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('D:P', None, format1) 
                 
-                if 'df_display' in locals() and not df_display.empty:
+                if 'df_export' in locals() and not df_export.empty:
                     bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
+                    last_row_idx = len(df_export) 
                     worksheet.set_row(last_row_idx, None, bold_format)
             
             st.download_button(
@@ -1670,7 +1617,6 @@ def main_dashboard():
                     df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
                     # --- 🚀 FITUR: Tabel SKU Bunglon ---
-                    # Jika user mencari SKU spesifik, balik tabelnya menjadi berbasis Toko
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
                         display_col = 'Nama Toko'
@@ -1691,105 +1637,86 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # Grand Total Row
-                    total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
-                        total_dict_sku[col] = pivot_sku[col].sum()
-                    
-                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    
-                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+                    df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-                    
-                    # HTML Table Rendering
-                    html_table_sku = """
-                    <style>
-                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
-                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        /* Styling untuk input Filter Corong */
-                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
-                    </style>
-                    <div style="overflow-x: auto; max-height: 800px;">
-                        <table class="sku-table" id="table-sku-main">
-                            <thead>
-                                <tr>
-                    """
-                    for col in df_display_sku.columns:
-                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
-                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
-                    html_table_sku += "</tr></thead><tbody>"
-                    
-                    for _, row in df_display_sku.iterrows():
-                        is_gt = row.get(display_col) == 'GRAND TOTAL'
-                        tr_class = "grand-total-row" if is_gt else ""
-                        html_table_sku += f'<tr class="{tr_class}">'
+
+                    num_cols_sku = list(bulan_indo_map.values()) + ['Total Penjualan']
+
+                    # --- 1. DATA SANITIZATION SKU (ANTI BLANK/CRASH) ---
+                    df_clean_sku = df_display_sku.copy()
+                    for col in df_clean_sku.columns:
+                        if col in num_cols_sku:
+                            df_clean_sku[col] = pd.to_numeric(df_clean_sku[col], errors='coerce').fillna(0).astype(float)
+                        else:
+                            df_clean_sku[col] = df_clean_sku[col].astype(str).replace('nan', '')
+
+                    # --- 2. PENYESUAIAN GRAND TOTAL (PINNED ROW EXCLUSIVE) ---
+                    total_dict_sku = {col: "" for col in df_clean_sku.columns}
+                    total_dict_sku[display_col] = "GRAND TOTAL"
+                    for col in num_cols_sku:
+                        if col in df_clean_sku.columns:
+                            total_dict_sku[col] = float(df_clean_sku[col].sum())
+                            
+                    # Data asli untuk diekspor ke Excel agar rapi
+                    df_export_sku = pd.concat([df_clean_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+
+                    # --- 3. IMPLEMENTASI AGGRID AMAN DENGAN FLOATING FILTER (SKU TABLE) ---
+                    if AGGRID_AVAILABLE:
+                        gb_sku = GridOptionsBuilder.from_dataframe(df_clean_sku)
                         
-                        for col in df_display_sku.columns:
-                            val = row[col]
-                            if col != display_col:
-                                if pd.isna(val) or val == 0 or val == "":
-                                    val_str = "-"
-                                else:
-                                    try:
-                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
-                                    except:
-                                        val_str = str(val)
-                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
-                            else:
-                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                                if is_gt:
-                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
-                                else:
-                                    html_table_sku += f'<td>{val_str}</td>'
-                        html_table_sku += "</tr>"
+                        # MENGAKTIFKAN FLOATING FILTER
+                        gb_sku.configure_default_column(
+                            sortable=True, 
+                            filter=True, 
+                            floatingFilter=True, 
+                            resizable=True
+                        )
                         
-                    html_table_sku += """
-                    </tbody></table></div><br>
-                    <script>
-                    function filterTableData(tableId) {
-                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
-                        if (!table) return;
-                        var tr = table.getElementsByTagName("tr");
-                        var ths = table.getElementsByTagName("th");
-                        var inputs = [];
-                        for (var i=0; i<ths.length; i++) {
-                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                        rupiah_format_sku = JsCode("""
+                        function(params) {
+                            if (params.value === null || params.value === undefined || isNaN(params.value)) { return '-'; }
+                            return 'Rp ' + Number(params.value).toLocaleString('id-ID');
+                        }
+                        """)
+                        
+                        for col in df_clean_sku.columns:
+                            if col in num_cols_sku:
+                                gb_sku.configure_column(col, type=["numericColumn"], valueFormatter=rupiah_format_sku)
+                                
+                        go_sku = gb_sku.build()
+                        
+                        # Mengunci baris Grand Total di bawah
+                        go_sku['pinnedBottomRowData'] = [total_dict_sku]
+                        
+                        custom_css_sku = {
+                            ".ag-header": {"background-color": "#2980b9 !important"},
+                            ".ag-header-cell-text": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-icon": {"color": "white !important"},
+                            ".ag-floating-bottom-container .ag-row": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                         }
                         
-                        for (var i = 1; i < tr.length; i++) {
-                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
-                            var displayRow = true;
-                            for (var j = 0; j < inputs.length; j++) {
-                                if (inputs[j] && inputs[j].value !== "") {
-                                    var filter = inputs[j].value.toUpperCase();
-                                    var td = tr[i].getElementsByTagName("td")[j];
-                                    if (td) {
-                                        var txtValue = td.textContent || td.innerText;
-                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
-                                            displayRow = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            tr[i].style.display = displayRow ? "" : "none";
-                        }
-                    }
-                    </script>
-                    """
-                    
-                    st.markdown(html_table_sku, unsafe_allow_html=True)
+                        st.info("💡 **Tips:** Ketik langsung di dalam kotak kosong di bawah setiap judul kolom untuk memfilter data. Klik teks judul untuk mengurutkan (Sort).")
+                        
+                        AgGrid(
+                            df_clean_sku,
+                            gridOptions=go_sku,
+                            theme='alpine',
+                            height=600,
+                            allow_unsafe_jscode=True,
+                            enable_enterprise_modules=False,
+                            custom_css=custom_css_sku
+                        )
+                    else:
+                        st.warning("Library st_aggrid tidak ditemukan! Menggunakan tabel bawaan Streamlit.")
+                        st.dataframe(df_export_sku)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            if 'df_export_sku' in locals() and not df_export_sku.empty:
+                                df_export_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
                             
@@ -1800,8 +1727,10 @@ def main_dashboard():
                             
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
-                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            
+                            if 'df_export_sku' in locals() and not df_export_sku.empty:
+                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                                worksheet.set_row(len(df_export_sku)-1, None, bold_format)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
