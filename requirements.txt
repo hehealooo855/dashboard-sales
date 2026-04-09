@@ -5,7 +5,7 @@ pytz
 pyotp
 qrcode
 pillow
-streamlit-aggrid==0.3.4.post3
+streamlit-aggrid==1.0.5
 xlsxwriter
 pyarrow
 google-generativeai
