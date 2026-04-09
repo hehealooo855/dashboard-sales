@@ -1677,9 +1677,17 @@ def main_dashboard():
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # --- FIX DISINI ---
+                    # --- FIX SUPER KETAT UNTUK PYARROW ---
+                    # 1. Pastikan teks murni string
                     df_display_sku[display_col] = df_display_sku[display_col].astype(str)
-                    # ------------------
+                    
+                    num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                    
+                    # 2. Pastikan SEMUA angka murni float (tidak ada object/mixed)
+                    for col in num_cols_sku:
+                        if col in df_display_sku.columns:
+                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
+                    # --------------------------------------
                     
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
@@ -1696,8 +1704,6 @@ def main_dashboard():
                         }
                         """)
                         
-                        num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
-                        
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
                                 gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
@@ -1708,7 +1714,6 @@ def main_dashboard():
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
-                        # --- KONFIGURASI ROW HEIGHT ---
                         getRowHeightSKU = JsCode("""
                         function(params) {
                             if (params.node.rowPinned === 'bottom') {
@@ -1736,8 +1741,6 @@ def main_dashboard():
                             ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                             ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                            
-                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD SEPENUHNYA
                             ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
                                 "background-color": "#FFFF00 !important", 
@@ -1747,15 +1750,21 @@ def main_dashboard():
                             }
                         }
                         
-                        AgGrid(
-                            df_display_sku,
-                            gridOptions=gridOptions_sku,
-                            allow_unsafe_jscode=True,
-                            theme='balham', 
-                            height=600,
-                            fit_columns_on_grid_load=False,
-                            custom_css=custom_css_sku
-                        )
+                        # --- TRY-EXCEPT FALLBACK (ANTI-CRASH) ---
+                        try:
+                            AgGrid(
+                                df_display_sku,
+                                gridOptions=gridOptions_sku,
+                                allow_unsafe_jscode=True,
+                                theme='balham', 
+                                height=600,
+                                fit_columns_on_grid_load=False,
+                                custom_css=custom_css_sku
+                            )
+                        except Exception as e:
+                            st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
+                            st.dataframe(df_display_sku_export, use_container_width=True)
+                        # ----------------------------------------
                     else:
                         st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
                     
