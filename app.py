@@ -654,38 +654,29 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 1. REORDER KOLOM ---
+            # --- 1. REORDER KOLOM (Kode Customer lalu Nama Outlet) ---
             cols_reordered = ['Kode Customer', 'Nama Outlet', 'Provinsi', 'Kota'] + num_cols
             df_display = df_filtered[cols_reordered].copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # === PYARROW SERIALIZATION SAFEGUARD: TABEL PIVOT ===
-            # Mencegah crash akibat mixed types / numpy formats
-            df_display['Kode Customer'] = df_display['Kode Customer'].astype(str).fillna("-")
-            df_display['Nama Outlet'] = df_display['Nama Outlet'].astype(str).fillna("-")
-            df_display['Provinsi'] = df_display['Provinsi'].astype(str).fillna("-")
-            df_display['Kota'] = df_display['Kota'].astype(str).fillna("-")
-            
-            for col in num_cols:
-                if col in df_display.columns:
-                    df_display[col] = pd.to_numeric(df_display[col], errors='coerce').fillna(0.0).astype(float)
-            
-            df_display.columns = df_display.columns.astype(str)
-            df_display = df_display.reset_index(drop=True)
-
-            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW) ---
+            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW - NO MERGE) ---
             total_dict = {col: "" for col in df_display.columns}
             
-            # Posisi Teks Grand Total HANYA di Kode Customer
+            # Posisi Teks Grand Total HANYA di Kode Customer (Kolom 1)
             total_dict['Kode Customer'] = "GRAND TOTAL" 
                 
             for col in num_cols:
                 if col in df_display.columns:
+                    # Enforce Python float to avoid Numpy JSON serialization crash
                     total_dict[col] = float(df_display[col].sum())
-                    
+                    # Explicitly cast column to float to avoid PyArrow mixed-type crash
+                    df_display[col] = df_display[col].astype(float)
+            
+            df_display.columns.name = None # Remove hidden index name
+            
             df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
             
-            # ================= AG-GRID PIVOT TABLE RENDERER =================
+            # ================= AG-GRID PIVOT TABLE RENDERER (SMART FILTER) =================
             if AGGRID_AVAILABLE:
                 gb = GridOptionsBuilder.from_dataframe(df_display)
                 
@@ -705,14 +696,18 @@ def render_pivot_fragment(df_scope_all, role):
                         # KUNCI KEDUA KOLOM KE KIRI
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
+                        # PROVINSI DAN KOTA TIDAK DIKUNCI
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
+                # --- KONFIGURASI ROW HEIGHT (DINAMIS UNTUK GRAND TOTAL) ---
                 getRowHeight = JsCode("""
                 function(params) {
-                    if (params.node.rowPinned === 'bottom') { return 40; }
-                    return 35;
+                    if (params.node.rowPinned === 'bottom') {
+                        return 40; // Tinggi Baris Grand Total (Lebih Besar)
+                    }
+                    return 35;     // Tinggi Baris Standar
                 }
                 """)
                 
@@ -723,6 +718,7 @@ def render_pivot_fragment(df_scope_all, role):
                     pinnedBottomRowData=[total_dict]
                 )
                 
+                # Warnai SELURUH baris Grand Total dengan Kuning Stabilo
                 getRowStyle = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
@@ -735,6 +731,7 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
+                # --- CUSTOM CSS: BOLD YELLOW PINNED ROW ---
                 custom_css = {
                     ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -745,6 +742,7 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     
+                    # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo
                     ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
                         "border-top": "3px solid #333 !important"
                     },
@@ -762,6 +760,7 @@ def render_pivot_fragment(df_scope_all, role):
         else:
             st.info("Data Kosong setelah difilter.")
             
+        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL (TANPA MERGE) =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -785,6 +784,7 @@ def render_pivot_fragment(df_scope_all, role):
                 if 'df_display_export' in locals() and not df_display_export.empty:
                     last_row_idx = len(df_display_export) 
                     
+                    # Format Kuning untuk Keseluruhan Baris Terakhir (Tidak di-merge)
                     bold_yellow_format = workbook.add_format({
                         'bold': True,
                         'bg_color': '#FFFF00',
@@ -792,6 +792,8 @@ def render_pivot_fragment(df_scope_all, role):
                         'num_format': '#,##0',
                         'font_color': 'black'
                     })
+                    
+                    # Terapkan format tinggi baris & warna ke baris akhir
                     worksheet.set_row(last_row_idx, 30, bold_yellow_format)
             
             st.download_button(
@@ -812,12 +814,14 @@ def render_pivot_fragment(df_scope_all, role):
             list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
             kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
             
+            # --- CASCADING DROPDOWN (Pilih Merk di Luar Form agar bisa auto-update) ---
             col_s1, col_s2 = st.columns(2)
             with col_s1:
                 selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
             with col_s2:
                 selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
                 
+            # Pra-Filter df_sku_base untuk mendapatkan daftar opsi dropdown yang dinamis (Cascading)
             df_sku_for_options = df_sku_base.copy()
             if selected_merk_sku != "SEMUA":
                 prefixes = BRAND_PREFIXES.get(selected_merk_sku, [selected_merk_sku[:3].upper()])
@@ -846,6 +850,7 @@ def render_pivot_fragment(df_scope_all, role):
                 maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
                 submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
+            # Filtering Execution
             df_sku_filtered = df_sku_for_options.copy() 
 
             if selected_tahun_sku:
@@ -879,9 +884,7 @@ def render_pivot_fragment(df_scope_all, role):
                     st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
                 if not df_sku_filtered.empty:
-                    # Mencegah Float Columns Saat Pivot
-                    df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month.fillna(0).astype(int)
-                    df_sku_filtered = df_sku_filtered[df_sku_filtered['Bulan Angka'] > 0] # Buang data bulan yang tidak valid
+                    df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
                     
                     if filter_sku_spesifik:
                         index_col = 'Nama Outlet'
@@ -895,7 +898,7 @@ def render_pivot_fragment(df_scope_all, role):
                     
                     bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
                     for i in range(1, 13):
-                        if i not in pivot_sku.columns: pivot_sku[i] = 0.0 
+                        if i not in pivot_sku.columns: pivot_sku[i] = 0.0 # Use 0.0 float instead of 0 int
                         
                     cols_sku = [display_col] + list(range(1, 13))
                     pivot_sku = pivot_sku[cols_sku]
@@ -903,30 +906,25 @@ def render_pivot_fragment(df_scope_all, role):
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
+                    # --- Grand Total Row (PINNED BOTTOM ROW) ---
+                    total_dict_sku = {col: "" for col in pivot_sku.columns}
+                    total_dict_sku[display_col] = "GRAND TOTAL"
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                        # Enforce native float
+                        total_dict_sku[col] = float(pivot_sku[col].sum())
+                    
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # === PYARROW SERIALIZATION SAFEGUARD: TABEL SKU ===
-                    # 1. Bersihkan Index String agar PyArrow tidak bingung tipe datanya
-                    df_display_sku[display_col] = df_display_sku[display_col].astype(str).fillna("-")
-                    
-                    # 2. Paksa Angka jadi Float murni
-                    num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
-                    for col in num_cols_sku:
-                        df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0.0).astype(float)
-                    
-                    df_display_sku.columns = df_display_sku.columns.astype(str)
-                    df_display_sku = df_display_sku.reset_index(drop=True)
-                    
-                    # --- Grand Total Row (PINNED BOTTOM ROW) ---
-                    total_dict_sku = {col: "" for col in df_display_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in num_cols_sku:
-                        total_dict_sku[col] = float(df_display_sku[col].sum())
+                    # Cast all numeric columns to float explicitly
+                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                        df_display_sku[col] = df_display_sku[col].astype(float)
+                        
+                    df_display_sku.columns.name = None # Remove hidden index name
                     
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
-                    # ================= AG-GRID SKU TABLE RENDERER =================
+                    # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                         
@@ -939,6 +937,8 @@ def render_pivot_fragment(df_scope_all, role):
                         }
                         """)
                         
+                        num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                        
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
                                 gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
@@ -949,9 +949,12 @@ def render_pivot_fragment(df_scope_all, role):
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
+                        # --- KONFIGURASI ROW HEIGHT ---
                         getRowHeightSKU = JsCode("""
                         function(params) {
-                            if (params.node.rowPinned === 'bottom') { return 40; }
+                            if (params.node.rowPinned === 'bottom') {
+                                return 40;
+                            }
                             return 35;
                         }
                         """)
@@ -975,6 +978,7 @@ def render_pivot_fragment(df_scope_all, role):
                             ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                             
+                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD SEPENUHNYA
                             ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
                                 "background-color": "#FFFF00 !important", 
