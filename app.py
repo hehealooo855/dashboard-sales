@@ -690,14 +690,23 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 for col in df_display.columns:
                     if col in num_cols:
-                        gb.configure_column(col, type=["numericColumn"], filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                        # Rata Kanan (IDE C) diterapkan lewat headerClass
+                        gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                    elif col in ['Kode Customer', 'Nama Customer']:
+                        # Freeze Panes Kolom (IDE B)
+                        gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True, pinned='left')
                     else:
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
-                # --- KONFIGURASI PINNED BOTTOM ROW (GRAND TOTAL MELAYANG) ---
-                gb.configure_grid_options(pinnedBottomRowData=[total_dict])
+                # --- KONFIGURASI ROW HEIGHT & PINNED BOTTOM ROW ---
+                gb.configure_grid_options(
+                    rowHeight=35,           # Tinggi Baris Diperbesar
+                    headerHeight=40, 
+                    floatingFiltersHeight=40,
+                    pinnedBottomRowData=[total_dict]
+                )
                 
                 getRowStyle = JsCode("""
                 function(params) {
@@ -711,14 +720,18 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
-                # --- CUSTOM CSS CORPORATE BLUE & EXCEL GRIDLINES ---
+                # --- CUSTOM CSS CORPORATE BLUE & FILTER BOX ---
                 custom_css = {
                     ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                    ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                    ".ag-root-wrapper": {"border": "1px solid #555555 !important"}
+                    ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
+                    # IDE A: Kotak Filter Putih
+                    ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    # IDE C: Rata Kanan Header Angka
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"}
                 }
                 
                 AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css)
@@ -1665,24 +1678,21 @@ def main_dashboard():
                         
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
-                                gb_sku.configure_column(
-                                    col, 
-                                    type=["numericColumn"], 
-                                    filter='agNumberColumnFilter', 
-                                    floatingFilter=True, 
-                                    valueFormatter=currency_formatter
-                                )
+                                gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                            elif col == display_col:
+                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True, pinned='left')
                             else:
-                                gb_sku.configure_column(
-                                    col, 
-                                    filter='agSetColumnFilter', 
-                                    floatingFilter=True
-                                )
+                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
                         # --- KONFIGURASI PINNED BOTTOM ROW (GRAND TOTAL MELAYANG) ---
-                        gb_sku.configure_grid_options(pinnedBottomRowData=[total_dict_sku])
+                        gb_sku.configure_grid_options(
+                            rowHeight=35,
+                            headerHeight=40,
+                            floatingFiltersHeight=40,
+                            pinnedBottomRowData=[total_dict_sku]
+                        )
                         
                         getRowStyleSKU = JsCode("""
                         function(params) {
@@ -1696,14 +1706,18 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
-                        # --- CUSTOM CSS CORPORATE BLUE & EXCEL GRIDLINES ---
+                        # --- CUSTOM CSS CORPORATE BLUE & FILTER BOX ---
                         custom_css_sku = {
                             ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                            ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important"},
+                            ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                             ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                            ".ag-root-wrapper": {"border": "1px solid #555555 !important"}
+                            ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
+                            # IDE A: Kotak Filter Putih
+                            ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                            # IDE C: Rata Kanan Header Angka
+                            ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"}
                         }
                         
                         AgGrid(
