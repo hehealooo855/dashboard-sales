@@ -20,7 +20,11 @@ import concurrent.futures
 import streamlit.components.v1 as components 
 
 # --- LIBRARY UNTUK TABEL EXCEL-LIKE ---
-from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+try:
+    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, ColumnsAutoSizeMode
+    AGGRID_AVAILABLE = True
+except ImportError:
+    AGGRID_AVAILABLE = False
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -439,7 +443,7 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE
+# PIVOT FAST ENGINE (DIHAPUS CACHE-NYA AGAR TIDAK STUCK)
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
@@ -546,60 +550,6 @@ def get_cross_sell_recommendations(df):
             recommendations.append({'Toko': outlet, 'Sales': sales, 'Rekomendasi': rec_text})
     if recommendations: return pd.DataFrame(recommendations)
     return None
-
-# ==========================================
-# KONFIGURASI TAMPILAN CUSTOM AGGRID (UI)
-# ==========================================
-aggrid_custom_css = {
-    ".ag-root-wrapper": {"font-family": "'Calibri', 'Segoe UI', Tahoma, sans-serif !important"},
-    ".ag-header": {"background-color": "#4f81bd !important"}, # Warna Header Corporate Blue
-    ".ag-header-cell-text": {
-        "color": "white !important", 
-        "font-weight": "bold !important", 
-        "font-size": "14px !important",
-        "text-align": "center !important"
-    },
-    ".ag-header-cell": {
-        "border-right": "1px solid #555555 !important",
-        "justify-content": "center"
-    },
-    ".ag-cell": {
-        "border-right": "1px solid #555555 !important", 
-        "border-bottom": "1px solid #555555 !important", 
-        "font-size": "13px !important", 
-        "color": "#000 !important",
-        "display": "flex",
-        "align-items": "center"
-    },
-    ".ag-row": {"border-bottom": "1px solid #555555 !important"},
-    ".ag-row-odd": {"background-color": "#f9f9f9 !important"},
-    ".ag-row-hover": {"background-color": "#e3f2fd !important"},
-    # Mempercantik input filter di bawah header
-    ".ag-floating-filter-body input": {
-        "background-color": "#ffffff !important", 
-        "color": "#333 !important", 
-        "border": "1px solid #ccc !important", 
-        "border-radius": "4px !important", 
-        "padding": "4px !important", 
-        "font-size": "12px !important"
-    }
-}
-
-# Fungsi JavaScript untuk Mewarnai Baris GRAND TOTAL menjadi Kuning
-yellow_grand_total_js = JsCode("""
-function(params) {
-    if (params.data['Kode Customer'] === 'GRAND TOTAL' || 
-        params.data['Nama Barang'] === 'GRAND TOTAL' || 
-        params.data['Nama Toko'] === 'GRAND TOTAL') {
-        return {
-            'background-color': '#FFFF00',
-            'font-weight': 'bold',
-            'color': 'black',
-            'border-top': '3px solid #333'
-        };
-    }
-}
-""")
 
 @st.fragment
 def render_pivot_fragment(df_scope_all, role):
@@ -724,38 +674,64 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # ================= IMPLEMENTASI ST_AGGRID (TAB PIVOT) DENGAN TEMA CUSTOM =================
-            gb = GridOptionsBuilder.from_dataframe(df_display)
-            
-            # Konfigurasi Baris Custom (JSCode untuk Grand Total)
-            gb.configure_grid_options(getRowStyle=yellow_grand_total_js)
-            
-            # Logika Default
-            gb.configure_default_column(sortable=True, resizable=True, suppressMenu=True)
-
-            # Logika Filter Text & Format Nilai Angka
-            for col in df_display.columns:
-                if col in ['Kode Customer', 'Provinsi', 'Kota', 'Nama Customer', 'Nama Outlet']:
-                    gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
-                elif col in num_cols:
-                    gb.configure_column(col, 
-                                        filter='agNumberColumnFilter', 
-                                        floatingFilter=True,
-                                        type=["numericColumn","numberColumnFilter","customNumericFormat"], 
-                                        valueFormatter="data['Kode Customer'] === 'GRAND TOTAL' ? 'Rp ' + x.toLocaleString('id-ID') : (x ? 'Rp ' + x.toLocaleString('id-ID') : 'Rp 0')")
-
-            gridOptions = gb.build()
-            
-            # Eksekusi Render AgGrid
-            AgGrid(
-                df_display, 
-                gridOptions=gridOptions, 
-                height=600, 
-                theme='streamlit', 
-                custom_css=aggrid_custom_css,
-                allow_unsafe_jscode=True, # WAJIB TRUE untuk mengaktifkan warna JS
-                fit_columns_on_grid_load=False
-            )
+            # ================= AG-GRID PIVOT TABLE RENDERER (SMART FILTER) =================
+            if AGGRID_AVAILABLE:
+                gb = GridOptionsBuilder.from_dataframe(df_display)
+                
+                # Format angka ke Rupiah HANYA untuk visual. Filternya akan membaca angka asli.
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; // Jika 'GRAND TOTAL' bocor ke sini
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
+                
+                for col in df_display.columns:
+                    if col in num_cols:
+                        gb.configure_column(
+                            col, 
+                            type=["numericColumn"], 
+                            filter='agNumberColumnFilter', 
+                            floatingFilter=True, 
+                            valueFormatter=currency_formatter
+                        )
+                    else:
+                        gb.configure_column(
+                            col, 
+                            filter='agSetColumnFilter', 
+                            floatingFilter=True
+                        )
+                
+                gb.configure_default_column(resizable=True, sortable=True)
+                
+                # Highlight baris GRAND TOTAL seperti versi sebelumnya
+                getRowStyle = JsCode("""
+                function(params) {
+                    if (params.data) {
+                        var firstCol = Object.keys(params.data)[0];
+                        if (params.data['Kode Customer'] === 'GRAND TOTAL' || params.data[firstCol] === 'GRAND TOTAL') {
+                            return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                        }
+                    }
+                    return null;
+                }
+                """)
+                gb.configure_grid_options(getRowStyle=getRowStyle)
+                
+                gridOptions = gb.build()
+                
+                AgGrid(
+                    df_display,
+                    gridOptions=gridOptions,
+                    allow_unsafe_jscode=True, # Wajib True agar JsCode berjalan
+                    theme='balham',           # Tema yang compact mirip Excel
+                    height=600,
+                    fit_columns_on_grid_load=False
+                )
+            else:
+                st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1673,40 +1649,68 @@ def main_dashboard():
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
                     df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                    
+                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # ================= IMPLEMENTASI ST_AGGRID (TAB SKU) DENGAN TEMA CUSTOM =================
-                    gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
-                    
-                    # Konfigurasi Baris Custom (JSCode untuk Grand Total)
-                    gb_sku.configure_grid_options(getRowStyle=yellow_grand_total_js)
-                    
-                    # Logika Default
-                    gb_sku.configure_default_column(sortable=True, resizable=True, suppressMenu=True)
-                    
-                    # Logika Filter Text & Format Nilai Angka
-                    for col in df_display_sku.columns:
-                        if col == display_col:
-                            gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
-                        elif col in ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Total Penjualan']:
-                            gb_sku.configure_column(col, 
-                                                    filter='agNumberColumnFilter', 
-                                                    floatingFilter=True,
-                                                    type=["numericColumn","numberColumnFilter","customNumericFormat"], 
-                                                    valueFormatter="data['" + display_col + "'] === 'GRAND TOTAL' ? 'Rp ' + x.toLocaleString('id-ID') : (x ? 'Rp ' + x.toLocaleString('id-ID') : 'Rp 0')")
-
-                    gridOptions_sku = gb_sku.build()
-                    
-                    # Eksekusi Render AgGrid
-                    AgGrid(
-                        df_display_sku, 
-                        gridOptions=gridOptions_sku, 
-                        height=600, 
-                        theme='streamlit', 
-                        custom_css=aggrid_custom_css,
-                        allow_unsafe_jscode=True, # WAJIB TRUE untuk mengaktifkan warna JS
-                        fit_columns_on_grid_load=False
-                    )
+                    # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
+                    if AGGRID_AVAILABLE:
+                        gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
+                        
+                        currency_formatter = JsCode("""
+                        function(params) {
+                            if (params.value === null || params.value === undefined || params.value === "") return '-';
+                            var val = Number(params.value);
+                            if (isNaN(val)) return params.value; 
+                            return 'Rp ' + val.toLocaleString('id-ID');
+                        }
+                        """)
+                        
+                        num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                        
+                        for col in df_display_sku.columns:
+                            if col in num_cols_sku:
+                                gb_sku.configure_column(
+                                    col, 
+                                    type=["numericColumn"], 
+                                    filter='agNumberColumnFilter', 
+                                    floatingFilter=True, 
+                                    valueFormatter=currency_formatter
+                                )
+                            else:
+                                gb_sku.configure_column(
+                                    col, 
+                                    filter='agSetColumnFilter', 
+                                    floatingFilter=True
+                                )
+                        
+                        gb_sku.configure_default_column(resizable=True, sortable=True)
+                        
+                        getRowStyleSKU = JsCode("""
+                        function(params) {
+                            if (params.data) {
+                                var firstCol = Object.keys(params.data)[0];
+                                if (params.data[firstCol] === 'GRAND TOTAL') {
+                                    return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                                }
+                            }
+                            return null;
+                        }
+                        """)
+                        gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
+                        
+                        gridOptions_sku = gb_sku.build()
+                        
+                        AgGrid(
+                            df_display_sku,
+                            gridOptions=gridOptions_sku,
+                            allow_unsafe_jscode=True,
+                            theme='balham', 
+                            height=600,
+                            fit_columns_on_grid_load=False
+                        )
+                    else:
+                        st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
