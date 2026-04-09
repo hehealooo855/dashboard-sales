@@ -1677,6 +1677,10 @@ def main_dashboard():
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
+                    # --- FIX DISINI ---
+                    df_display_sku[display_col] = df_display_sku[display_col].astype(str)
+                    # ------------------
+                    
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
                     # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
