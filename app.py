@@ -726,20 +726,9 @@ def render_pivot_fragment(df_scope_all, role):
                     pinnedBottomRowData=[total_dict]
                 )
                 
-                # Warnai baris Grand Total dengan Kuning Stabilo
-                getRowStyle = JsCode("""
-                function(params) {
-                    if (params.node.rowPinned === 'bottom') {
-                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
-                    }
-                    return null;
-                }
-                """)
-                gb.configure_grid_options(getRowStyle=getRowStyle)
-                
                 gridOptions = gb.build()
                 
-                # --- CUSTOM CSS CORPORATE BLUE & FILTER BOX ---
+                # --- CUSTOM CSS CORPORATE BLUE & FILTER BOX & BOLD YELLOW GRAND TOTAL ---
                 custom_css = {
                     ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -748,7 +737,10 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
                     ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                     ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
-                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"}
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    # INI KUNCI UTAMA: MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD
+                    ".ag-floating-bottom-container .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                 }
                 
                 AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css)
@@ -1726,18 +1718,9 @@ def main_dashboard():
                             pinnedBottomRowData=[total_dict_sku]
                         )
                         
-                        getRowStyleSKU = JsCode("""
-                        function(params) {
-                            if (params.node.rowPinned === 'bottom') {
-                                return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
-                            }
-                            return null;
-                        }
-                        """)
-                        gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
-                        
                         gridOptions_sku = gb_sku.build()
                         
+                        # --- CUSTOM CSS SKU BOLD YELLOW GRAND TOTAL ---
                         custom_css_sku = {
                             ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -1746,7 +1729,10 @@ def main_dashboard():
                             ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
                             ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                             ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
-                            ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"}
+                            ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD
+                            ".ag-floating-bottom-container .ag-row": {"border-top": "3px solid #333 !important"},
+                            ".ag-floating-bottom-container .ag-cell": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
                         }
                         
                         AgGrid(
@@ -1780,7 +1766,6 @@ def main_dashboard():
                             worksheet.set_column('B:N', None, format1)
                             
                             if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
-                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
                                 last_row_idx_sku = len(df_display_sku_export)
                                 
                                 bold_yellow_format_sku = workbook.add_format({
