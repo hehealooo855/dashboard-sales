@@ -667,7 +667,9 @@ def render_pivot_fragment(df_scope_all, role):
                 
             for col in num_cols:
                 if col in df_display.columns:
-                    total_dict[col] = df_display[col].sum()
+                    val = df_display[col].sum()
+                    # MENCEGAH NUMPY FORMAT ERROR JSON
+                    total_dict[col] = float(val) if pd.notnull(val) else 0.0
                     
             df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
             
@@ -696,19 +698,19 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
-                # --- KONFIGURASI ROW HEIGHT (DINAMIS UNTUK GRAND TOTAL) ---
+                # --- KONFIGURASI ROW HEIGHT (TINGGI BARIS DIPERBESAR) ---
                 getRowHeight = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
-                        return 40; // Tinggi Baris Grand Total (Lebih Besar)
+                        return 45; // Tinggi Baris Grand Total
                     }
-                    return 35;     // Tinggi Baris Standar
+                    return 40;     // Tinggi Baris Standar
                 }
                 """)
                 
                 gb.configure_grid_options(
                     getRowHeight=getRowHeight,
-                    headerHeight=40, 
+                    headerHeight=45, 
                     floatingFiltersHeight=40,
                     pinnedBottomRowData=[total_dict]
                 )
@@ -726,22 +728,23 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
-                # --- CUSTOM CSS: BOLD YELLOW PINNED ROW ---
+                # --- CUSTOM CSS: UKURAN FONT 14PX, WEIGHT 500, KUNING STABILO ---
                 custom_css = {
-                    ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                    ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                    ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
-                    ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     
-                    # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo
+                    # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo & bold
                     ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
                         "border-top": "3px solid #333 !important"
                     },
                     ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important",
                         "background-color": "#FFFF00 !important", 
                         "color": "black !important", 
                         "font-weight": "bold !important"
@@ -1672,18 +1675,22 @@ def main_dashboard():
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
-                        total_dict_sku[col] = pivot_sku[col].sum()
+                        val = pivot_sku[col].sum()
+                        # MEMAKSA NUMPY MENJADI NATIVE FLOAT AGAR JSON SERIALIZER TIDAK CRASH
+                        total_dict_sku[col] = float(val) if pd.notnull(val) else 0.0
                     
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # --- FIX SUPER KETAT UNTUK PYARROW (Anti Error 3.13) ---
+                    # 1. Pastikan teks murni string
                     df_display_sku[display_col] = df_display_sku[display_col].astype(str)
+                    
                     num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                    
+                    # 2. Pastikan SEMUA angka murni float (tidak ada object/mixed)
                     for col in num_cols_sku:
                         if col in df_display_sku.columns:
                             df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
-                    # -------------------------------------------------------
                     
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
@@ -1703,31 +1710,29 @@ def main_dashboard():
                         # Set konfigurasi tiap kolom
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
-                                # Kolom angka: format IDR, rata kanan, ada floating filter
                                 gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                             elif col == display_col:
-                                # Kolom indeks dikunci ke kiri (pinned left) & ada pencarian (floating filter)
                                 gb_sku.configure_column(col, pinned='left', filter='agTextColumnFilter', floatingFilter=True)
                             else:
                                 gb_sku.configure_column(col, filter='agTextColumnFilter', floatingFilter=True)
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
-                        # Tinggi baris khusus untuk mengakomodasi Grand Total
+                        # Tinggi baris
                         getRowHeightSKU = JsCode("""
                         function(params) {
                             if (params.node.rowPinned === 'bottom') {
-                                return 40; // Lebih tinggi untuk Grand Total
+                                return 45; // Baris Grand Total (Lebih tinggi)
                             }
-                            return 35;
+                            return 40;     // Baris Normal (40px)
                         }
                         """)
                         
                         gb_sku.configure_grid_options(
                             getRowHeight=getRowHeightSKU,
-                            headerHeight=40,
+                            headerHeight=45,
                             floatingFiltersHeight=40,
-                            pinnedBottomRowData=[total_dict_sku] # Baris khusus melayang di bawah
+                            pinnedBottomRowData=[total_dict_sku]
                         )
                         
                         # Tambahkan logic CSS Kuning Stabilo untuk baris bawah
@@ -1743,25 +1748,25 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
-                        # CSS agar pinned kiri dan bawah warnanya konsisten kuning menyala
+                        # CSS KUSTOM (FONT 14PX, WEIGHT 500, KUNING STABILO DI BAWAH)
                         custom_css_sku = {
-                            ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                            ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                            ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                            ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                             ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                            ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
-                            ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                            ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                             
-                            # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo
-                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
-                                "border-top": "3px solid #333 !important"
-                            },
+                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD SEPENUHNYA
+                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                                "font-size": "14px !important",
                                 "background-color": "#FFFF00 !important", 
                                 "color": "black !important", 
-                                "font-weight": "bold !important"
+                                "font-weight": "bold !important",
+                                "border-right": "none !important"
                             }
                         }
                         
@@ -1772,7 +1777,7 @@ def main_dashboard():
                                 allow_unsafe_jscode=True,
                                 theme='balham', 
                                 height=600,
-                                fit_columns_on_grid_load=False, # Izinkan scroll horizontal (Jangan dirapatkan paksa)
+                                fit_columns_on_grid_load=False,
                                 custom_css=custom_css_sku
                             )
                         except Exception as e:
