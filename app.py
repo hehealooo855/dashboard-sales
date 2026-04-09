@@ -674,64 +674,113 @@ def render_pivot_fragment(df_scope_all, role):
             df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # ================= AG-GRID PIVOT TABLE RENDERER (SMART FILTER) =================
-            if AGGRID_AVAILABLE:
-                gb = GridOptionsBuilder.from_dataframe(df_display)
+            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
+            html_table = """
+            <style>
+                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
+                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                /* Styling untuk Dropdown Filter */
+                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
+            </style>
+            <div style="overflow-x: auto; max-height: 800px;">
+                <table class="pivot-table" id="table-pivot-main">
+                    <thead>
+                        <tr>
+            """
+            
+            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
+            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
+            
+            for col in df_display.columns:
+                if col in categorical_cols:
+                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
+                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
+                    
+                    options_html = "<option value=''>Semua</option>"
+                    for val in unique_vals:
+                        options_html += f"<option value='{val}'>{val}</option>"
+                    
+                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
+                else:
+                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
+                    html_table += f"<th>{col}</th>"
+                    
+            html_table += "</tr></thead><tbody>"
+            
+            for _, row in df_display.iterrows():
+                is_gt = False
+                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
+                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
                 
-                # Format angka ke Rupiah HANYA untuk visual. Filternya akan membaca angka asli.
-                currency_formatter = JsCode("""
-                function(params) {
-                    if (params.value === null || params.value === undefined || params.value === "") return '-';
-                    var val = Number(params.value);
-                    if (isNaN(val)) return params.value; // Jika 'GRAND TOTAL' bocor ke sini
-                    return 'Rp ' + val.toLocaleString('id-ID');
-                }
-                """)
+                tr_class = "grand-total-row" if is_gt else ""
+                html_table += f'<tr class="{tr_class}">'
                 
                 for col in df_display.columns:
+                    val = row[col]
                     if col in num_cols:
-                        gb.configure_column(
-                            col, 
-                            type=["numericColumn"], 
-                            filter='agNumberColumnFilter', 
-                            floatingFilter=True, 
-                            valueFormatter=currency_formatter
-                        )
+                        if pd.isna(val) or val == "":
+                            val_str = "-"
+                        else:
+                            try:
+                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                            except:
+                                val_str = str(val)
+                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
                     else:
-                        gb.configure_column(
-                            col, 
-                            filter='agSetColumnFilter', 
-                            floatingFilter=True
-                        )
+                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
+                            html_table += f'<td style="text-align: center;">{val_str}</td>'
+                        else:
+                            html_table += f'<td>{val_str}</td>'
+                html_table += "</tr>"
                 
-                gb.configure_default_column(resizable=True, sortable=True)
+            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
+            html_table += """
+            </tbody></table></div><br>
+            <script>
+            function filterTableDropdown(tableId) {
+                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                if (!table) return;
+                var tr = table.getElementsByTagName("tr");
+                var ths = table.getElementsByTagName("th");
+                var selects = [];
                 
-                # Highlight baris GRAND TOTAL seperti versi sebelumnya
-                getRowStyle = JsCode("""
-                function(params) {
-                    if (params.data) {
-                        var firstCol = Object.keys(params.data)[0];
-                        if (params.data['Kode Customer'] === 'GRAND TOTAL' || params.data[firstCol] === 'GRAND TOTAL') {
-                            return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                // Kumpulkan semua elemen select
+                for (var i = 0; i < ths.length; i++) {
+                    var sel = ths[i].getElementsByTagName("select")[0];
+                    selects.push(sel ? sel : null);
+                }
+                
+                // Eksekusi filter
+                for (var i = 1; i < tr.length; i++) {
+                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                    
+                    var displayRow = true;
+                    for (var j = 0; j < selects.length; j++) {
+                        if (selects[j] && selects[j].value !== "") {
+                            var filterVal = selects[j].value.toUpperCase();
+                            var td = tr[i].getElementsByTagName("td")[j];
+                            if (td) {
+                                var txtValue = td.textContent || td.innerText;
+                                // Pencarian Exact Match (Sama Persis)
+                                if (txtValue.toUpperCase() !== filterVal) {
+                                    displayRow = false;
+                                    break;
+                                }
+                            }
                         }
                     }
-                    return null;
+                    tr[i].style.display = displayRow ? "" : "none";
                 }
-                """)
-                gb.configure_grid_options(getRowStyle=getRowStyle)
-                
-                gridOptions = gb.build()
-                
-                AgGrid(
-                    df_display,
-                    gridOptions=gridOptions,
-                    allow_unsafe_jscode=True, # Wajib True agar JsCode berjalan
-                    theme='balham',           # Tema yang compact mirip Excel
-                    height=600,
-                    fit_columns_on_grid_load=False
-                )
-            else:
-                st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
+            }
+            </script>
+            """
+            
+            st.markdown(html_table, unsafe_allow_html=True)
             
         else:
             st.info("Data Kosong setelah difilter.")
@@ -1653,64 +1702,106 @@ def main_dashboard():
                     # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
-                    if AGGRID_AVAILABLE:
-                        gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
-                        
-                        currency_formatter = JsCode("""
-                        function(params) {
-                            if (params.value === null || params.value === undefined || params.value === "") return '-';
-                            var val = Number(params.value);
-                            if (isNaN(val)) return params.value; 
-                            return 'Rp ' + val.toLocaleString('id-ID');
-                        }
-                        """)
-                        
-                        num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                    # HTML Table Rendering
+                    html_table_sku = """
+                    <style>
+                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
+                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
+                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
+                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
+                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
+                        /* Styling untuk Dropdown Filter */
+                        .filter-dropdown-sku { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
+                    </style>
+                    <div style="overflow-x: auto; max-height: 800px;">
+                        <table class="sku-table" id="table-sku-main">
+                            <thead>
+                                <tr>
+                    """
+                    
+                    # --- INJEKSI DROPDOWN CERDAS KE HEADER SKU ---
+                    for col in df_display_sku.columns:
+                        if col == display_col: # Hanya pasang dropdown di kolom Nama Barang / Nama Toko
+                            # Ambil nilai unik dari data mentah agar urut & rapi
+                            unique_vals_sku = sorted(list(set([str(x) for x in df_sku_filtered[col].dropna() if str(x).strip() != ""])))
+                            
+                            options_html_sku = "<option value=''>Semua</option>"
+                            for val in unique_vals_sku:
+                                options_html_sku += f"<option value='{val}'>{val}</option>"
+                                
+                            html_table_sku += f"<th>{col}<br><select class='filter-dropdown-sku' onchange=\"filterTableDropdownSKU('table-sku-main')\">{options_html_sku}</select></th>"
+                        else:
+                            html_table_sku += f"<th>{col}</th>"
+                            
+                    html_table_sku += "</tr></thead><tbody>"
+                    
+                    for _, row in df_display_sku.iterrows():
+                        is_gt = row.get(display_col) == 'GRAND TOTAL'
+                        tr_class = "grand-total-row" if is_gt else ""
+                        html_table_sku += f'<tr class="{tr_class}">'
                         
                         for col in df_display_sku.columns:
-                            if col in num_cols_sku:
-                                gb_sku.configure_column(
-                                    col, 
-                                    type=["numericColumn"], 
-                                    filter='agNumberColumnFilter', 
-                                    floatingFilter=True, 
-                                    valueFormatter=currency_formatter
-                                )
+                            val = row[col]
+                            if col != display_col:
+                                if pd.isna(val) or val == 0 or val == "":
+                                    val_str = "-"
+                                else:
+                                    try:
+                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
+                                    except:
+                                        val_str = str(val)
+                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
                             else:
-                                gb_sku.configure_column(
-                                    col, 
-                                    filter='agSetColumnFilter', 
-                                    floatingFilter=True
-                                )
+                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
+                                if is_gt:
+                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
+                                else:
+                                    html_table_sku += f'<td>{val_str}</td>'
+                        html_table_sku += "</tr>"
                         
-                        gb_sku.configure_default_column(resizable=True, sortable=True)
+                    # --- SCRIPT JAVASCRIPT KHUSUS TABEL SKU ---
+                    html_table_sku += """
+                    </tbody></table></div><br>
+                    <script>
+                    function filterTableDropdownSKU(tableId) {
+                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
+                        if (!table) return;
+                        var tr = table.getElementsByTagName("tr");
+                        var ths = table.getElementsByTagName("th");
+                        var selects = [];
                         
-                        getRowStyleSKU = JsCode("""
-                        function(params) {
-                            if (params.data) {
-                                var firstCol = Object.keys(params.data)[0];
-                                if (params.data[firstCol] === 'GRAND TOTAL') {
-                                    return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                        // Kumpulkan elemen select di header
+                        for (var i = 0; i < ths.length; i++) {
+                            var sel = ths[i].getElementsByTagName("select")[0];
+                            selects.push(sel ? sel : null);
+                        }
+                        
+                        // Eksekusi filter baris per baris
+                        for (var i = 1; i < tr.length; i++) {
+                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
+                            
+                            var displayRow = true;
+                            for (var j = 0; j < selects.length; j++) {
+                                if (selects[j] && selects[j].value !== "") {
+                                    var filterVal = selects[j].value.toUpperCase();
+                                    var td = tr[i].getElementsByTagName("td")[j];
+                                    if (td) {
+                                        var txtValue = td.textContent || td.innerText;
+                                        if (txtValue.toUpperCase() !== filterVal) {
+                                            displayRow = false;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
-                            return null;
+                            tr[i].style.display = displayRow ? "" : "none";
                         }
-                        """)
-                        gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
-                        
-                        gridOptions_sku = gb_sku.build()
-                        
-                        AgGrid(
-                            df_display_sku,
-                            gridOptions=gridOptions_sku,
-                            allow_unsafe_jscode=True,
-                            theme='balham', 
-                            height=600,
-                            fit_columns_on_grid_load=False
-                        )
-                    else:
-                        st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
+                    }
+                    </script>
+                    """
+                    
+                    st.markdown(html_table_sku, unsafe_allow_html=True)
                     
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
