@@ -654,21 +654,21 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 1. REORDER KOLOM (NAMA OUTLET PERTAMA AGAR PINNED KIRI LEBIH NATURAL) ---
-            cols_reordered = ['Nama Outlet', 'Kode Customer', 'Provinsi', 'Kota'] + num_cols
+            # --- 1. REORDER KOLOM (Kode Customer lalu Nama Outlet) ---
+            cols_reordered = ['Kode Customer', 'Nama Outlet', 'Provinsi', 'Kota'] + num_cols
             df_display = df_filtered[cols_reordered].copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW) ---
+            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW - NO MERGE) ---
             total_dict = {col: "" for col in df_display.columns}
-            # Karena Nama Outlet sekarang di ujung kiri (index 0) dan dipin, kita taruh teks di sana
-            total_dict['Nama Outlet'] = "GRAND TOTAL" 
+            
+            # Posisi Teks Grand Total HANYA di Kode Customer (Kolom 1)
+            total_dict['Kode Customer'] = "GRAND TOTAL" 
                 
             for col in num_cols:
                 if col in df_display.columns:
                     total_dict[col] = df_display[col].sum()
                     
-            # Gabungan khusus untuk diekspor ke Excel agar totalnya ikut
             df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
             
             # ================= AG-GRID PIVOT TABLE RENDERER (SMART FILTER) =================
@@ -687,11 +687,11 @@ def render_pivot_fragment(df_scope_all, role):
                 for col in df_display.columns:
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
-                    elif col == 'Nama Outlet':
-                        # HANYA NAMA OUTLET YANG DI FREEZE KE KIRI
+                    elif col in ['Kode Customer', 'Nama Outlet']:
+                        # KUNCI KEDUA KOLOM KE KIRI
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
-                        # KODE CUSTOMER, PROVINSI, KOTA BEBAS BERGERAK (TIDAK PINNED)
+                        # PROVINSI DAN KOTA TIDAK DIKUNCI
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
@@ -705,6 +705,7 @@ def render_pivot_fragment(df_scope_all, role):
                     return 35;     // Tinggi Baris Standar
                 }
                 """)
+                
                 gb.configure_grid_options(
                     getRowHeight=getRowHeight,
                     headerHeight=40, 
@@ -712,9 +713,20 @@ def render_pivot_fragment(df_scope_all, role):
                     pinnedBottomRowData=[total_dict]
                 )
                 
+                # Warnai SELURUH baris Grand Total dengan Kuning Stabilo
+                getRowStyle = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
+                    }
+                    return null;
+                }
+                """)
+                gb.configure_grid_options(getRowStyle=getRowStyle)
+                
                 gridOptions = gb.build()
                 
-                # --- CUSTOM CSS: THE YELLOW BAR ILLUSION ---
+                # --- CUSTOM CSS: BOLD YELLOW PINNED ROW ---
                 custom_css = {
                     ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -725,19 +737,14 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     
-                    # ILUSI GRAND TOTAL MENYATU & KUNING STABILO
-                    ".ag-floating-bottom-container .ag-row": {
+                    # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
                         "border-top": "3px solid #333 !important"
                     },
-                    ".ag-floating-bottom-container .ag-cell": {
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
                         "background-color": "#FFFF00 !important", 
                         "color": "black !important", 
-                        "font-weight": "bold !important",
-                        "border-right": "none !important"
-                    },
-                    # Tengahkan Teks GRAND TOTAL di sel Nama Outlet
-                    ".ag-floating-bottom-container .ag-cell[col-id='Nama Outlet']": {
-                        "justify-content": "center !important"
+                        "font-weight": "bold !important"
                     }
                 }
                 
@@ -748,7 +755,7 @@ def render_pivot_fragment(df_scope_all, role):
         else:
             st.info("Data Kosong setelah difilter.")
             
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL (DENGAN MERGE & CENTER) =================
+        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL (TANPA MERGE) =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
@@ -772,7 +779,7 @@ def render_pivot_fragment(df_scope_all, role):
                 if 'df_display_export' in locals() and not df_display_export.empty:
                     last_row_idx = len(df_display_export) 
                     
-                    # Format Kuning untuk Keseluruhan Baris Terakhir
+                    # Format Kuning untuk Keseluruhan Baris Terakhir (Tidak di-merge)
                     bold_yellow_format = workbook.add_format({
                         'bold': True,
                         'bg_color': '#FFFF00',
@@ -781,21 +788,8 @@ def render_pivot_fragment(df_scope_all, role):
                         'font_color': 'black'
                     })
                     
-                    # Format Khusus Merge & Center Excel
-                    merge_format = workbook.add_format({
-                        'bold': True,
-                        'align': 'center',
-                        'valign': 'vcenter',
-                        'bg_color': '#FFFF00',
-                        'border': 1,
-                        'font_color': 'black'
-                    })
-                    
                     # Terapkan format tinggi baris & warna ke baris akhir
                     worksheet.set_row(last_row_idx, 30, bold_yellow_format)
-                    
-                    # Merge & Center dari Kolom 0 (Nama Outlet) sampai Kolom 1 (Kode Customer)
-                    worksheet.merge_range(last_row_idx, 0, last_row_idx, 1, "GRAND TOTAL", merge_format)
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX) - DRM Protected",
@@ -1740,8 +1734,8 @@ def main_dashboard():
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                             
                             # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD SEPENUHNYA
-                            ".ag-floating-bottom-container .ag-row": {"border-top": "3px solid #333 !important"},
-                            ".ag-floating-bottom-container .ag-cell": {
+                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                            ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
                                 "background-color": "#FFFF00 !important", 
                                 "color": "black !important", 
                                 "font-weight": "bold !important",
