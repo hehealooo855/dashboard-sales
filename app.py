@@ -733,7 +733,7 @@ def render_pivot_fragment(df_scope_all, role):
                         "background-color": "#FFFF00 !important", 
                         "color": "black !important", 
                         "font-weight": "bold !important",
-                        "border-right": "none !important" /* Menghilangkan sekat antar sel di baris paling bawah */
+                        "border-right": "none !important"
                     },
                     # Tengahkan Teks GRAND TOTAL di sel Nama Outlet
                     ".ag-floating-bottom-container .ag-cell[col-id='Nama Outlet']": {
