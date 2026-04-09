@@ -559,7 +559,7 @@ def render_pivot_fragment(df_scope_all, role):
     else:
         df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
         
-    # --- Murni Menggunakan Nama Outlet, Tanpa Membuat Nama Customer ---
+    # --- Murni Menggunakan Nama Outlet ---
     if 'Nama Outlet' in df_scope_all.columns: 
         grp_cols.append('Nama Outlet')
     else: 
@@ -654,21 +654,20 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW) ---
-            total_dict = {col: "" for col in df_filtered.columns}
-            if 'Kode Customer' in total_dict:
-                total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_filtered.columns) > 0:
-                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
-                
-            for col in num_cols:
-                if col in df_filtered.columns:
-                    total_dict[col] = df_filtered[col].sum()
-                    
-            # Pisahkan total_dict dari df_display agar bisa di-pin di bawah (Melayang)
-            df_display = df_filtered.copy()
+            # --- 1. REORDER KOLOM (NAMA OUTLET PERTAMA AGAR PINNED KIRI LEBIH NATURAL) ---
+            cols_reordered = ['Nama Outlet', 'Kode Customer', 'Provinsi', 'Kota'] + num_cols
+            df_display = df_filtered[cols_reordered].copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
+            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW) ---
+            total_dict = {col: "" for col in df_display.columns}
+            # Karena Nama Outlet sekarang di ujung kiri (index 0) dan dipin, kita taruh teks di sana
+            total_dict['Nama Outlet'] = "GRAND TOTAL" 
+                
+            for col in num_cols:
+                if col in df_display.columns:
+                    total_dict[col] = df_display[col].sum()
+                    
             # Gabungan khusus untuk diekspor ke Excel agar totalnya ikut
             df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
             
@@ -685,42 +684,29 @@ def render_pivot_fragment(df_scope_all, role):
                 }
                 """)
                 
-                # --- JSCode Untuk Merge & Center (ColSpan) Kolom Grand Total ---
-                colSpan_js = JsCode("""
-                function(params) {
-                    if (params.node.rowPinned === 'bottom') {
-                        return 4; // Menggabungkan 4 kolom (Kode, Nama, Provinsi, Kota)
-                    }
-                    return 1;
-                }
-                """)
-                
-                center_style_js = JsCode("""
-                function(params) {
-                    if (params.node.rowPinned === 'bottom') {
-                        return { 'text-align': 'center' };
-                    }
-                    return null;
-                }
-                """)
-                
                 for col in df_display.columns:
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
-                    elif col == 'Kode Customer':
-                        # Kunci di kiri, terapkan ColSpan dan Text-Center untuk Grand Total
-                        gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True, colSpan=colSpan_js, cellStyle=center_style_js)
-                    elif col in ['Nama Outlet', 'Provinsi', 'Kota']:
-                        # Kunci di kiri (Tanpa Spanning karena sudah ditelan oleh Kode Customer di baris bawah)
+                    elif col == 'Nama Outlet':
+                        # HANYA NAMA OUTLET YANG DI FREEZE KE KIRI
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
+                        # KODE CUSTOMER, PROVINSI, KOTA BEBAS BERGERAK (TIDAK PINNED)
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
-                # --- KONFIGURASI ROW HEIGHT & PINNED BOTTOM ROW ---
+                # --- KONFIGURASI ROW HEIGHT (DINAMIS UNTUK GRAND TOTAL) ---
+                getRowHeight = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return 40; // Tinggi Baris Grand Total (Lebih Besar)
+                    }
+                    return 35;     // Tinggi Baris Standar
+                }
+                """)
                 gb.configure_grid_options(
-                    rowHeight=35,
+                    getRowHeight=getRowHeight,
                     headerHeight=40, 
                     floatingFiltersHeight=40,
                     pinnedBottomRowData=[total_dict]
@@ -728,7 +714,7 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
-                # --- CUSTOM CSS CORPORATE BLUE & FILTER BOX & BOLD YELLOW GRAND TOTAL ---
+                # --- CUSTOM CSS: THE YELLOW BAR ILLUSION ---
                 custom_css = {
                     ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -738,9 +724,21 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                     ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                    # INI KUNCI UTAMA: MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD
-                    ".ag-floating-bottom-container .ag-row": {"border-top": "3px solid #333 !important"},
-                    ".ag-floating-bottom-container .ag-cell": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                    
+                    # ILUSI GRAND TOTAL MENYATU & KUNING STABILO
+                    ".ag-floating-bottom-container .ag-row": {
+                        "border-top": "3px solid #333 !important"
+                    },
+                    ".ag-floating-bottom-container .ag-cell": {
+                        "background-color": "#FFFF00 !important", 
+                        "color": "black !important", 
+                        "font-weight": "bold !important",
+                        "border-right": "none !important" /* Menghilangkan sekat antar sel di baris paling bawah */
+                    },
+                    # Tengahkan Teks GRAND TOTAL di sel Nama Outlet
+                    ".ag-floating-bottom-container .ag-cell[col-id='Nama Outlet']": {
+                        "justify-content": "center !important"
+                    }
                 }
                 
                 AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css)
@@ -783,7 +781,7 @@ def render_pivot_fragment(df_scope_all, role):
                         'font_color': 'black'
                     })
                     
-                    # Format Khusus Merge & Center
+                    # Format Khusus Merge & Center Excel
                     merge_format = workbook.add_format({
                         'bold': True,
                         'align': 'center',
@@ -793,10 +791,11 @@ def render_pivot_fragment(df_scope_all, role):
                         'font_color': 'black'
                     })
                     
-                    worksheet.set_row(last_row_idx, None, bold_yellow_format)
+                    # Terapkan format tinggi baris & warna ke baris akhir
+                    worksheet.set_row(last_row_idx, 30, bold_yellow_format)
                     
-                    # Merge & Center dari Kolom A (0) sampai D (3)
-                    worksheet.merge_range(last_row_idx, 0, last_row_idx, 3, "GRAND TOTAL", merge_format)
+                    # Merge & Center dari Kolom 0 (Nama Outlet) sampai Kolom 1 (Kode Customer)
+                    worksheet.merge_range(last_row_idx, 0, last_row_idx, 1, "GRAND TOTAL", merge_format)
             
             st.download_button(
                 label="📥 Download Laporan Excel (XLSX) - DRM Protected",
@@ -1711,8 +1710,18 @@ def main_dashboard():
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
+                        # --- KONFIGURASI ROW HEIGHT ---
+                        getRowHeightSKU = JsCode("""
+                        function(params) {
+                            if (params.node.rowPinned === 'bottom') {
+                                return 40;
+                            }
+                            return 35;
+                        }
+                        """)
+                        
                         gb_sku.configure_grid_options(
-                            rowHeight=35,
+                            getRowHeight=getRowHeightSKU,
                             headerHeight=40,
                             floatingFiltersHeight=40,
                             pinnedBottomRowData=[total_dict_sku]
@@ -1720,7 +1729,6 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
-                        # --- CUSTOM CSS SKU BOLD YELLOW GRAND TOTAL ---
                         custom_css_sku = {
                             ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -1730,9 +1738,15 @@ def main_dashboard():
                             ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                             ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD
+                            
+                            # MEMAKSA BARIS PINNED BAWAH MENJADI KUNING & BOLD SEPENUHNYA
                             ".ag-floating-bottom-container .ag-row": {"border-top": "3px solid #333 !important"},
-                            ".ag-floating-bottom-container .ag-cell": {"background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"}
+                            ".ag-floating-bottom-container .ag-cell": {
+                                "background-color": "#FFFF00 !important", 
+                                "color": "black !important", 
+                                "font-weight": "bold !important",
+                                "border-right": "none !important"
+                            }
                         }
                         
                         AgGrid(
@@ -1775,7 +1789,7 @@ def main_dashboard():
                                     'num_format': '#,##0',
                                     'font_color': 'black'
                                 })
-                                worksheet.set_row(last_row_idx_sku, None, bold_yellow_format_sku)
+                                worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
