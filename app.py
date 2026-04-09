@@ -653,12 +653,11 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            # === NAMA CUSTOMER TIDAK DIHAPUS LAGI DI SINI ===
 
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL ---
+            # --- 2. PENYESUAIAN GRAND TOTAL (PINNED BOTTOM ROW) ---
             total_dict = {col: "" for col in df_filtered.columns}
             if 'Kode Customer' in total_dict:
                 total_dict['Kode Customer'] = "GRAND TOTAL"
@@ -669,8 +668,12 @@ def render_pivot_fragment(df_scope_all, role):
                 if col in df_filtered.columns:
                     total_dict[col] = df_filtered[col].sum()
                     
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+            # Pisahkan total_dict dari df_display agar bisa di-pin di bawah (Melayang)
+            df_display = df_filtered.copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
+            
+            # Gabungan khusus untuk diekspor ke Excel agar totalnya ikut
+            df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
             
             # ================= AG-GRID PIVOT TABLE RENDERER (SMART FILTER) =================
             if AGGRID_AVAILABLE:
@@ -693,13 +696,13 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
+                # --- KONFIGURASI PINNED BOTTOM ROW (GRAND TOTAL MELAYANG) ---
+                gb.configure_grid_options(pinnedBottomRowData=[total_dict])
+                
                 getRowStyle = JsCode("""
                 function(params) {
-                    if (params.data) {
-                        var firstCol = Object.keys(params.data)[0];
-                        if (params.data['Kode Customer'] === 'GRAND TOTAL' || params.data[firstCol] === 'GRAND TOTAL') {
-                            return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
-                        }
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
                     }
                     return null;
                 }
@@ -708,7 +711,17 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
-                AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False)
+                # --- CUSTOM CSS CORPORATE BLUE & EXCEL GRIDLINES ---
+                custom_css = {
+                    ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-root-wrapper": {"border": "1px solid #555555 !important"}
+                }
+                
+                AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css)
             else:
                 st.error("Library st_aggrid belum terpasang.")
             
@@ -720,8 +733,9 @@ def render_pivot_fragment(df_scope_all, role):
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
+                # Export menggunakan dataframe yang sudah digabung dengan total
+                if 'df_display_export' in locals() and not df_display_export.empty:
+                    df_display_export.to_excel(writer, index=False, sheet_name='Master Data')
                 
                 workbook = writer.book
                 worksheet = writer.sheets['Master Data']
@@ -736,9 +750,9 @@ def render_pivot_fragment(df_scope_all, role):
                 format1 = workbook.add_format({'num_format': '#,##0'})
                 worksheet.set_column('D:P', None, format1) 
                 
-                if 'df_display' in locals() and not df_display.empty:
+                if 'df_display_export' in locals() and not df_display_export.empty:
                     bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
+                    last_row_idx = len(df_display_export) 
                     worksheet.set_row(last_row_idx, None, bold_format)
             
             st.download_button(
@@ -1621,16 +1635,18 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # Grand Total Row
+                    # --- Grand Total Row (PINNED BOTTOM ROW) ---
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
                         total_dict_sku[col] = pivot_sku[col].sum()
                     
-                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    
-                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
+                    # Pisahkan total dari data untuk di-pin di baris terbawah
+                    df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                    
+                    # Gabungan khusus untuk diekspor ke Excel
+                    df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
                     # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
                     if AGGRID_AVAILABLE:
@@ -1665,13 +1681,13 @@ def main_dashboard():
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
+                        # --- KONFIGURASI PINNED BOTTOM ROW (GRAND TOTAL MELAYANG) ---
+                        gb_sku.configure_grid_options(pinnedBottomRowData=[total_dict_sku])
+                        
                         getRowStyleSKU = JsCode("""
                         function(params) {
-                            if (params.data) {
-                                var firstCol = Object.keys(params.data)[0];
-                                if (params.data[firstCol] === 'GRAND TOTAL') {
-                                    return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
-                                }
+                            if (params.node.rowPinned === 'bottom') {
+                                return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
                             }
                             return null;
                         }
@@ -1680,13 +1696,24 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
+                        # --- CUSTOM CSS CORPORATE BLUE & EXCEL GRIDLINES ---
+                        custom_css_sku = {
+                            ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
+                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                            ".ag-cell": {"color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important"},
+                            ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                            ".ag-root-wrapper": {"border": "1px solid #555555 !important"}
+                        }
+                        
                         AgGrid(
                             df_display_sku,
                             gridOptions=gridOptions_sku,
                             allow_unsafe_jscode=True,
                             theme='balham', 
                             height=600,
-                            fit_columns_on_grid_load=False
+                            fit_columns_on_grid_load=False,
+                            custom_css=custom_css_sku
                         )
                     else:
                         st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
@@ -1695,7 +1722,10 @@ def main_dashboard():
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            # Export menggunakan dataframe yang sudah digabung dengan total
+                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                                df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
+                                
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
                             
@@ -1706,8 +1736,10 @@ def main_dashboard():
                             
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
-                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_display_sku), None, bold_format)
+                            
+                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                                bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
+                                worksheet.set_row(len(df_display_sku_export), None, bold_format)
                             
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
