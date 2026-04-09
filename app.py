@@ -1677,17 +1677,13 @@ def main_dashboard():
                     df_display_sku = pivot_sku.copy()
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
-                    # --- FIX SUPER KETAT UNTUK PYARROW ---
-                    # 1. Pastikan teks murni string
+                    # --- FIX SUPER KETAT UNTUK PYARROW (Anti Error 3.13) ---
                     df_display_sku[display_col] = df_display_sku[display_col].astype(str)
-                    
                     num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
-                    
-                    # 2. Pastikan SEMUA angka murni float (tidak ada object/mixed)
                     for col in num_cols_sku:
                         if col in df_display_sku.columns:
                             df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
-                    # --------------------------------------
+                    # -------------------------------------------------------
                     
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
@@ -1704,20 +1700,24 @@ def main_dashboard():
                         }
                         """)
                         
+                        # Set konfigurasi tiap kolom
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
+                                # Kolom angka: format IDR, rata kanan, ada floating filter
                                 gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                             elif col == display_col:
-                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True, pinned='left')
+                                # Kolom indeks dikunci ke kiri (pinned left) & ada pencarian (floating filter)
+                                gb_sku.configure_column(col, pinned='left', filter='agTextColumnFilter', floatingFilter=True)
                             else:
-                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
+                                gb_sku.configure_column(col, filter='agTextColumnFilter', floatingFilter=True)
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
+                        # Tinggi baris khusus untuk mengakomodasi Grand Total
                         getRowHeightSKU = JsCode("""
                         function(params) {
                             if (params.node.rowPinned === 'bottom') {
-                                return 40;
+                                return 40; // Lebih tinggi untuk Grand Total
                             }
                             return 35;
                         }
@@ -1727,11 +1727,23 @@ def main_dashboard():
                             getRowHeight=getRowHeightSKU,
                             headerHeight=40,
                             floatingFiltersHeight=40,
-                            pinnedBottomRowData=[total_dict_sku]
+                            pinnedBottomRowData=[total_dict_sku] # Baris khusus melayang di bawah
                         )
+                        
+                        # Tambahkan logic CSS Kuning Stabilo untuk baris bawah
+                        getRowStyleSKU = JsCode("""
+                        function(params) {
+                            if (params.node.rowPinned === 'bottom') {
+                                return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
+                            }
+                            return null;
+                        }
+                        """)
+                        gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
                         
                         gridOptions_sku = gb_sku.build()
                         
+                        # CSS agar pinned kiri dan bawah warnanya konsisten kuning menyala
                         custom_css_sku = {
                             ".ag-header-cell-label": {"color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
@@ -1741,16 +1753,18 @@ def main_dashboard():
                             ".ag-root-wrapper": {"border": "1px solid #555555 !important"},
                             ".ag-floating-filter-input input": {"background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                            
+                            # Target KEDUA container (pinned left & scrolling body) agar seutuhnya kuning stabilo
+                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
+                                "border-top": "3px solid #333 !important"
+                            },
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
                                 "background-color": "#FFFF00 !important", 
                                 "color": "black !important", 
-                                "font-weight": "bold !important",
-                                "border-right": "none !important"
+                                "font-weight": "bold !important"
                             }
                         }
                         
-                        # --- TRY-EXCEPT FALLBACK (ANTI-CRASH) ---
                         try:
                             AgGrid(
                                 df_display_sku,
@@ -1758,13 +1772,12 @@ def main_dashboard():
                                 allow_unsafe_jscode=True,
                                 theme='balham', 
                                 height=600,
-                                fit_columns_on_grid_load=False,
+                                fit_columns_on_grid_load=False, # Izinkan scroll horizontal (Jangan dirapatkan paksa)
                                 custom_css=custom_css_sku
                             )
                         except Exception as e:
                             st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
                             st.dataframe(df_display_sku_export, use_container_width=True)
-                        # ----------------------------------------
                     else:
                         st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
                     
