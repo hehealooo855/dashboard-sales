@@ -132,6 +132,7 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
+# UPDATE KODE: Menambahkan "SBG" sebagai prefix resmi
 BRAND_PREFIXES = {
     "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
     "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
@@ -145,7 +146,7 @@ BRAND_PREFIXES = {
     "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
     "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
     "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong":["SOMBONG"], "Everpure":["EVERPURE"]
+    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong":["SOMBONG", "SBG"], "Everpure":["EVERPURE"]
 }
 
 def map_city_to_province(city_name):
@@ -205,6 +206,7 @@ INDIVIDUAL_TARGETS = {
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
 TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 
+# UPDATE KODE: Menambahkan "SBG" sebagai alias resmi Sombong
 BRAND_ALIASES = {
     "Diosys": ["DIOSYS", "DYOSIS", "DIO"], "Y2000": ["Y2000", "Y 2000", "Y-2000"],
     "Masami": ["MASAMI", "JAYA"], "Cassandra": ["CASSANDRA", "CASANDRA"],
@@ -221,7 +223,7 @@ BRAND_ALIASES = {
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG"]
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG", "SBG"]
 }
 
 SALES_MAPPING = {
@@ -691,10 +693,10 @@ def render_pivot_fragment(df_scope_all, role):
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                     elif col in ['Kode Customer', 'Nama Outlet']:
                         # KUNCI KEDUA KOLOM KE KIRI
-                        gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
+                        gb.configure_column(col, pinned='left', filter='agTextColumnFilter', floatingFilter=True)
                     else:
                         # PROVINSI DAN KOTA TIDAK DIKUNCI
-                        gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
+                        gb.configure_column(col, filter='agTextColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
@@ -702,7 +704,7 @@ def render_pivot_fragment(df_scope_all, role):
                 getRowHeight = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
-                        return 45; // Tinggi Baris Grand Total
+                        return 45; // Tinggi Baris Grand Total (Lebih Besar)
                     }
                     return 40;     // Tinggi Baris Standar
                 }
@@ -762,27 +764,27 @@ def render_pivot_fragment(df_scope_all, role):
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
+            has_data_to_export = 'df_display_export' in locals() and not df_display_export.empty
+            
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display_export' in locals() and not df_display_export.empty:
+                if has_data_to_export:
                     df_display_export.to_excel(writer, index=False, sheet_name='Master Data')
-                
-                workbook = writer.book
-                worksheet = writer.sheets['Master Data']
-                
-                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
-                format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('E:Q', None, format1) 
-                
-                if 'df_display_export' in locals() and not df_display_export.empty:
+                    
+                    workbook = writer.book
+                    worksheet = writer.sheets['Master Data']
+                    
+                    user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                    time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                    
+                    worksheet.set_header(f'&C&10{watermark_text}')
+                    worksheet.set_footer(f'&RPage &P of &N')
+                    
+                    format1 = workbook.add_format({'num_format': '#,##0'})
+                    worksheet.set_column('E:Q', None, format1) 
+                    
                     last_row_idx = len(df_display_export) 
                     
-                    # Format Kuning untuk Keseluruhan Baris Terakhir (Tidak di-merge)
                     bold_yellow_format = workbook.add_format({
                         'bold': True,
                         'bg_color': '#FFFF00',
@@ -791,17 +793,18 @@ def render_pivot_fragment(df_scope_all, role):
                         'font_color': 'black'
                     })
                     
-                    # Terapkan format tinggi baris & warna ke baris akhir
                     worksheet.set_row(last_row_idx, 30, bold_yellow_format)
+                else:
+                    # Buat sheet dummy agar tidak crash saat data benar-benar kosong
+                    pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
             
-            st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                data=output.getvalue(),
-                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    else:
-        st.info("Data Kosong.")
+            if has_data_to_export:
+                st.download_button(
+                    label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                    data=output.getvalue(),
+                    file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -1789,39 +1792,43 @@ def main_dashboard():
                     user_role_lower = role.lower()
                     if user_role_lower in ['direktur', 'manager', 'supervisor']:
                         output_sku = io.BytesIO()
+                        has_sku_data = 'df_display_sku_export' in locals() and not df_display_sku_export.empty
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                            if has_sku_data:
                                 df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
                                 
-                            workbook = writer.book
-                            worksheet = writer.sheets['Detail SKU']
-                            
-                            user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                            worksheet.set_header(f'&C&10{watermark_text}')
-                            
-                            format1 = workbook.add_format({'num_format': '#,##0'})
-                            worksheet.set_column('B:N', None, format1)
-                            
-                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
-                                last_row_idx_sku = len(df_display_sku_export)
+                                workbook = writer.book
+                                worksheet = writer.sheets['Detail SKU']
                                 
-                                bold_yellow_format_sku = workbook.add_format({
-                                    'bold': True,
-                                    'bg_color': '#FFFF00',
-                                    'border': 1,
-                                    'num_format': '#,##0',
-                                    'font_color': 'black'
-                                })
-                                worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
-                            
-                        st.download_button(
-                            label="📥 Download Detail SKU (Excel)",
-                            data=output_sku.getvalue(),
-                            file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                                worksheet.set_header(f'&C&10{watermark_text}')
+                                
+                                format1 = workbook.add_format({'num_format': '#,##0'})
+                                worksheet.set_column('B:N', None, format1)
+                                
+                                if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                                    last_row_idx_sku = len(df_display_sku_export)
+                                    
+                                    bold_yellow_format_sku = workbook.add_format({
+                                        'bold': True,
+                                        'bg_color': '#FFFF00',
+                                        'border': 1,
+                                        'num_format': '#,##0',
+                                        'font_color': 'black'
+                                    })
+                                    worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
+                            else:
+                                pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
+                                
+                        if has_sku_data:
+                            st.download_button(
+                                label="📥 Download Detail SKU (Excel)",
+                                data=output_sku.getvalue(),
+                                file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
                 else:
                     st.warning("Tidak ada transaksi untuk filter tersebut.")
 
