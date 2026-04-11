@@ -262,9 +262,6 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# =========================================================================
-# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
-# =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
     urls = [
@@ -401,13 +398,13 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE (LOGIKA BARU - OPSI A & FILTER MURNI MEREK)
+# PIVOT FAST ENGINE (LOGIKA BARU - GABUNG PAKSA TOKO & MURNI MEREK)
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
     group_cols = list(group_cols_tuple)
 
     if not df_pivot_source.empty:
-        # FILTER MURNI HANYA BERDASARKAN KOLOM MEREK (Tidak ada lagi tebak-tebakan Prefix/Awalan Kode)
+        # FILTER MURNI HANYA BERDASARKAN KOLOM MEREK
         if selected_merk_excel != "SEMUA":
             final_mask = df_pivot_source['Merk'] == selected_merk_excel
         else:
@@ -422,12 +419,9 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
-            # --- OPSI A (GABUNG PAKSA TOKO DOUBLE) ---
-            # Kita lakukan Pivot MURNI hanya berdasarkan "Nama Outlet". 
-            # Jika ada 2 kode beda untuk toko yang sama, otomatis omsetnya akan terlebur/tergabung disini!
+            # PIVOT MURNI BY NAMA OUTLET (Toko Double Otomatis Melebur)
             pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             
-            # AMBIL KODE CUSTOMER (Ambil salah satu kode yang paling valid/bukan strip)
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
             base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
             
@@ -541,10 +535,8 @@ def render_pivot_fragment(df_scope_all, role):
         with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
 
         maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
-        
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-    # Memanggil Pivot Engine terbaru
     master_pivot = generate_pivot_fast(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
 
     if not master_pivot.empty:
@@ -589,11 +581,7 @@ def render_pivot_fragment(df_scope_all, role):
                 header {display: none !important;}
                 [data-testid="stSidebar"] {display: none !important;}
                 .block-container {
-                    max-width: 100% !important;
-                    padding-top: 1rem !important;
-                    padding-right: 1rem !important;
-                    padding-left: 1rem !important;
-                    padding-bottom: 1rem !important;
+                    max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important;
                 }
             </style>
             """, unsafe_allow_html=True)
@@ -634,18 +622,17 @@ def render_pivot_fragment(df_scope_all, role):
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                     elif col in ['Kode Customer', 'Nama Outlet']:
-                        gb.configure_column(col, pinned='left', filter='agTextColumnFilter', floatingFilter=True)
+                        # AGGRID ENTERPRISE SET FILTER (Kotak Pencarian Checkbox Excel)
+                        gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
-                        gb.configure_column(col, filter='agTextColumnFilter', floatingFilter=True)
+                        gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
                 gb.configure_default_column(resizable=True, sortable=True)
                 
                 getRowHeight = JsCode("""
                 function(params) {
-                    if (params.node.rowPinned === 'bottom') {
-                        return 45; // Tinggi Baris Grand Total (Lebih Besar)
-                    }
-                    return 40;     // Tinggi Baris Standar
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
                 }
                 """)
                 
@@ -675,20 +662,14 @@ def render_pivot_fragment(df_scope_all, role):
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
                     ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {
-                        "border-top": "3px solid #333 !important"
-                    },
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                     ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
-                        "font-size": "14px !important",
-                        "background-color": "#FFFF00 !important", 
-                        "color": "black !important", 
-                        "font-weight": "bold !important"
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"
                     }
                 }
                 
-                AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css)
+                AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css, enable_enterprise_modules=True)
             else:
                 st.error("Library st_aggrid belum terpasang.")
             
@@ -1117,7 +1098,6 @@ def main_dashboard():
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'IJL' else ''}")
             
-            # --- SUPER VECTORIZATION (PRE-AGGREGATION) UNTUK KECEPATAN ---
             dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
             
             def get_salesmen_dict(df_to_group):
@@ -1131,7 +1111,6 @@ def main_dashboard():
                 return res
                 
             salesmen_mtd_master = get_salesmen_dict(df_active_tab)
-            # -------------------------------------------------------------
             
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
@@ -1249,7 +1228,6 @@ def main_dashboard():
                         
                 safe_remaining_days = remaining_workdays if remaining_workdays > 0 else 1
                 
-                # --- VECTORIZATION ---
                 df_brand_active = df_active_tab[df_active_tab['Merk'] == selected_brand_detail]
                 dict_sales_mtd = df_brand_active.groupby('Penjualan')['Jumlah'].sum().to_dict()
                 
@@ -1311,7 +1289,6 @@ def main_dashboard():
 
         st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
-        # --- SHARED GROUPBY ---
         grouped_barang = df_t3.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
         total_omset_pareto = grouped_barang['Jumlah'].sum()
         
@@ -1507,7 +1484,6 @@ def main_dashboard():
             with col_s2:
                 selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
                 
-            # FILTER MURNI MEREK UNTUK CASCADING SKU
             df_sku_for_options = df_sku_base.copy()
             if selected_merk_sku != "SEMUA":
                 df_sku_for_options = df_sku_for_options[df_sku_for_options['Merk'] == selected_merk_sku]
@@ -1532,7 +1508,6 @@ def main_dashboard():
                 maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
                 submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-            # Filtering Execution
             df_sku_filtered = df_sku_for_options.copy() 
 
             if selected_tahun_sku:
@@ -1554,13 +1529,7 @@ def main_dashboard():
                     <style>
                         header {display: none !important;}
                         [data-testid="stSidebar"] {display: none !important;}
-                        .block-container {
-                            max-width: 100% !important;
-                            padding-top: 1rem !important;
-                            padding-right: 1rem !important;
-                            padding-left: 1rem !important;
-                            padding-bottom: 1rem !important;
-                        }
+                        .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
                     </style>
                     """, unsafe_allow_html=True)
                     st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
@@ -1588,7 +1557,6 @@ def main_dashboard():
                     
                     pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
                     
-                    # --- Grand Total Row (PINNED BOTTOM ROW) ---
                     total_dict_sku = {col: "" for col in pivot_sku.columns}
                     total_dict_sku[display_col] = "GRAND TOTAL"
                     for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
@@ -1599,7 +1567,6 @@ def main_dashboard():
                     df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
                     
                     df_display_sku[display_col] = df_display_sku[display_col].astype(str)
-                    
                     num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
                     for col in num_cols_sku:
                         if col in df_display_sku.columns:
@@ -1607,7 +1574,6 @@ def main_dashboard():
                     
                     df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
                     
-                    # ================= AG-GRID SKU TABLE RENDERER (SMART FILTER) =================
                     if AGGRID_AVAILABLE:
                         gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                         
@@ -1620,23 +1586,20 @@ def main_dashboard():
                         }
                         """)
                         
-                        # Set konfigurasi tiap kolom
                         for col in df_display_sku.columns:
                             if col in num_cols_sku:
                                 gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                             elif col == display_col:
-                                gb_sku.configure_column(col, pinned='left', filter='agTextColumnFilter', floatingFilter=True)
+                                gb_sku.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                             else:
-                                gb_sku.configure_column(col, filter='agTextColumnFilter', floatingFilter=True)
+                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                         
                         gb_sku.configure_default_column(resizable=True, sortable=True)
                         
                         getRowHeightSKU = JsCode("""
                         function(params) {
-                            if (params.node.rowPinned === 'bottom') {
-                                return 45; // Baris Grand Total (Lebih tinggi)
-                            }
-                            return 40;     // Baris Normal (40px)
+                            if (params.node.rowPinned === 'bottom') return 45;
+                            return 40;
                         }
                         """)
                         
@@ -1666,15 +1629,10 @@ def main_dashboard():
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
                             ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                             ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                            ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                             ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
-                                "font-size": "14px !important",
-                                "background-color": "#FFFF00 !important", 
-                                "color": "black !important", 
-                                "font-weight": "bold !important",
-                                "border-right": "none !important"
+                                "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
                             }
                         }
                         
@@ -1686,7 +1644,8 @@ def main_dashboard():
                                 theme='balham', 
                                 height=600,
                                 fit_columns_on_grid_load=False,
-                                custom_css=custom_css_sku
+                                custom_css=custom_css_sku,
+                                enable_enterprise_modules=True # MENGAKTIFKAN SET FILTER ENTERPRISE
                             )
                         except Exception as e:
                             st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
@@ -1701,10 +1660,8 @@ def main_dashboard():
                         with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
                             if has_sku_data:
                                 df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
-                                
                                 workbook = writer.book
                                 worksheet = writer.sheets['Detail SKU']
-                                
                                 user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
                                 time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
@@ -1715,14 +1672,7 @@ def main_dashboard():
                                 
                                 if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
                                     last_row_idx_sku = len(df_display_sku_export)
-                                    
-                                    bold_yellow_format_sku = workbook.add_format({
-                                        'bold': True,
-                                        'bg_color': '#FFFF00',
-                                        'border': 1,
-                                        'num_format': '#,##0',
-                                        'font_color': 'black'
-                                    })
+                                    bold_yellow_format_sku = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
                                     worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
                             else:
                                 pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
@@ -1739,6 +1689,109 @@ def main_dashboard():
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
+            
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING) ---
+            def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None):
+                if not AGGRID_AVAILABLE:
+                    st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
+                    return
+
+                gb_growth = GridOptionsBuilder.from_dataframe(df_growth)
+                
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
+                
+                pct_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return (val * 100).toFixed(1) + '%';
+                }
+                """)
+                
+                # LOGIKA WARNA PERSENTASE
+                pct_cell_style = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important', 'border-right': '1px solid #555555 !important' };
+                    }
+                    var val = Number(params.value);
+                    if (!isNaN(val)) {
+                        if (val < 0.50) return { 'background-color': '#ffcccc !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
+                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
+                        else return { 'background-color': '#d1e7dd !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
+                    }
+                    return null;
+                }
+                """)
+
+                for col in df_growth.columns:
+                    if col == pct_col:
+                        gb_growth.configure_column(col, valueFormatter=pct_formatter, cellStyle=pct_cell_style, headerClass="right-aligned-header", type=["numericColumn"])
+                    elif 'SALES' in col.upper():
+                        gb_growth.configure_column(col, valueFormatter=currency_formatter, headerClass="right-aligned-header", type=["numericColumn"])
+                    else:
+                        gb_growth.configure_column(col)
+
+                gb_growth.configure_default_column(resizable=True, sortable=True)
+                
+                getRowHeightGrowth = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
+                }
+                """)
+                
+                grid_opts = { "getRowHeight": getRowHeightGrowth, "headerHeight": 45 }
+                if total_dict_growth: grid_opts["pinnedBottomRowData"] = [total_dict_growth]
+                gb_growth.configure_grid_options(**grid_opts)
+                
+                getRowStyleGrowth = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
+                    }
+                    return null;
+                }
+                """)
+                gb_growth.configure_grid_options(getRowStyle=getRowStyleGrowth)
+                
+                custom_css_growth = {
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                    }
+                }
+                
+                try:
+                    AgGrid(
+                        df_growth,
+                        gridOptions=gb_growth.build(),
+                        allow_unsafe_jscode=True,
+                        theme='balham',
+                        height=400 if not total_dict_growth else 460,
+                        fit_columns_on_grid_load=True,
+                        custom_css=custom_css_growth,
+                        enable_enterprise_modules=True
+                    )
+                except Exception:
+                    st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
+
+            # -----------------------------------------------------------------------------------------
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
@@ -1746,41 +1799,16 @@ def main_dashboard():
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
                 df_team_all = df.copy()
-                
                 if target_sales_filter != "SEMUA":
                     if target_sales_filter.upper() in TARGET_DATABASE:
                         tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
                         df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
-
-                invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-                df_team_all['ID_Patokan'] = np.where(
-                    df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
-                    df_team_all['Nama Outlet'].str.strip(),
-                    df_team_all['Kode_Global'].str.strip()
-                )
                 
-                # FILTER MURNI MEREK UNTUK GROWTH RO
+                # FILTER MURNI MEREK
                 is_valid_ro = df_team_all['Merk'] == brand_growth
                 is_target_brand = df_team_all['Merk'] == brand_growth
-
-                if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
-                    df_cek = df_team_all[is_valid_ro].copy()
-                    kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
-                    
-                    if kd_col_cek in df_cek.columns:
-                        duplikat = df_cek.groupby('Nama Outlet')[kd_col_cek].nunique().reset_index()
-                        toko_double = duplikat[duplikat[kd_col_cek] > 1]['Nama Outlet'].tolist()
-                        
-                        if toko_double:
-                            st.error(f"🚨 Ditemukan {len(toko_double)} Toko yang tercatat ganda (karena beda Kode)!")
-                            df_tampil = df_cek[df_cek['Nama Outlet'].isin(toko_double)][['Nama Outlet', kd_col_cek, 'Provinsi', 'Kota']].drop_duplicates()
-                            st.dataframe(df_tampil.sort_values('Nama Outlet'), use_container_width=True)
-                        else:
-                            st.success("✅ Tidak ada nama toko yang kodenya ganda.")
-                    else:
-                        st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
 
                 if not df_team_all.empty:
                     df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
@@ -1790,7 +1818,8 @@ def main_dashboard():
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
-                    ro_accumulated = set(df_base['ID_Patokan'].dropna().unique())
+                    # LOGIKA BARU: MENGHITUNG MURNI BERDASARKAN NAMA OUTLET (Seperti Pivot)
+                    ro_accumulated = set(df_base['Nama Outlet'].dropna().unique())
                     growth_data = []
                     
                     for m in range(1, 13):
@@ -1798,26 +1827,20 @@ def main_dashboard():
                         period = pd.Period(period_str, freq='M')
                         
                         df_ao_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_target_brand]
-                        current_ao = set(df_ao_current['ID_Patokan'].dropna().unique())
+                        current_ao = set(df_ao_current['Nama Outlet'].dropna().unique())
                         sales = df_ao_current['Jumlah'].sum()
                         
                         noo = len(current_ao - ro_accumulated)
                         
                         df_ro_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_valid_ro]
-                        ro_accumulated.update(df_ro_current['ID_Patokan'].dropna().unique())
+                        ro_accumulated.update(df_ro_current['Nama Outlet'].dropna().unique())
                         
                         ro = len(ro_accumulated)
                         ao = len(current_ao)
                         ao_vs_ro = (ao / ro) if ro > 0 else 0
                         
                         growth_data.append({
-                            'Year': 2026,
-                            'Month': m,
-                            'SALES': sales,
-                            'RO': ro,
-                            'AO': ao,
-                            'AO VS RO %': ao_vs_ro,
-                            'NOO': noo
+                            'Year': 2026, 'Month': m, 'SALES': sales, 'RO': ro, 'AO': ao, 'AO VS RO %': ao_vs_ro, 'NOO': noo
                         })
                     
                     df_growth_all = pd.DataFrame(growth_data)
@@ -1835,29 +1858,15 @@ def main_dashboard():
                             if not row.empty:
                                 r = row.iloc[0]
                                 display_2026.append({
-                                    'MONTH': f"{bulan_dict_short[m]}-26",
-                                    'SALES': r['SALES'],
-                                    'RO': int(r['RO']), 'AO': int(r['AO']),
-                                    'AO VS RO %': r['AO VS RO %'],
-                                    'NOO': int(r['NOO'])
+                                    'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': float(r['SALES']),
+                                    'RO': int(r['RO']), 'AO': int(r['AO']), 'AO VS RO %': float(r['AO VS RO %']), 'NOO': int(r['NOO'])
                                 })
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
-                        def style_tab1(row):
-                            styles = []
-                            for col in row.index:
-                                base_style = 'border: 1px solid #dcdcdc; '
-                                if col == 'AO VS RO %':
-                                    bg = get_color_achv(row[col])
-                                    styles.append(base_style + f'background-color: {bg}; color: black;')
-                                else:
-                                    styles.append(base_style)
-                            return styles
-
-                        st.dataframe(pd.DataFrame(display_2026).style.format({
-                            'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                        }).apply(style_tab1, axis=1), use_container_width=True)
+                        # Render Tabel 1 dengan AgGrid Corporate
+                        df_display_t1 = pd.DataFrame(display_2026)
+                        render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %')
                         
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
@@ -1886,35 +1895,15 @@ def main_dashboard():
                                 tot_2026 += s26
                                 growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
                                 yoy_data.append({
-                                    'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
+                                    'MONTH': bulan_dict_short[m], 'SALES 2025': float(s25), 'SALES 2026': float(s26), 'Growth MTM': float(growth)
                                 })
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
-                            df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
-                            def style_tab2(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                                    else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
-
-                            st.dataframe(df_t2_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab2, axis=1), use_container_width=True)
+                            # Render Tabel 2 dengan AgGrid Corporate
+                            render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
@@ -1926,33 +1915,13 @@ def main_dashboard():
                                 
                                 q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
                                 q_data.append({
-                                    'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
+                                    'MONTH': f"Total {q}", 'SALES 2025': float(q_2025), 'SALES 2026': float(q_2026), 'Growth MTM': float(q_growth)
                                 })
                             
                             df_q = pd.DataFrame(q_data)
-                            df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
                             
-                            def style_tab3(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                                    else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
-
-                            st.dataframe(df_q_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab3, axis=1), use_container_width=True)
+                            # Render Tabel 3 dengan AgGrid Corporate
+                            render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
             else:
