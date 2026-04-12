@@ -317,12 +317,17 @@ def load_data_from_url():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Barang' in df.columns:
-        # PENGHAPUSAN FILTER KATA TOTAL/JUMLAH SESUAI PERMINTAAN
+        # 1. HAPUS BARIS FOOTER/REKAP EXCEL (Membuang data hantu 360rb)
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        # 2. SELAMATKAN BARANG KOSONG
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
         df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
+        df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
-        # PENGHAPUSAN FILTER KATA TOTAL/JUMLAH & JANGAN HAPUS TOKO KOSONG (JADIKAN STRIP)
+        # 1. HAPUS BARIS FOOTER/REKAP EXCEL (Membuang data hantu 360rb)
+        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        # 2. SELAMATKAN TOKO KOSONG (Agar omset 14rb tidak hilang lagi)
         df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
         df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
         df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
