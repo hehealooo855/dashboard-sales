@@ -317,25 +317,37 @@ def load_data_from_url():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        # FILTER KATA DIBUKA AGAR RETUR BARANG TIDAK HILANG (PERMINTAAN USER)
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
         df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
         df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
-        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        # FILTER KATA DIBUKA & JANGAN HAPUS TOKO KOSONG 
         df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
         df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
         df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
 
+    # >>> LOGIKA BARU: SUPPORT KURUNG AKUNTANSI (MINUS) <<<
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
+        
+        is_negative = False
+        if '(' in x and ')' in x:
+            is_negative = True
+        elif '-' in x:
+            is_negative = True
+            
         x = re.sub(r'\s+', '', x) 
         x = re.sub(r'[,.]\d{2}$', '', x) 
         x = x.replace(',', '').replace('.', '') 
-        x = re.sub(r'[^\d-]', '', x) 
-        try: return float(x)
-        except: return 0.0
+        x = re.sub(r'[^\d]', '', x) 
+        
+        try: 
+            val = float(x)
+            return -val if is_negative else val
+        except: 
+            return 0.0
 
     if 'Jumlah' in df.columns:
         df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
@@ -1610,6 +1622,7 @@ def main_dashboard():
                     
                     gridOptions_sku = gb_sku.build()
                     
+                    # CSS CUSTOM: Input Putih, Teks Hitam, Filter Row Biru, Ikon Corong Putih
                     custom_css_sku = {
                         ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                         ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
@@ -1681,6 +1694,7 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING) ---
             def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
@@ -1706,6 +1720,7 @@ def main_dashboard():
                 }
                 """)
                 
+                # LOGIKA WARNA PERSENTASE
                 pct_cell_style = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
@@ -1757,11 +1772,8 @@ def main_dashboard():
                     ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
-                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
                     ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                     ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
@@ -1783,6 +1795,7 @@ def main_dashboard():
                 except Exception:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
 
+            # -----------------------------------------------------------------------------------------
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
@@ -1797,6 +1810,7 @@ def main_dashboard():
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
                 
+                # FILTER MURNI MEREK
                 is_valid_ro = df_team_all['Merk'] == brand_growth
                 is_target_brand = df_team_all['Merk'] == brand_growth
 
@@ -1808,6 +1822,7 @@ def main_dashboard():
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
+                    # LOGIKA BARU: MENGHITUNG MURNI BERDASARKAN NAMA OUTLET (Seperti Pivot)
                     ro_accumulated = set(df_base['Nama Outlet'].dropna().unique())
                     growth_data = []
                     
@@ -1847,12 +1862,16 @@ def main_dashboard():
                             if not row.empty:
                                 r = row.iloc[0]
                                 display_2026.append({
-                                    'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': float(r['SALES']),
-                                    'RO': int(r['RO']), 'AO': int(r['AO']), 'AO VS RO %': float(r['AO VS RO %']), 'NOO': int(r['NOO'])
+                                    'MONTH': f"{bulan_dict_short[m]}-26",
+                                    'SALES': r['SALES'],
+                                    'RO': int(r['RO']), 'AO': int(r['AO']),
+                                    'AO VS RO %': r['AO VS RO %'],
+                                    'NOO': int(r['NOO'])
                                 })
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
                         
+                        # Render Tabel 1 dengan AgGrid Corporate
                         df_display_t1 = pd.DataFrame(display_2026)
                         render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %')
                         
@@ -1883,13 +1902,14 @@ def main_dashboard():
                                 tot_2026 += s26
                                 growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
                                 yoy_data.append({
-                                    'MONTH': bulan_dict_short[m], 'SALES 2025': float(s25), 'SALES 2026': float(s26), 'Growth MTM': float(growth)
+                                    'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
                                 })
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}
                             
+                            # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                         
                         with col_g2:
@@ -1902,11 +1922,12 @@ def main_dashboard():
                                 
                                 q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
                                 q_data.append({
-                                    'MONTH': f"Total {q}", 'SALES 2025': float(q_2025), 'SALES 2026': float(q_2026), 'Growth MTM': float(q_growth)
+                                    'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
                                 })
                             
                             df_q = pd.DataFrame(q_data)
                             
+                            # Render Tabel 3 dengan AgGrid Corporate
                             render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
