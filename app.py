@@ -1689,8 +1689,8 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             
-            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING) ---
-            def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None):
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
+            def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None, file_prefix="Growth", brand_name=""):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
                     return
@@ -1702,7 +1702,7 @@ def main_dashboard():
                     if (params.value === null || params.value === undefined || params.value === "") return '-';
                     var val = Number(params.value);
                     if (isNaN(val)) return params.value; 
-                    return (val < 0 ? '-' : '') + 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+                    return 'Rp ' + val.toLocaleString('id-ID');
                 }
                 """)
                 
@@ -1715,17 +1715,17 @@ def main_dashboard():
                 }
                 """)
                 
-                # LOGIKA WARNA PERSENTASE
+                # LOGIKA WARNA PERSENTASE - TANPA !important
                 pct_cell_style = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
-                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important', 'border-right': '1px solid #555555 !important' };
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333', 'border-right': '1px solid #555555' };
                     }
                     var val = Number(params.value);
                     if (!isNaN(val)) {
-                        if (val < 0.50) return { 'background-color': '#ffcccc !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
-                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
-                        else return { 'background-color': '#d1e7dd !important', 'color': 'black !important', 'border-right': '1px solid #555555 !important', 'border-bottom': '1px solid #555555 !important', 'font-weight': '500 !important', 'display': 'flex', 'align-items': 'center' };
+                        if (val < 0.50) return { 'background-color': '#ffcccc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else return { 'background-color': '#d1e7dd', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
                     }
                     return null;
                 }
@@ -1755,7 +1755,7 @@ def main_dashboard():
                 getRowStyleGrowth = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
-                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
                     }
                     return null;
                 }
@@ -1792,6 +1792,43 @@ def main_dashboard():
                     )
                 except Exception:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
+
+                # --- EXCEL EXPORT BUTTON ---
+                user_role_lower = st.session_state.get('role', 'staff').lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    df_export = pd.concat([df_growth, pd.DataFrame([total_dict_growth])], ignore_index=True) if total_dict_growth else df_growth.copy()
+                    
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name=file_prefix[:30])
+                        workbook = writer.book
+                        worksheet = writer.sheets[file_prefix[:30]]
+                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        format_pct = workbook.add_format({'num_format': '0.0%'})
+                        
+                        for col_num, col_name in enumerate(df_export.columns):
+                            col_upper = col_name.upper()
+                            if col_name in ['RO', 'AO', 'NOO']:
+                                worksheet.set_column(col_num, col_num, 10, format1)
+                            elif '%' in col_upper or 'GROWTH' in col_upper or 'ACHV' in col_upper:
+                                worksheet.set_column(col_num, col_num, 12, format_pct)
+                            elif col_upper not in ['MONTH', 'COSTUMER', 'YEAR', 'NAMA OUTLET']:
+                                worksheet.set_column(col_num, col_num, 15, format1)
+                            else:
+                                worksheet.set_column(col_num, col_num, 20)
+                        
+                        if total_dict_growth:
+                            bold_yellow = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'font_color': 'black', 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_export), 30, bold_yellow)
+                            
+                    today_str = datetime.date.today().strftime("%Y%m%d")
+                    file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
+                    st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
             # -----------------------------------------------------------------------------------------
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
@@ -1861,17 +1898,17 @@ def main_dashboard():
                                 r = row.iloc[0]
                                 display_2026.append({
                                     'MONTH': f"{bulan_dict_short[m]}-26",
-                                    'SALES': r['SALES'],
+                                    'SALES': float(r['SALES']),
                                     'RO': int(r['RO']), 'AO': int(r['AO']),
-                                    'AO VS RO %': r['AO VS RO %'],
+                                    'AO VS RO %': float(r['AO VS RO %']),
                                     'NOO': int(r['NOO'])
                                 })
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
-                        # Render Tabel 1 dengan AgGrid Corporate
+                        # Render Tabel 1 dengan AgGrid Corporate & Button Download
                         df_display_t1 = pd.DataFrame(display_2026)
-                        render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %')
+                        render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %', file_prefix="Aktivitas_Outlet", brand_name=brand_growth)
                         
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
@@ -1905,10 +1942,10 @@ def main_dashboard():
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
+                            total_dict_t2 = {'MONTH': 'GRAND TOTAL', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
-                            # Render Tabel 2 dengan AgGrid Corporate
-                            render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
+                            # Render Tabel 2 dengan AgGrid Corporate & Button Download
+                            render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
@@ -1925,8 +1962,8 @@ def main_dashboard():
                             
                             df_q = pd.DataFrame(q_data)
                             
-                            # Render Tabel 3 dengan AgGrid Corporate
-                            render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
+                            # Render Tabel 3 dengan AgGrid Corporate & Button Download
+                            render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Quarterly_Growth", brand_name=brand_growth)
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
             else:
@@ -1935,6 +1972,146 @@ def main_dashboard():
         with tab_ba:
             st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
             
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID BA (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
+            def render_ba_aggrid(df_ba, total_dict_ba=None, file_prefix="Target_BA", brand_name=""):
+                if not AGGRID_AVAILABLE:
+                    st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
+                    return
+
+                gb_ba = GridOptionsBuilder.from_dataframe(df_ba)
+                
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
+                
+                pct_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return (val * 100).toFixed(1) + '%';
+                }
+                """)
+                
+                pct_cell_style = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333', 'border-right': '1px solid #555555' };
+                    }
+                    var val = Number(params.value);
+                    if (!isNaN(val)) {
+                        if (val < 0.50) return { 'background-color': '#ffcccc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else return { 'background-color': '#d1e7dd', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                    }
+                    return null;
+                }
+                """)
+
+                for col in df_ba.columns:
+                    if col == 'ACHV':
+                        gb_ba.configure_column(col, valueFormatter=pct_formatter, cellStyle=pct_cell_style, headerClass="right-aligned-header", type=["numericColumn"])
+                    elif col != 'Costumer':
+                        gb_ba.configure_column(col, valueFormatter=currency_formatter, headerClass="right-aligned-header", type=["numericColumn"])
+                    else:
+                        # PINNED LEFT UNTUK KOLOM COSTUMER + ENTERPRISE FILTER
+                        gb_ba.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
+
+                gb_ba.configure_default_column(resizable=True, sortable=True)
+                
+                getRowHeightBA = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
+                }
+                """)
+                
+                grid_opts = { "getRowHeight": getRowHeightBA, "headerHeight": 45, "floatingFiltersHeight": 40 }
+                if total_dict_ba: grid_opts["pinnedBottomRowData"] = [total_dict_ba]
+                gb_ba.configure_grid_options(**grid_opts)
+                
+                getRowStyleBA = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                    }
+                    return null;
+                }
+                """)
+                gb_ba.configure_grid_options(getRowStyle=getRowStyleBA)
+                
+                custom_css_ba = {
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                    }
+                }
+                
+                try:
+                    AgGrid(
+                        df_ba,
+                        gridOptions=gb_ba.build(),
+                        allow_unsafe_jscode=True,
+                        theme='balham',
+                        height=400 if not total_dict_ba else 460,
+                        fit_columns_on_grid_load=False,
+                        custom_css=custom_css_ba,
+                        enable_enterprise_modules=True
+                    )
+                except Exception:
+                    st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
+
+                # --- EXCEL EXPORT BUTTON ---
+                user_role_lower = st.session_state.get('role', 'staff').lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    df_export = pd.concat([df_ba, pd.DataFrame([total_dict_ba])], ignore_index=True) if total_dict_ba else df_ba.copy()
+                    
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name=file_prefix[:30])
+                        workbook = writer.book
+                        worksheet = writer.sheets[file_prefix[:30]]
+                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        format_pct = workbook.add_format({'num_format': '0.0%'})
+                        
+                        for col_num, col_name in enumerate(df_export.columns):
+                            col_upper = col_name.upper()
+                            if '%' in col_upper or 'ACHV' in col_upper:
+                                worksheet.set_column(col_num, col_num, 12, format_pct)
+                            elif col_upper not in ['COSTUMER']:
+                                worksheet.set_column(col_num, col_num, 15, format1)
+                            else:
+                                worksheet.set_column(col_num, col_num, 30)
+                        
+                        if total_dict_ba:
+                            bold_yellow = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'font_color': 'black', 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_export), 30, bold_yellow)
+                            
+                    today_str = datetime.date.today().strftime("%Y%m%d")
+                    file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
+                    st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # -----------------------------------------------------------------------------------------
             TARGET_BA_PER_BRAND = {
                 "Careso": {
                     "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
@@ -1992,8 +2169,16 @@ def main_dashboard():
                         merged_ba[bulan_dict_ba[m]] = 0
                 
                 st.write(f"**Rekap Keseluruhan Toko BA untuk Brand `{selected_ba_brand}` (2026)**")
-                format_ba = {col: 'Rp {:,.0f}' for col in list(bulan_dict_ba.values()) + ['Target BA']}
-                st.dataframe(merged_ba.style.format(format_ba), use_container_width=True, hide_index=True)
+                
+                # Tambahkan Grand Total untuk Tabel 1 BA
+                total_dict_ba1 = {col: "" for col in merged_ba.columns}
+                total_dict_ba1['Costumer'] = "GRAND TOTAL"
+                for col in list(bulan_dict_ba.values()) + ['Target BA']:
+                    if col in merged_ba.columns:
+                        total_dict_ba1[col] = float(merged_ba[col].sum())
+                        
+                # Render Tabel 1 dengan AgGrid Corporate
+                render_ba_aggrid(merged_ba, total_dict_ba=total_dict_ba1, file_prefix="Rekap_Toko_BA", brand_name=selected_ba_brand)
                 
                 st.divider()
                 
@@ -2014,47 +2199,24 @@ def main_dashboard():
                     
                     achv_data.append({
                         'Costumer': costumer,
-                        'Target BA': target,
-                        f'Pencapaian {selected_month_ba}': pencapaian,
-                        'ACHV': achv_pct
+                        'Target BA': float(target),
+                        f'Pencapaian {selected_month_ba}': float(pencapaian),
+                        'ACHV': float(achv_pct)
                     })
                 
                 df_achv = pd.DataFrame(achv_data)
                 
-                df_achv_total = pd.DataFrame([{
-                    'Costumer': 'Total Achievement',
-                    'Target BA': total_target,
-                    f'Pencapaian {selected_month_ba}': total_achv,
-                    'ACHV': (total_achv/total_target) if total_target > 0 else 0
-                }])
-                
-                df_achv_display = pd.concat([df_achv, df_achv_total], ignore_index=True)
+                total_dict_ba2 = {
+                    'Costumer': 'GRAND TOTAL',
+                    'Target BA': float(total_target),
+                    f'Pencapaian {selected_month_ba}': float(total_achv),
+                    'ACHV': float(total_achv/total_target) if total_target > 0 else 0.0
+                }
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
                 
-                def style_ba(row):
-                    styles = []
-                    for col in row.index:
-                        base_style = 'border: 1px solid #dcdcdc; '
-                        if row['Costumer'] == 'Total Achievement':
-                            if col == 'ACHV':
-                                bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                            else:
-                                styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                        else:
-                            if col == 'ACHV':
-                                bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black;')
-                            else:
-                                styles.append(base_style)
-                    return styles
-                
-                st.dataframe(df_achv_display.style.format({
-                    'Target BA': 'Rp {:,.0f}',
-                    f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
-                    'ACHV': '{:.0%}'
-                }).apply(style_ba, axis=1), use_container_width=True)
+                # Render Tabel 2 dengan AgGrid Corporate
+                render_ba_aggrid(df_achv, total_dict_ba=total_dict_ba2, file_prefix=f"Achv_BA_{selected_month_ba}", brand_name=selected_ba_brand)
 
         with tab_ai:
             st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
