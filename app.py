@@ -398,13 +398,12 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE (LOGIKA BARU - GABUNG PAKSA TOKO & MURNI MEREK)
+# PIVOT FAST ENGINE
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
     group_cols = list(group_cols_tuple)
 
     if not df_pivot_source.empty:
-        # FILTER MURNI HANYA BERDASARKAN KOLOM MEREK
         if selected_merk_excel != "SEMUA":
             final_mask = df_pivot_source['Merk'] == selected_merk_excel
         else:
@@ -419,7 +418,6 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
-            # PIVOT MURNI BY NAMA OUTLET (Toko Double Otomatis Melebur)
             pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
@@ -580,9 +578,7 @@ def render_pivot_fragment(df_scope_all, role):
             <style>
                 header {display: none !important;}
                 [data-testid="stSidebar"] {display: none !important;}
-                .block-container {
-                    max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important;
-                }
+                .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
             </style>
             """, unsafe_allow_html=True)
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
@@ -622,7 +618,6 @@ def render_pivot_fragment(df_scope_all, role):
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
                     elif col in ['Kode Customer', 'Nama Outlet']:
-                        # AGGRID ENTERPRISE SET FILTER (Kotak Pencarian Checkbox Excel)
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
@@ -655,21 +650,28 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
+                # CSS CUSTOM (Corporate Header, White Input Box, White Icons, Yellow Footer)
                 custom_css = {
                     ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                     ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
                     ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                     ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
-                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important"
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
                     }
                 }
                 
-                AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css, enable_enterprise_modules=True)
+                try:
+                    AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css, enable_enterprise_modules=True)
+                except Exception:
+                    st.dataframe(df_display_export, use_container_width=True)
             else:
                 st.error("Library st_aggrid belum terpasang.")
             
@@ -684,30 +686,17 @@ def render_pivot_fragment(df_scope_all, role):
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 if has_data_to_export:
                     df_display_export.to_excel(writer, index=False, sheet_name='Master Data')
-                    
                     workbook = writer.book
                     worksheet = writer.sheets['Master Data']
-                    
                     user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
                     time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                    
                     worksheet.set_header(f'&C&10{watermark_text}')
                     worksheet.set_footer(f'&RPage &P of &N')
-                    
                     format1 = workbook.add_format({'num_format': '#,##0'})
                     worksheet.set_column('E:Q', None, format1) 
-                    
                     last_row_idx = len(df_display_export) 
-                    
-                    bold_yellow_format = workbook.add_format({
-                        'bold': True,
-                        'bg_color': '#FFFF00',
-                        'border': 1,
-                        'num_format': '#,##0',
-                        'font_color': 'black'
-                    })
-                    
+                    bold_yellow_format = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
                     worksheet.set_row(last_row_idx, 30, bold_yellow_format)
                 else:
                     pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
@@ -993,7 +982,6 @@ def main_dashboard():
 
     df_scope_all = df.copy()
 
-    # FILTER MURNI MEREK (TIDAK ADA LAGI PENGECEKAN PREFIX MAS, SBG, NL, DLL)
     if selected_ijl != "IJL":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
         df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
@@ -1622,13 +1610,17 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
+                        # CSS CUSTOM: Input Putih, Teks Hitam, Filter Row Biru, Ikon Corong Putih
                         custom_css_sku = {
                             ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                             ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                             ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                             ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                            ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                            ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
                             ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                             ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                            ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                             ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                             ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                             ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
@@ -1645,7 +1637,7 @@ def main_dashboard():
                                 height=600,
                                 fit_columns_on_grid_load=False,
                                 custom_css=custom_css_sku,
-                                enable_enterprise_modules=True # MENGAKTIFKAN SET FILTER ENTERPRISE
+                                enable_enterprise_modules=True
                             )
                         except Exception as e:
                             st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
@@ -1690,7 +1682,7 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             
-            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING) ---
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH ---
             def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
@@ -1716,7 +1708,6 @@ def main_dashboard():
                 }
                 """)
                 
-                # LOGIKA WARNA PERSENTASE
                 pct_cell_style = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
@@ -1768,8 +1759,11 @@ def main_dashboard():
                     ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
                     ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
                     ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
                     ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
                     ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
                     ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
                     ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
                     ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
@@ -1806,7 +1800,6 @@ def main_dashboard():
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
                 
-                # FILTER MURNI MEREK
                 is_valid_ro = df_team_all['Merk'] == brand_growth
                 is_target_brand = df_team_all['Merk'] == brand_growth
 
@@ -1818,7 +1811,6 @@ def main_dashboard():
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
-                    # LOGIKA BARU: MENGHITUNG MURNI BERDASARKAN NAMA OUTLET (Seperti Pivot)
                     ro_accumulated = set(df_base['Nama Outlet'].dropna().unique())
                     growth_data = []
                     
@@ -1864,7 +1856,6 @@ def main_dashboard():
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
-                        # Render Tabel 1 dengan AgGrid Corporate
                         df_display_t1 = pd.DataFrame(display_2026)
                         render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %')
                         
@@ -1902,7 +1893,6 @@ def main_dashboard():
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
                             total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
-                            # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                         
                         with col_g2:
@@ -1920,7 +1910,6 @@ def main_dashboard():
                             
                             df_q = pd.DataFrame(q_data)
                             
-                            # Render Tabel 3 dengan AgGrid Corporate
                             render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM')
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
