@@ -317,17 +317,13 @@ def load_data_from_url():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Barang' in df.columns:
-        # 1. HAPUS BARIS FOOTER/REKAP EXCEL (Membuang data hantu 360rb)
         df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-        # 2. SELAMATKAN BARANG KOSONG
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
         df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
         df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
-        # 1. HAPUS BARIS FOOTER/REKAP EXCEL (Membuang data hantu 360rb)
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-        # 2. SELAMATKAN TOKO KOSONG (Agar omset 14rb tidak hilang lagi)
         df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
         df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
         df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
@@ -1513,176 +1509,174 @@ def main_dashboard():
             if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
             if filter_sku_spesifik: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Barang'].astype(str).isin(filter_sku_spesifik)]
 
-            if not filter_nama_sku and not filter_sku_spesifik:
-                st.info("👈 Silakan pilih minimal 1 'Nama Outlet' ATAU 'Nama Barang (SKU)' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail transaksi.")
-            else:
-                st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
+            # ---> KUNCI DIBUKA DISINI <---
+            st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
 
-                if maximize_toggle_sku:
-                    st.markdown("""
-                    <style>
-                        header {display: none !important;}
-                        [data-testid="stSidebar"] {display: none !important;}
-                        .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+            if maximize_toggle_sku:
+                st.markdown("""
+                <style>
+                    header {display: none !important;}
+                    [data-testid="stSidebar"] {display: none !important;}
+                    .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
+                </style>
+                """, unsafe_allow_html=True)
+                st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
-                if not df_sku_filtered.empty:
-                    df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
-                    
-                    if filter_sku_spesifik:
-                        index_col = 'Nama Outlet'
-                        display_col = 'Nama Toko'
-                    else:
-                        index_col = 'Nama Barang'
-                        display_col = 'Nama Barang'
-                        
-                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index=index_col, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-                    pivot_sku = pivot_sku.rename(columns={index_col: display_col})
-                    
-                    bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-                    for i in range(1, 13):
-                        if i not in pivot_sku.columns: pivot_sku[i] = 0
-                        
-                    cols_sku = [display_col] + list(range(1, 13))
-                    pivot_sku = pivot_sku[cols_sku]
-                    pivot_sku.columns = [display_col] + [bulan_indo_map[i] for i in range(1, 13)]
-                    
-                    pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
-                    
-                    total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
-                        val = pivot_sku[col].sum()
-                        total_dict_sku[col] = float(val) if pd.notnull(val) else 0.0
-                    
-                    df_display_sku = pivot_sku.copy()
-                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-                    
-                    df_display_sku[display_col] = df_display_sku[display_col].astype(str)
-                    num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
-                    for col in num_cols_sku:
-                        if col in df_display_sku.columns:
-                            df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
-                    
-                    df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    
-                    if AGGRID_AVAILABLE:
-                        gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
-                        
-                        currency_formatter = JsCode("""
-                        function(params) {
-                            if (params.value === null || params.value === undefined || params.value === "") return '-';
-                            var val = Number(params.value);
-                            if (isNaN(val)) return params.value; 
-                            return 'Rp ' + val.toLocaleString('id-ID');
-                        }
-                        """)
-                        
-                        for col in df_display_sku.columns:
-                            if col in num_cols_sku:
-                                gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
-                            elif col == display_col:
-                                gb_sku.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
-                            else:
-                                gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
-                        
-                        gb_sku.configure_default_column(resizable=True, sortable=True)
-                        
-                        getRowHeightSKU = JsCode("""
-                        function(params) {
-                            if (params.node.rowPinned === 'bottom') return 45;
-                            return 40;
-                        }
-                        """)
-                        
-                        gb_sku.configure_grid_options(
-                            getRowHeight=getRowHeightSKU,
-                            headerHeight=45,
-                            floatingFiltersHeight=40,
-                            pinnedBottomRowData=[total_dict_sku]
-                        )
-                        
-                        getRowStyleSKU = JsCode("""
-                        function(params) {
-                            if (params.node.rowPinned === 'bottom') {
-                                return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
-                            }
-                            return null;
-                        }
-                        """)
-                        gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
-                        
-                        gridOptions_sku = gb_sku.build()
-                        
-                        custom_css_sku = {
-                            ".ag-root-wrapper": {"font-family": "sans-serif !important"},
-                            ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
-                            ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
-                            ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
-                            ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
-                            ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
-                            ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
-                            ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
-                            ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
-                            ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
-                            ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
-                            ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
-                                "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
-                            }
-                        }
-                        
-                        try:
-                            AgGrid(
-                                df_display_sku,
-                                gridOptions=gridOptions_sku,
-                                allow_unsafe_jscode=True,
-                                theme='balham', 
-                                height=600,
-                                fit_columns_on_grid_load=False,
-                                custom_css=custom_css_sku,
-                                enable_enterprise_modules=True
-                            )
-                        except Exception as e:
-                            st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
-                            st.dataframe(df_display_sku_export, use_container_width=True)
-                    else:
-                        st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
-                    
-                    user_role_lower = role.lower()
-                    if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                        output_sku = io.BytesIO()
-                        has_sku_data = 'df_display_sku_export' in locals() and not df_display_sku_export.empty
-                        with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            if has_sku_data:
-                                df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
-                                workbook = writer.book
-                                worksheet = writer.sheets['Detail SKU']
-                                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                                worksheet.set_header(f'&C&10{watermark_text}')
-                                
-                                format1 = workbook.add_format({'num_format': '#,##0'})
-                                worksheet.set_column('B:N', None, format1)
-                                
-                                if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
-                                    last_row_idx_sku = len(df_display_sku_export)
-                                    bold_yellow_format_sku = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
-                                    worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
-                            else:
-                                pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
-                                
-                        if has_sku_data:
-                            st.download_button(
-                                label="📥 Download Detail SKU (Excel)",
-                                data=output_sku.getvalue(),
-                                file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            )
+            if not df_sku_filtered.empty:
+                df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
+                
+                if filter_sku_spesifik:
+                    index_col = 'Nama Outlet'
+                    display_col = 'Nama Toko'
                 else:
-                    st.warning("Tidak ada transaksi untuk filter tersebut.")
+                    index_col = 'Nama Barang'
+                    display_col = 'Nama Barang'
+                    
+                pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index=index_col, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                pivot_sku = pivot_sku.rename(columns={index_col: display_col})
+                
+                bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                for i in range(1, 13):
+                    if i not in pivot_sku.columns: pivot_sku[i] = 0
+                    
+                cols_sku = [display_col] + list(range(1, 13))
+                pivot_sku = pivot_sku[cols_sku]
+                pivot_sku.columns = [display_col] + [bulan_indo_map[i] for i in range(1, 13)]
+                
+                pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
+                
+                total_dict_sku = {col: "" for col in pivot_sku.columns}
+                total_dict_sku[display_col] = "GRAND TOTAL"
+                for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                    val = pivot_sku[col].sum()
+                    total_dict_sku[col] = float(val) if pd.notnull(val) else 0.0
+                
+                df_display_sku = pivot_sku.copy()
+                df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                
+                df_display_sku[display_col] = df_display_sku[display_col].astype(str)
+                num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                for col in num_cols_sku:
+                    if col in df_display_sku.columns:
+                        df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
+                
+                df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                
+                if AGGRID_AVAILABLE:
+                    gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
+                    
+                    currency_formatter = JsCode("""
+                    function(params) {
+                        if (params.value === null || params.value === undefined || params.value === "") return '-';
+                        var val = Number(params.value);
+                        if (isNaN(val)) return params.value; 
+                        return 'Rp ' + val.toLocaleString('id-ID');
+                    }
+                    """)
+                    
+                    for col in df_display_sku.columns:
+                        if col in num_cols_sku:
+                            gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                        elif col == display_col:
+                            gb_sku.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
+                        else:
+                            gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
+                    
+                    gb_sku.configure_default_column(resizable=True, sortable=True)
+                    
+                    getRowHeightSKU = JsCode("""
+                    function(params) {
+                        if (params.node.rowPinned === 'bottom') return 45;
+                        return 40;
+                    }
+                    """)
+                    
+                    gb_sku.configure_grid_options(
+                        getRowHeight=getRowHeightSKU,
+                        headerHeight=45,
+                        floatingFiltersHeight=40,
+                        pinnedBottomRowData=[total_dict_sku]
+                    )
+                    
+                    getRowStyleSKU = JsCode("""
+                    function(params) {
+                        if (params.node.rowPinned === 'bottom') {
+                            return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
+                        }
+                        return null;
+                    }
+                    """)
+                    gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
+                    
+                    gridOptions_sku = gb_sku.build()
+                    
+                    custom_css_sku = {
+                        ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                        ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                        ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                        ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                        ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                        ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                        ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                        ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                        ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                        ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                        ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                        ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                            "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                        }
+                    }
+                    
+                    try:
+                        AgGrid(
+                            df_display_sku,
+                            gridOptions=gridOptions_sku,
+                            allow_unsafe_jscode=True,
+                            theme='balham', 
+                            height=600,
+                            fit_columns_on_grid_load=False,
+                            custom_css=custom_css_sku,
+                            enable_enterprise_modules=True
+                        )
+                    except Exception as e:
+                        st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
+                        st.dataframe(df_display_sku_export, use_container_width=True)
+                else:
+                    st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
+                
+                user_role_lower = role.lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    output_sku = io.BytesIO()
+                    has_sku_data = 'df_display_sku_export' in locals() and not df_display_sku_export.empty
+                    with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                        if has_sku_data:
+                            df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
+                            workbook = writer.book
+                            worksheet = writer.sheets['Detail SKU']
+                            user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                            time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                            worksheet.set_header(f'&C&10{watermark_text}')
+                            
+                            format1 = workbook.add_format({'num_format': '#,##0'})
+                            worksheet.set_column('B:N', None, format1)
+                            
+                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                                last_row_idx_sku = len(df_display_sku_export)
+                                bold_yellow_format_sku = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
+                                worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
+                        else:
+                            pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
+                            
+                    if has_sku_data:
+                        st.download_button(
+                            label="📥 Download Detail SKU (Excel)",
+                            data=output_sku.getvalue(),
+                            file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+            else:
+                st.warning("Tidak ada transaksi untuk filter tersebut.")
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
