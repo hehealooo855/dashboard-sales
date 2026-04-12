@@ -317,13 +317,15 @@ def load_data_from_url():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
+        # PENGHAPUSAN FILTER KATA TOTAL/JUMLAH SESUAI PERMINTAAN
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
+        df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
-        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-        df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
-        df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+        # PENGHAPUSAN FILTER KATA TOTAL/JUMLAH & JANGAN HAPUS TOKO KOSONG (JADIKAN STRIP)
+        df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
+        df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
+        df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
 
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
@@ -650,7 +652,6 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 gridOptions = gb.build()
                 
-                # CSS CUSTOM (Corporate Header, White Input Box, White Icons, Yellow Footer)
                 custom_css = {
                     ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                     ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
@@ -1610,7 +1611,6 @@ def main_dashboard():
                         
                         gridOptions_sku = gb_sku.build()
                         
-                        # CSS CUSTOM: Input Putih, Teks Hitam, Filter Row Biru, Ikon Corong Putih
                         custom_css_sku = {
                             ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                             ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
@@ -1682,7 +1682,6 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             
-            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH ---
             def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
@@ -1785,7 +1784,6 @@ def main_dashboard():
                 except Exception:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
 
-            # -----------------------------------------------------------------------------------------
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
