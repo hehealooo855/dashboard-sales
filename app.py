@@ -1164,7 +1164,7 @@ def main_dashboard():
                     column_config={
                         "Rank": st.column_config.TextColumn("🏆 Rank", width="small"),
                         "Brand / Salesman": st.column_config.TextColumn("Brand / Salesman", width="medium"),
-                        "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=-1, max_value=1)
+                        "Bar": st.column_config.ProgressColumn("Progress", format=" ", min_value=0, max_value=1)
                     }
                 )
             else: st.warning("Tidak ada data untuk ditampilkan pada ruang lingkup ini.")
@@ -1187,7 +1187,7 @@ def main_dashboard():
                     val = row['Pencapaian']
                     bg = get_color_achv(val)
                     return [f'background-color: {bg}; color: black;' if col == 'Ach (%)' else '' for col in row.index]
-                st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=-1, max_value=1)})
+                st.dataframe(df_indiv.style.apply(style_indiv, axis=1), use_container_width=True, hide_index=True, column_config={"Pencapaian": st.column_config.ProgressColumn("Bar", format=" ", min_value=0, max_value=1)})
             else: st.warning("Tidak ada data target brand.")
 
     with t2:
@@ -1898,15 +1898,15 @@ def main_dashboard():
                                 r = row.iloc[0]
                                 display_2026.append({
                                     'MONTH': f"{bulan_dict_short[m]}-26",
-                                    'SALES': float(r['SALES']),
+                                    'SALES': r['SALES'],
                                     'RO': int(r['RO']), 'AO': int(r['AO']),
-                                    'AO VS RO %': float(r['AO VS RO %']),
+                                    'AO VS RO %': r['AO VS RO %'],
                                     'NOO': int(r['NOO'])
                                 })
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
-                        # Render Tabel 1 dengan AgGrid Corporate & Button Download
+                        # Render Tabel 1 dengan AgGrid Corporate
                         df_display_t1 = pd.DataFrame(display_2026)
                         render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %', file_prefix="Aktivitas_Outlet", brand_name=brand_growth)
                         
@@ -1942,9 +1942,9 @@ def main_dashboard():
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            total_dict_t2 = {'MONTH': 'GRAND TOTAL', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
-                            # Render Tabel 2 dengan AgGrid Corporate & Button Download
+                            # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
                         
                         with col_g2:
@@ -1962,7 +1962,7 @@ def main_dashboard():
                             
                             df_q = pd.DataFrame(q_data)
                             
-                            # Render Tabel 3 dengan AgGrid Corporate & Button Download
+                            # Render Tabel 3 dengan AgGrid Corporate
                             render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Quarterly_Growth", brand_name=brand_growth)
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
