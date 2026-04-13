@@ -109,6 +109,16 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
+def map_city_to_province(city_name):
+    if pd.isna(city_name): return "LAIN-LAIN"
+    c = str(city_name).upper().strip()
+    if c in ["", "-", "NAN", "0.0", "NONE", "NULL", "0"]: return "LAIN-LAIN"
+    c = re.sub(r'^(KECAMATAN|KEC\.|KEC|KABUPATEN|KAB\.|KAB|KOTA)\s+', '', c).strip()
+    for province, cities in PROVINCE_MAPPING.items():
+        for city in cities:
+            if re.search(rf'\b{city}\b', c): return province
+    return "LAIN-LAIN"
+
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
@@ -252,130 +262,150 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=600) 
-def load_data_from_mysql():
-    try:
-        import pymysql
-        import sqlalchemy
-        
-        db_user = st.secrets["mysql"]["user"]
-        db_pass = st.secrets["mysql"]["password"]
-        db_host = st.secrets["mysql"]["host"]
-        db_port = st.secrets["mysql"]["port"]
-        db_name = st.secrets["mysql"]["database"]
-        
-        engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
-        
-        query = "SELECT * FROM nama_tabel_penjualan"
-        df = pd.read_sql(query, engine)
-        
-        if df.empty:
-            return None
-            
-        df.columns = df.columns.str.strip()
-        
-        for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
-            if alt_col in df.columns:
-                if 'Penjualan' in df.columns: df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
-                else: df['Penjualan'] = df[alt_col]
-                    
-        for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-            if col_name in df.columns:
-                if 'Kode_Global' not in df.columns: df['Kode_Global'] = df[col_name]
-                else: df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-        if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
-
-        faktur_col = None
-        for col in df.columns:
-            if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-                faktur_col = col; break
-        if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
-        
-        if 'Nama Barang' in df.columns:
-            df['Nama Barang'] = df['Nama Barang'].fillna("-")
-            df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
-            df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
-
-        if 'Nama Outlet' in df.columns:
-            df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-            df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
-            df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
-            df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
-
-        def clean_rupiah(x):
-            if isinstance(x, (int, float)): 
-                return float(x)
-            
-            s = str(x).upper().replace('RP', '').replace(' ', '').strip()
-            if not s or s == '-': return 0.0
-            
-            is_negative = False
-            if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
-                is_negative = True
-                
-            s = re.sub(r'[,.]\d{2}$', '', s) 
-            s = re.sub(r'[^\d]', '', s) 
-            try: 
-                val = float(s)
-                return -val if is_negative else val
-            except: 
-                return 0.0
-
-        if 'Jumlah' in df.columns: df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-        else: df['Jumlah'] = 0.0
-
-        if 'Tanggal' in df.columns:
-            tanggal_raw = df['Tanggal'].astype(str).str.strip()
-            d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
-            d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
-            d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-            df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
-        else: df['Tanggal'] = pd.to_datetime('2000-01-01')
-
-        if 'Penjualan' in df.columns:
-            df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-            valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-            valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
-            df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
-            df_valid = df[df['Penjualan'] != 'Non-Sales']
-            outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
-            mask_non = df['Penjualan'] == 'Non-Sales'
-            df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
-            df['Penjualan'] = df['Penjualan'].astype('category')
-        else: df['Penjualan'] = 'Non-Sales'
-
-        def normalize_brand(raw_brand):
-            raw_upper = str(raw_brand).upper()
-            for target_brand, keywords in BRAND_ALIASES.items(): 
-                for keyword in keywords:
-                    if keyword in raw_upper: return target_brand
-            return raw_brand
-            
-        if 'Merk' in df.columns: df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
-        else: df['Merk'] = "-"
-        
-        cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
-        for col in cols_to_convert:
-            if col in df.columns: 
-                df[col] = df[col].fillna("-").astype(str).str.strip()
-                df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
-        
-        if 'Kota' in df.columns: df['Provinsi'] = df['Kota'].apply(map_city_to_province)
-        else: df['Provinsi'] = "-"
-        
-        try: df.to_parquet("master_database_penjualan.parquet", index=False)
-        except: pass 
-                
-        return df
-    except Exception as e:
-        st.error(f"Gagal memuat data MySQL. Detail error: {e}")
+@st.cache_data(ttl=43200) 
+def load_data_from_url():
+    urls = [
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv"  
+    ]
+    
+    def fetch_url(url):
+        if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
+            try:
+                url_with_ts = f"{url}&t={int(time.time())}"
+                return pd.read_csv(url_with_ts, dtype=str, engine='pyarrow')
+            except Exception as e:
+                return None
         return None
+
+    all_dfs = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = executor.map(fetch_url, urls)
+        for res in results:
+            if res is not None and not res.empty:
+                all_dfs.append(res)
+                
+    if not all_dfs: return None
+        
+    df = pd.concat(all_dfs, ignore_index=True)
+    df.columns = df.columns.str.strip()
+    
+    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
+        if alt_col in df.columns:
+            if 'Penjualan' in df.columns:
+                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
+            else:
+                df['Penjualan'] = df[alt_col]
+                
+    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+        if col_name in df.columns:
+            if 'Kode_Global' not in df.columns:
+                df['Kode_Global'] = df[col_name]
+            else:
+                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+
+    faktur_col = None
+    for col in df.columns:
+        if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
+            faktur_col = col; break
+    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+    
+    if 'Nama Barang' in df.columns:
+        df['Nama Barang'] = df['Nama Barang'].fillna("-")
+        df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
+        df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
+
+    if 'Nama Outlet' in df.columns:
+        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
+        df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
+        df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
+
+    def clean_rupiah(x):
+        s = str(x).upper().replace('RP', '').replace(' ', '').strip()
+        if not s or s == '-': return 0.0
+        
+        is_negative = False
+        if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
+            is_negative = True
+            
+        s = re.sub(r'[,.]\d{2}$', '', s) 
+        s = re.sub(r'[^\d]', '', s) 
+        
+        try: 
+            val = float(s)
+            return -val if is_negative else val
+        except: 
+            return 0.0
+
+    if 'Jumlah' in df.columns:
+        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    else:
+        df['Jumlah'] = 0.0
+
+    if 'Tanggal' in df.columns:
+        tanggal_raw = df['Tanggal'].astype(str).str.strip()
+        d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
+        d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
+        d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
+        df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
+    else:
+        df['Tanggal'] = pd.to_datetime('2000-01-01')
+
+    if 'Penjualan' in df.columns:
+        df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+        valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+        valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
+        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+        df_valid = df[df['Penjualan'] != 'Non-Sales']
+        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
+        mask_non = df['Penjualan'] == 'Non-Sales'
+        df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
+        df['Penjualan'] = df['Penjualan'].astype('category')
+    else:
+        df['Penjualan'] = 'Non-Sales'
+
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items(): 
+            for keyword in keywords:
+                if keyword in raw_upper: return target_brand
+        return raw_brand
+        
+    if 'Merk' in df.columns:
+        df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
+    else:
+        df['Merk'] = "-"
+    
+    cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
+    for col in cols_to_convert:
+        if col in df.columns: 
+            df[col] = df[col].fillna("-").astype(str).str.strip()
+            df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
+    
+    if 'Kota' in df.columns:
+        df['Provinsi'] = df['Kota'].apply(map_city_to_province)
+    else:
+        df['Provinsi'] = "-"
+    
+    try: df.to_parquet("master_database_penjualan.parquet", index=False)
+    except: pass 
+            
+    return df
 
 def load_data(fast_mode=False):
     if fast_mode and os.path.exists("master_database_penjualan.parquet"):
-        try: return pd.read_parquet("master_database_penjualan.parquet")
-        except: pass
-    return load_data_from_mysql()
+        try:
+            return pd.read_parquet("master_database_penjualan.parquet")
+        except Exception:
+            pass
+    return load_data_from_url()
 
 # =========================================================================
 # PIVOT FAST ENGINE
@@ -470,6 +500,7 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
+@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -909,7 +940,7 @@ def main_dashboard():
             
     df = load_data(fast_mode)
     if df is None or df.empty:
-        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Konfigurasi Database MySQL Anda.")
+        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link CSV Google Sheet Anda.")
         return
 
     user_role = st.session_state['role']
@@ -1911,7 +1942,7 @@ def main_dashboard():
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            total_dict_t2 = {'MONTH': 'GRAND TOTAL', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
                             # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
@@ -2080,6 +2111,7 @@ def main_dashboard():
                     file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
                     st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+            # -----------------------------------------------------------------------------------------
             TARGET_BA_PER_BRAND = {
                 "Careso": {
                     "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
@@ -2138,12 +2170,14 @@ def main_dashboard():
                 
                 st.write(f"**Rekap Keseluruhan Toko BA untuk Brand `{selected_ba_brand}` (2026)**")
                 
+                # Tambahkan Grand Total untuk Tabel 1 BA
                 total_dict_ba1 = {col: "" for col in merged_ba.columns}
                 total_dict_ba1['Costumer'] = "GRAND TOTAL"
                 for col in list(bulan_dict_ba.values()) + ['Target BA']:
                     if col in merged_ba.columns:
                         total_dict_ba1[col] = float(merged_ba[col].sum())
                         
+                # Render Tabel 1 dengan AgGrid Corporate
                 render_ba_aggrid(merged_ba, total_dict_ba=total_dict_ba1, file_prefix="Rekap_Toko_BA", brand_name=selected_ba_brand)
                 
                 st.divider()
@@ -2180,6 +2214,8 @@ def main_dashboard():
                 }
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
+                
+                # Render Tabel 2 dengan AgGrid Corporate
                 render_ba_aggrid(df_achv, total_dict_ba=total_dict_ba2, file_prefix=f"Achv_BA_{selected_month_ba}", brand_name=selected_ba_brand)
 
         with tab_ai:
