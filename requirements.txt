@@ -1,4 +1,4 @@
-streamlit==1.36.0
+streamlit==1.37.0
 pandas
 plotly
 pytz
@@ -9,5 +9,4 @@ streamlit-aggrid==0.3.4.post3
 xlsxwriter
 pyarrow
 google-generativeai
-pymysql
-SQLAlchemy
+
