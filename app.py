@@ -264,10 +264,8 @@ def load_data_from_mysql():
         db_port = st.secrets["mysql"]["port"]
         db_name = st.secrets["mysql"]["database"]
         
-        # Koneksi ke MySQL Database
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
         
-        # Sesuaikan nama_tabel_penjualan dengan tabel di database XAMPP Anda
         query = "SELECT * FROM nama_tabel_penjualan"
         df = pd.read_sql(query, engine)
         
@@ -276,7 +274,6 @@ def load_data_from_mysql():
             
         df.columns = df.columns.str.strip()
         
-        # 1. Pembersihan Dasar
         for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
             if alt_col in df.columns:
                 if 'Penjualan' in df.columns: df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
@@ -305,9 +302,7 @@ def load_data_from_mysql():
             df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
             df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
 
-        # 2. Logic Anti-Error untuk Rupiah Minus dari MySQL
         def clean_rupiah(x):
-            # Jika tipe datanya memang sudah numeric/float dari MySQL, amankan langsung
             if isinstance(x, (int, float)): 
                 return float(x)
             
@@ -475,7 +470,6 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
-@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -1491,6 +1485,7 @@ def main_dashboard():
             if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
             if filter_sku_spesifik: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Barang'].astype(str).isin(filter_sku_spesifik)]
 
+            # ---> KUNCI DIBUKA DISINI <---
             st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
 
             if maximize_toggle_sku:
@@ -1591,6 +1586,7 @@ def main_dashboard():
                     
                     gridOptions_sku = gb_sku.build()
                     
+                    # CSS CUSTOM: Input Putih, Teks Hitam, Filter Row Biru, Ikon Corong Putih
                     custom_css_sku = {
                         ".ag-root-wrapper": {"font-family": "sans-serif !important"},
                         ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
@@ -1662,6 +1658,7 @@ def main_dashboard():
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
             
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
             def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None, file_prefix="Growth", brand_name=""):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
@@ -1687,6 +1684,7 @@ def main_dashboard():
                 }
                 """)
                 
+                # LOGIKA WARNA PERSENTASE - TANPA !important
                 pct_cell_style = JsCode("""
                 function(params) {
                     if (params.node.rowPinned === 'bottom') {
@@ -1816,6 +1814,7 @@ def main_dashboard():
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
                 
+                # FILTER MURNI MEREK
                 is_valid_ro = df_team_all['Merk'] == brand_growth
                 is_target_brand = df_team_all['Merk'] == brand_growth
 
@@ -1827,6 +1826,7 @@ def main_dashboard():
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
+                    # LOGIKA BARU: MENGHITUNG MURNI BERDASARKAN NAMA OUTLET (Seperti Pivot)
                     ro_accumulated = set(df_base['Nama Outlet'].dropna().unique())
                     growth_data = []
                     
@@ -1875,6 +1875,7 @@ def main_dashboard():
                             else:
                                 display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
+                        # Render Tabel 1 dengan AgGrid Corporate
                         df_display_t1 = pd.DataFrame(display_2026)
                         render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %', file_prefix="Aktivitas_Outlet", brand_name=brand_growth)
                         
@@ -1912,6 +1913,7 @@ def main_dashboard():
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
                             total_dict_t2 = {'MONTH': 'GRAND TOTAL', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
+                            # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
                         
                         with col_g2:
@@ -1928,6 +1930,8 @@ def main_dashboard():
                                 })
                             
                             df_q = pd.DataFrame(q_data)
+                            
+                            # Render Tabel 3 dengan AgGrid Corporate
                             render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Quarterly_Growth", brand_name=brand_growth)
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
@@ -1937,6 +1941,7 @@ def main_dashboard():
         with tab_ba:
             st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
             
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID BA (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
             def render_ba_aggrid(df_ba, total_dict_ba=None, file_prefix="Target_BA", brand_name=""):
                 if not AGGRID_AVAILABLE:
                     st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
@@ -1983,6 +1988,7 @@ def main_dashboard():
                     elif col != 'Costumer':
                         gb_ba.configure_column(col, valueFormatter=currency_formatter, headerClass="right-aligned-header", type=["numericColumn"])
                     else:
+                        # PINNED LEFT UNTUK KOLOM COSTUMER + ENTERPRISE FILTER
                         gb_ba.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
 
                 gb_ba.configure_default_column(resizable=True, sortable=True)
@@ -2039,6 +2045,7 @@ def main_dashboard():
                 except Exception:
                     st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
 
+                # --- EXCEL EXPORT BUTTON ---
                 user_role_lower = st.session_state.get('role', 'staff').lower()
                 if user_role_lower in ['direktur', 'manager', 'supervisor']:
                     df_export = pd.concat([df_ba, pd.DataFrame([total_dict_ba])], ignore_index=True) if total_dict_ba else df_ba.copy()
