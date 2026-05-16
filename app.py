@@ -48,7 +48,7 @@ if 'last_activity' in st.session_state and st.session_state.get('logged_in', Fal
         st.rerun()
 st.session_state['last_activity'] = time.time()
 
-# Custom CSS & Tema Corporate Blue (Termasuk Hover Tabs & Hilangkan Logo Streamlit)
+# Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
     .metric-card {
@@ -61,8 +61,6 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
-    
-    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -71,32 +69,14 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
-    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
-    [data-testid="stMetricLabel"] p {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-    }
-    [data-testid="stMetricValue"] div {
-        font-size: 36px !important;
-        font-weight: bold !important;
-    }
+    [data-testid="stMetricLabel"] p { font-size: 18px !important; font-weight: 600 !important; }
+    [data-testid="stMetricValue"] div { font-size: 36px !important; font-weight: bold !important; }
     
-    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
-    div[data-baseweb="tab-list"] button[aria-selected="true"] {
-        color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-highlight"] {
-        background-color: #2980b9 !important;
-    }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-        border-bottom-color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover {
-        color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover span {
-        color: #2980b9 !important;
-    }
+    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
+    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
+    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,9 +89,6 @@ HOLIDAYS_2026 = [
     '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
 ]
 
-# ==========================================
-# KAMUS GEOGRAFIS & PREFIX BRAND
-# ==========================================
 PROVINCE_MAPPING = {
     "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
     "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
@@ -132,22 +109,6 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
-BRAND_PREFIXES = {
-    "Javinci": ["JV"], "Careso": ["EPS", "CRS"], "Somethinc": ["SMT", "SOM"],
-    "Newlab": ["NL", "NEW"], "Gloow & Be": ["GB", "GLO"], "Dorskin": ["DRS", "DOR"],
-    "Whitelab": ["WL", "WHI"], "Bonavie": ["BNV", "BON"], "Goute": ["GT", "GOU"],
-    "Mlen": ["MLN", "MLE"], "Artist Inc": ["ART"], "Maskit": ["MSK", "MAS"], 
-    "Birth Beyond": ["BB", "BIR"], "Sociolla": ["SOC", "SCL"], "Thai": ["TH", "THA"], 
-    "Inesia": ["INS", "INE"], "Y2000": ["Y2K", "Y20"], "Diosys": ["DIO", "DS"], 
-    "Masami": ["MSM", "MAS"], "Cassandra": ["CAS", "CSD"], "Clinelle": ["CLN", "CLI"], 
-    "Beautica": ["BTC", "BEA"], "Claresta": ["CLA", "CLR"], "Rose All Day": ["RAD", "ROS"], 
-    "OtwooO": ["OTO", "OTW"], "Sekawan": ["SKW", "SEK", "AINIE", "AIN"], "Avione": ["AV"], 
-    "Honor": ["HNR", "HON"], "Vlagio": ["VLG", "VLA"], "Ren & R & L": ["REN", "RRL"], 
-    "Mad For Make Up": ["MFM", "MAD"], "Satto": ["STT", "SAT"], "Mykonos": ["MYK", "MYC"], 
-    "The Face": ["TF", "TFC"], "Yu Chun Mei": ["YCM", "YUC"], "Milano": ["MIL", "MLN"], 
-    "Walnutt": ["WAL", "WLN"], "Elizabeth Rose": ["ELZ", "ELI"], "Sombong":["SOMBONG"], "Everpure":["EVERPURE"]
-}
-
 def map_city_to_province(city_name):
     if pd.isna(city_name): return "LAIN-LAIN"
     c = str(city_name).upper().strip()
@@ -158,9 +119,6 @@ def map_city_to_province(city_name):
             if re.search(rf'\b{city}\b', c): return province
     return "LAIN-LAIN"
 
-# ==========================================
-# 2. KONFIGURASI DATABASE & TARGET
-# ==========================================
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
@@ -221,7 +179,7 @@ BRAND_ALIASES = {
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG"]
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG", "SBG"]
 }
 
 SALES_MAPPING = {
@@ -304,19 +262,10 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-# =========================================================================
-# CACHE & DATA LOADER (SUPER CACHE: 12 JAM)
-# =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
     urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv"  
+          
     ]
     
     def fetch_url(url):
@@ -362,22 +311,32 @@ def load_data_from_url():
     if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
     
     if 'Nama Barang' in df.columns:
-        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
+        df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
+        df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-        df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
-        df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+        df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
+        df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
+        df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
 
     def clean_rupiah(x):
-        x = str(x).upper().replace('RP', '').strip()
-        x = re.sub(r'\s+', '', x) 
-        x = re.sub(r'[,.]\d{2}$', '', x) 
-        x = x.replace(',', '').replace('.', '') 
-        x = re.sub(r'[^\d-]', '', x) 
-        try: return float(x)
-        except: return 0.0
+        s = str(x).upper().replace('RP', '').replace(' ', '').strip()
+        if not s or s == '-': return 0.0
+        
+        is_negative = False
+        if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
+            is_negative = True
+            
+        s = re.sub(r'[,.]\d{2}$', '', s) 
+        s = re.sub(r'[^\d]', '', s) 
+        
+        try: 
+            val = float(s)
+            return -val if is_negative else val
+        except: 
+            return 0.0
 
     if 'Jumlah' in df.columns:
         df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
@@ -443,32 +402,15 @@ def load_data(fast_mode=False):
     return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE (DIHAPUS CACHE-NYA AGAR TIDAK STUCK)
+# PIVOT FAST ENGINE
 # =========================================================================
-def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
+def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
     group_cols = list(group_cols_tuple)
-    
-    if 'Nama Outlet' in df_pivot_source.columns and 'Nama Customer' not in df_pivot_source.columns:
-        df_pivot_source = df_pivot_source.rename(columns={'Nama Outlet': 'Nama Customer'})
-        if 'Nama Outlet' in group_cols:
-            group_cols[group_cols.index('Nama Outlet')] = 'Nama Customer'
-
-    invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-    df_pivot_source['ID_Patokan'] = np.where(
-        df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().isin(invalid_codes),
-        df_pivot_source['Nama Customer'].astype(str).str.strip(),
-        df_pivot_source['Kode_Global'].astype(str).str.strip()
-    )
 
     if not df_pivot_source.empty:
+        # Filter berdasarkan Merk untuk mendapatkan BASELINE seluruh toko
         if selected_merk_excel != "SEMUA":
-            prefixes = brand_prefixes_dict.get(selected_merk_excel, [selected_merk_excel[:3].upper()])
-            prefix_tuple = tuple(prefixes)
-            
-            mask_history = df_pivot_source['Merk'] == selected_merk_excel
-            kd_col = 'Kode_Global'
-            mask_prefix = df_pivot_source[kd_col].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-            final_mask = mask_history | mask_prefix
+            final_mask = df_pivot_source['Merk'] == selected_merk_excel
         else:
             final_mask = pd.Series(True, index=df_pivot_source.index)
             
@@ -476,20 +418,27 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
-        df_filtered = df_filtered.sort_values('Tanggal', ascending=False)
-        base_customers = df_filtered.drop_duplicates(subset=['ID_Patokan'], keep='first')[['ID_Patokan'] + group_cols]
-        
+        # Ekstrak data transaksi KHUSUS untuk tahun yang dipilih
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='ID_Patokan', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-            master_pivot = pd.merge(base_customers, pivot_sales, on='ID_Patokan', how='left').fillna(0)
+            
+            # Buat pivot nilai penjualan untuk tahun tersebut
+            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+            
+            # Ambil master list toko (baseline) dari seluruh sejarah transaksi merk tersebut
+            df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
+            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            
+            # MENGGUNAKAN how='left' agar semua toko di base_customers tetap muncul meski penjualannya 0
+            master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
         else:
-            master_pivot = base_customers.copy()
+            # Jika tahun yang dipilih sama sekali tidak ada transaksi, tampilkan semua toko dengan nilai 0
+            df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
+            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
             for i in range(1, 13): master_pivot[i] = 0
             
-        master_pivot = master_pivot.drop(columns=['ID_Patokan'])
         return master_pivot
         
     return pd.DataFrame()
@@ -562,11 +511,10 @@ def render_pivot_fragment(df_scope_all, role):
     else:
         df_scope_all['Kode_Global'] = "-"; grp_cols.append('Kode_Global'); kd_asal = 'Kode_Global'
         
-    if 'Nama Customer' in df_scope_all.columns: grp_cols.append('Nama Customer')
-    elif 'Nama Outlet' in df_scope_all.columns: 
+    if 'Nama Outlet' in df_scope_all.columns: 
         grp_cols.append('Nama Outlet')
-        df_scope_all['Nama Customer'] = df_scope_all['Nama Outlet']
-    else: df_scope_all['Nama Customer'] = "-"; grp_cols.append('Nama Customer')
+    else: 
+        df_scope_all['Nama Outlet'] = "-"; grp_cols.append('Nama Outlet')
     
     if 'Provinsi' in df_scope_all.columns: grp_cols.append('Provinsi')
     else: df_scope_all['Provinsi'] = "-"; grp_cols.append('Provinsi')
@@ -584,21 +532,20 @@ def render_pivot_fragment(df_scope_all, role):
         st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
         
         list_kode_all = sorted(df_scope_all[kd_asal].astype(str).unique())
-        list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique()) if 'Nama Outlet' in df_scope_all.columns else sorted(df_scope_all['Nama Customer'].astype(str).unique())
+        list_nama_all = sorted(df_scope_all['Nama Outlet'].astype(str).unique())
         list_provinsi_all = sorted(df_scope_all['Provinsi'].astype(str).unique())
         list_kota_all = sorted(df_scope_all['Kota'].astype(str).unique())
 
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         with col_f1: filter_kode = st.multiselect("Kode Customer:", list_kode_all, placeholder="Pilih Kode...")
-        with col_f2: filter_nama = st.multiselect("Nama Customer:", list_nama_all, placeholder="Pilih Customer...")
+        with col_f2: filter_nama = st.multiselect("Nama Outlet:", list_nama_all, placeholder="Pilih Outlet...")
         with col_f3: filter_provinsi = st.multiselect("Provinsi:", list_provinsi_all, placeholder="Pilih Provinsi...")
         with col_f4: filter_kota = st.multiselect("Kota:", list_kota_all, placeholder="Pilih Kota...")
 
         maximize_toggle = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)")
-        
         submit_button = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-    master_pivot = generate_pivot_fast(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols), BRAND_PREFIXES)
+    master_pivot = generate_pivot_fast(df_scope_all, selected_merk_excel, tuple(selected_tahun_excel), tuple(grp_cols))
 
     if not master_pivot.empty:
         bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
@@ -624,13 +571,13 @@ def render_pivot_fragment(df_scope_all, role):
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-        if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+        if 'Nama Outlet' not in master_pivot.columns: master_pivot['Nama Outlet'] = "-"
         if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
         if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
 
         df_filtered = master_pivot.copy()
         if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
+        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Outlet'].astype(str).isin(filter_nama)]
         if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
         if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
 
@@ -641,184 +588,202 @@ def render_pivot_fragment(df_scope_all, role):
             <style>
                 header {display: none !important;}
                 [data-testid="stSidebar"] {display: none !important;}
-                .block-container {
-                    max-width: 100% !important;
-                    padding-top: 1rem !important;
-                    padding-right: 1rem !important;
-                    padding-left: 1rem !important;
-                    padding-bottom: 1rem !important;
-                }
+                .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
             </style>
             """, unsafe_allow_html=True)
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            # --- 1. PEMUSNAH KOLOM NAMA CUSTOMER ---
-            if 'Nama Customer' in df_filtered.columns:
-                df_filtered = df_filtered.drop(columns=['Nama Customer'])
 
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # --- 2. PENYESUAIAN GRAND TOTAL ---
-            total_dict = {col: "" for col in df_filtered.columns}
-            if 'Kode Customer' in total_dict:
-                total_dict['Kode Customer'] = "GRAND TOTAL"
-            elif len(df_filtered.columns) > 0:
-                total_dict[df_filtered.columns[0]] = "GRAND TOTAL"
-                
-            for col in num_cols:
-                if col in df_filtered.columns:
-                    total_dict[col] = df_filtered[col].sum()
-                    
-            df_display = pd.concat([df_filtered, pd.DataFrame([total_dict])], ignore_index=True)
+            cols_reordered = ['Kode Customer', 'Nama Outlet', 'Provinsi', 'Kota'] + num_cols
+            df_display = df_filtered[cols_reordered].copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
-            # ================= HTML PIVOT TABLE RENDERER DENGAN GRIDLINES & CORPORATE BLUE =================
-            html_table = """
-            <style>
-                .pivot-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                .pivot-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                .pivot-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                .pivot-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                .pivot-table tr:hover td { background-color: #e3f2fd !important; }
-                .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                /* Styling untuk Dropdown Filter */
-                .filter-dropdown { width: 95%; padding: 4px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; cursor: pointer; background-color: #fff;}
-            </style>
-            <div style="overflow-x: auto; max-height: 800px;">
-                <table class="pivot-table" id="table-pivot-main">
-                    <thead>
-                        <tr>
-            """
-            
-            # --- 3. INJEKSI DROPDOWN CERDAS KE HEADER ---
-            categorical_cols = ['Kode Customer', 'Provinsi', 'Kota'] 
-            
-            for col in df_display.columns:
-                if col in categorical_cols:
-                    # Ambil nilai unik dari kolom tersebut (abaikan GRAND TOTAL)
-                    unique_vals = sorted(list(set([str(x) for x in df_filtered[col].dropna() if str(x).strip() != ""])))
-                    
-                    options_html = "<option value=''>Semua</option>"
-                    for val in unique_vals:
-                        options_html += f"<option value='{val}'>{val}</option>"
-                    
-                    html_table += f"<th>{col}<br><select class='filter-dropdown' onchange=\"filterTableDropdown('table-pivot-main')\">{options_html}</select></th>"
-                else:
-                    # Kolom angka tidak dipasang dropdown agar tidak semrawut
-                    html_table += f"<th>{col}</th>"
-                    
-            html_table += "</tr></thead><tbody>"
-            
-            for _, row in df_display.iterrows():
-                is_gt = False
-                if 'Kode Customer' in row and row['Kode Customer'] == 'GRAND TOTAL': is_gt = True
-                elif len(row) > 0 and row.iloc[0] == 'GRAND TOTAL': is_gt = True
+            total_dict = {col: "" for col in df_display.columns}
+            total_dict['Kode Customer'] = "GRAND TOTAL" 
                 
-                tr_class = "grand-total-row" if is_gt else ""
-                html_table += f'<tr class="{tr_class}">'
+            for col in num_cols:
+                if col in df_display.columns:
+                    val = df_display[col].sum()
+                    total_dict[col] = float(val) if pd.notnull(val) else 0.0
+                    
+            df_display_export = pd.concat([df_display, pd.DataFrame([total_dict])], ignore_index=True)
+            
+            if AGGRID_AVAILABLE:
+                gb = GridOptionsBuilder.from_dataframe(df_display)
+                
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
                 
                 for col in df_display.columns:
-                    val = row[col]
                     if col in num_cols:
-                        if pd.isna(val) or val == "":
-                            val_str = "-"
-                        else:
-                            try:
-                                val_str = f"Rp {float(val):,.0f}".replace(',', '.')
-                            except:
-                                val_str = str(val)
-                        html_table += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
+                        gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                    elif col in ['Kode Customer', 'Nama Outlet']:
+                        gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
-                        val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                        if is_gt and (col == 'Kode Customer' or col == df_display.columns[0]):
-                            html_table += f'<td style="text-align: center;">{val_str}</td>'
-                        else:
-                            html_table += f'<td>{val_str}</td>'
-                html_table += "</tr>"
+                        gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                 
-            # --- 4. SCRIPT JAVASCRIPT UNTUK DROPDOWN MATCHING ---
-            html_table += """
-            </tbody></table></div><br>
-            <script>
-            function filterTableDropdown(tableId) {
-                var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
-                if (!table) return;
-                var tr = table.getElementsByTagName("tr");
-                var ths = table.getElementsByTagName("th");
-                var selects = [];
+                gb.configure_default_column(resizable=True, sortable=True)
                 
-                // Kumpulkan semua elemen select
-                for (var i = 0; i < ths.length; i++) {
-                    var sel = ths[i].getElementsByTagName("select")[0];
-                    selects.push(sel ? sel : null);
+                getRowHeight = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
                 }
+                """)
                 
-                // Eksekusi filter
-                for (var i = 1; i < tr.length; i++) {
-                    if (tr[i].className.indexOf("grand-total-row") > -1) continue;
-                    
-                    var displayRow = true;
-                    for (var j = 0; j < selects.length; j++) {
-                        if (selects[j] && selects[j].value !== "") {
-                            var filterVal = selects[j].value.toUpperCase();
-                            var td = tr[i].getElementsByTagName("td")[j];
-                            if (td) {
-                                var txtValue = td.textContent || td.innerText;
-                                // Pencarian Exact Match (Sama Persis)
-                                if (txtValue.toUpperCase() !== filterVal) {
-                                    displayRow = false;
-                                    break;
-                                }
-                            }
-                        }
+                gb.configure_grid_options(
+                    getRowHeight=getRowHeight,
+                    headerHeight=45, 
+                    floatingFiltersHeight=40,
+                    pinnedBottomRowData=[total_dict]
+                )
+                
+                getRowStyle = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
                     }
-                    tr[i].style.display = displayRow ? "" : "none";
+                    return null;
                 }
-            }
-            </script>
-            """
-            
-            st.markdown(html_table, unsafe_allow_html=True)
+                """)
+                gb.configure_grid_options(getRowStyle=getRowStyle)
+                
+                gridOptions = gb.build()
+                
+                custom_css = {
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                    }
+                }
+                
+                try:
+                    AgGrid(df_display, gridOptions=gridOptions, allow_unsafe_jscode=True, theme='balham', height=600, fit_columns_on_grid_load=False, custom_css=custom_css, enable_enterprise_modules=True)
+                except Exception:
+                    st.dataframe(df_display_export, use_container_width=True)
+            else:
+                st.error("Library st_aggrid belum terpasang.")
             
         else:
             st.info("Data Kosong setelah difilter.")
             
-        # ================= KEMBALIKAN TOMBOL DOWNLOAD EXCEL =================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                if 'df_display' in locals() and not df_display.empty:
-                    df_display.to_excel(writer, index=False, sheet_name='Master Data')
-                
-                workbook = writer.book
-                worksheet = writer.sheets['Master Data']
-                
-                user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
-                time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
-                
-                worksheet.set_header(f'&C&10{watermark_text}')
-                worksheet.set_footer(f'&RPage &P of &N')
-                
-                format1 = workbook.add_format({'num_format': '#,##0'})
-                worksheet.set_column('D:P', None, format1) 
-                
-                if 'df_display' in locals() and not df_display.empty:
-                    bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                    last_row_idx = len(df_display) 
-                    worksheet.set_row(last_row_idx, None, bold_format)
+            has_data_to_export = 'df_display' in locals() and not df_display.empty
             
-            st.download_button(
-                label="📥 Download Laporan Excel (XLSX) - DRM Protected",
-                data=output.getvalue(),
-                file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    else:
-        st.info("Data Kosong.")
+            if has_data_to_export:
+                # 1. Tambahkan kolom RO (Registered Outlet) urut dari 1 hingga akhir
+                df_excel_data = df_display.copy()
+                ro_list = list(range(1, len(df_excel_data) + 1))
+                df_excel_data.insert(0, 'RO', ro_list)
+                
+                # 2. Siapkan baris Grand Total
+                total_dict_excel = total_dict.copy()
+                total_dict_excel['Kode Customer'] = 'GRAND TOTAL'
+                
+                # Gabungkan data utama dengan Grand Total
+                df_final_export = pd.concat([df_excel_data, pd.DataFrame([total_dict_excel])], ignore_index=True)
+                
+                # Pastikan kolom RO benar-benar ada di paling kiri (index 0)
+                cols_order = ['RO'] + [c for c in df_final_export.columns if c != 'RO']
+                df_final_export = df_final_export[cols_order]
+                # Baris total untuk kolom RO dikosongkan
+                df_final_export.at[len(df_final_export)-1, 'RO'] = ""
+
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    worksheet = workbook.add_worksheet('Master Data')
+                    
+                    # --- SETUP FORMAT EXCEL ---
+                    # Format Header: Background Aqua Accent 5 Lighter 60% (#DAEEF3), Teks Hitam, Thick Outer Border (border: 2)
+                    header_format = workbook.add_format({'bg_color': '#DAEEF3', 'font_color': 'black', 'bold': True, 'border': 2, 'align': 'center', 'valign': 'vcenter'})
+                    # Format Data Standard: Border tipis (border: 1)
+                    data_format = workbook.add_format({'border': 1, 'valign': 'vcenter'})
+                    data_num_format = workbook.add_format({'border': 1, 'num_format': '#,##0', 'valign': 'vcenter'})
+                    # Format Footer: Thick Outer Border (border: 2)
+                    footer_format = workbook.add_format({'bold': True, 'border': 2, 'num_format': '#,##0', 'valign': 'vcenter'})
+                    footer_text_format = workbook.add_format({'bold': True, 'border': 2, 'valign': 'vcenter', 'align': 'center'})
+                    
+                    # --- SETUP JUDUL HALAMAN & WATERMARK ---
+                    user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                    time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                    worksheet.set_header(f'&C&10{watermark_text}')
+                    worksheet.set_footer(f'&RPage &P of &N')
+
+                    title_format = workbook.add_format({'bold': True, 'font_size': 14})
+                    worksheet.write(0, 0, f"LAPORAN PENJUALAN MASTER - {selected_merk_excel}", title_format)
+                    worksheet.write(1, 0, f"Tanggal Download: {time_stamp}")
+
+                    # --- MENULIS HEADER ---
+                    worksheet.set_row(3, 18) # Setting tinggi header 18px
+                    for col_num, col_name in enumerate(df_final_export.columns):
+                        worksheet.write(3, col_num, col_name, header_format)
+
+                    # --- MENULIS DATA & FOOTER ---
+                    for row_num in range(len(df_final_export)):
+                        is_footer = row_num == len(df_final_export) - 1
+                        
+                        # Tinggi Baris: 18px untuk data, 35px untuk footer
+                        worksheet.set_row(row_num + 4, 35 if is_footer else 18)
+                        
+                        for col_num, col_name in enumerate(df_final_export.columns):
+                            val = df_final_export.iloc[row_num, col_num]
+                            
+                            # Cek value valid, bersihkan NaN
+                            if pd.isna(val) or str(val).lower() == "nan":
+                                val = ""
+                                
+                            # Aplikasikan Format
+                            if is_footer:
+                                fmt = footer_format if isinstance(val, (int, float)) else footer_text_format
+                            else:
+                                fmt = data_num_format if isinstance(val, (int, float)) else data_format
+                                
+                            worksheet.write(row_num + 4, col_num, val, fmt)
+
+                    # --- MENGATUR LEBAR KOLOM ---
+                    worksheet.set_column(0, 0, 5)   # Kolom RO (A)
+                    worksheet.set_column(1, 1, 15)  # Kolom Kode Customer (B)
+                    worksheet.set_column(2, 2, 35)  # Kolom Nama Outlet (C)
+                    worksheet.set_column(3, 4, 15)  # Kolom Provinsi & Kota (D, E)
+                    worksheet.set_column(5, len(df_final_export.columns)-1, 14) # Kolom Bulan (F ke akhir)
+
+                    # --- FREEZE PANES ---
+                    # Membekukan baris ke 1-4 (sampai Header) dan Kolom 1-3 (RO, Kode, Nama Outlet)
+                    worksheet.freeze_panes(4, 3)
+            else:
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
+            
+            if has_data_to_export:
+                st.download_button(
+                    label="📥 Download Laporan Excel (XLSX) - DRM Protected",
+                    data=output.getvalue(),
+                    file_name=f"Laporan_Master_{selected_merk_excel}_{datetime.date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
 def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
@@ -867,7 +832,7 @@ def login_page():
                                     log_activity(username, "FAILED LOGIN - WRONG PASS")
                                     st.session_state['failed_attempts'][username] = st.session_state['failed_attempts'].get(username, 0) + 1
                                     if st.session_state['failed_attempts'][username] >= 3:
-                                        st.session_state['lockout_until'][username] = time.time() + 600 # 10 menit
+                                        st.session_state['lockout_until'][username] = time.time() + 600
                                         st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
                                 else:
                                     st.session_state['failed_attempts'][username] = 0
@@ -1095,27 +1060,13 @@ def main_dashboard():
 
     if selected_ijl != "IJL":
         brands_in_ijl = TARGET_DATABASE[selected_ijl].keys()
-        allowed_prefixes = []
-        for b in brands_in_ijl:
-            allowed_prefixes.extend(BRAND_PREFIXES.get(b, [b[:3].upper()]))
-        allowed_prefixes = tuple(allowed_prefixes)
-        
-        mask_merk = df_scope_all['Merk'].isin(brands_in_ijl)
-        mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
-        df_scope_all = df_scope_all[mask_merk | mask_prefix]
+        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(brands_in_ijl)]
 
     if target_sales_filter != "SEMUA":
         df_scope_all = df_scope_all[df_scope_all['Penjualan'] == target_sales_filter]
 
     if pilih_merk:
-        allowed_prefixes = []
-        for b in pilih_merk:
-            allowed_prefixes.extend(BRAND_PREFIXES.get(b, [b[:3].upper()]))
-        allowed_prefixes = tuple(allowed_prefixes)
-        
-        mask_merk = df_scope_all['Merk'].isin(pilih_merk)
-        mask_prefix = df_scope_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in allowed_prefixes))
-        df_scope_all = df_scope_all[mask_merk | mask_prefix]
+        df_scope_all = df_scope_all[df_scope_all['Merk'].isin(pilih_merk)]
 
     if pilih_outlet:
         df_scope_all = df_scope_all[df_scope_all['Nama Outlet'].isin(pilih_outlet)]
@@ -1211,7 +1162,6 @@ def main_dashboard():
         if loop_source and (target_sales_filter == "SEMUA" or target_sales_filter.upper() in TARGET_DATABASE):
             st.subheader(f"🏆 Ranking Brand & Detail Sales {('- ' + selected_ijl) if selected_ijl != 'IJL' else ''}")
             
-            # --- SUPER VECTORIZATION (PRE-AGGREGATION) UNTUK KECEPATAN ---
             dict_mtd_brand = df_active_tab.groupby('Merk')['Jumlah'].sum().to_dict() if not df_active_tab.empty else {}
             
             def get_salesmen_dict(df_to_group):
@@ -1219,13 +1169,12 @@ def main_dashboard():
                 if not df_to_group.empty:
                     grouped = df_to_group.groupby(['Merk', 'Penjualan'])['Jumlah'].sum()
                     for (b, s), val in grouped.items():
-                        if val > 0:
+                        if val != 0:
                             if b not in res: res[b] = {}
                             res[b][s] = val
                 return res
                 
             salesmen_mtd_master = get_salesmen_dict(df_active_tab)
-            # -------------------------------------------------------------
             
             temp_grouped_data = [] 
             for spv, brands_dict in loop_source:
@@ -1343,7 +1292,6 @@ def main_dashboard():
                         
                 safe_remaining_days = remaining_workdays if remaining_workdays > 0 else 1
                 
-                # --- VECTORIZATION ---
                 df_brand_active = df_active_tab[df_active_tab['Merk'] == selected_brand_detail]
                 dict_sales_mtd = df_brand_active.groupby('Penjualan')['Jumlah'].sum().to_dict()
                 
@@ -1405,7 +1353,6 @@ def main_dashboard():
 
         st.caption("Produk yang berkontribusi terhadap 80% dari total omset.")
         
-        # --- SHARED GROUPBY ---
         grouped_barang = df_t3.groupby('Nama Barang')['Jumlah'].sum().reset_index().sort_values('Jumlah', ascending=False)
         total_omset_pareto = grouped_barang['Jumlah'].sum()
         
@@ -1454,7 +1401,6 @@ def main_dashboard():
             st.warning(f"Ada {len(sleeping_outlets)} toko yang belum order di periode ini.")
             with st.expander("Lihat Daftar Toko Tidur"):
                 last_trx = []
-                # Vectorization for sleeping outlets
                 sleeping_df = df_scope_all[df_scope_all['Nama Outlet'].isin(sleeping_outlets)]
                 last_dates = sleeping_df.groupby('Nama Outlet')['Tanggal'].max()
                 sales_handlers = sleeping_df.groupby('Nama Outlet')['Penjualan'].first()
@@ -1596,21 +1542,15 @@ def main_dashboard():
             list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
             kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
             
-            # --- CASCADING DROPDOWN (Pilih Merk di Luar Form agar bisa auto-update) ---
             col_s1, col_s2 = st.columns(2)
             with col_s1:
                 selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
             with col_s2:
                 selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
                 
-            # Pra-Filter df_sku_base untuk mendapatkan daftar opsi dropdown yang dinamis (Cascading)
             df_sku_for_options = df_sku_base.copy()
             if selected_merk_sku != "SEMUA":
-                prefixes = BRAND_PREFIXES.get(selected_merk_sku, [selected_merk_sku[:3].upper()])
-                prefix_tuple = tuple(prefixes)
-                mask_history = df_sku_for_options['Merk'] == selected_merk_sku
-                mask_prefix = df_sku_for_options[kd_asal].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                df_sku_for_options = df_sku_for_options[mask_history | mask_prefix]
+                df_sku_for_options = df_sku_for_options[df_sku_for_options['Merk'] == selected_merk_sku]
                 
             list_sku_cascading = sorted(df_sku_for_options['Nama Barang'].dropna().astype(str).unique())
             list_kode_all_sku = sorted(df_sku_for_options[kd_asal].astype(str).unique())
@@ -1621,10 +1561,9 @@ def main_dashboard():
             with st.form(key='sku_filter_form'):
                 st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
-                # --- OPSI A: KOLOM KODE/NAMA/PROVINSI/KOTA DI ATAS, SKU DI BAWAH (FULL WIDTH) ---
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1: filter_kode_sku = st.multiselect("Kode Customer:", list_kode_all_sku, placeholder="Pilih Kode...")
-                with col_f2: filter_nama_sku = st.multiselect("Nama Customer:", list_nama_all_sku, placeholder="Pilih Customer...")
+                with col_f2: filter_nama_sku = st.multiselect("Nama Outlet:", list_nama_all_sku, placeholder="Pilih Outlet...")
                 with col_f3: filter_provinsi_sku = st.multiselect("Provinsi:", list_provinsi_all_sku, placeholder="Pilih Provinsi...")
                 with col_f4: filter_kota_sku = st.multiselect("Kota:", list_kota_all_sku, placeholder="Pilih Kota...")
                 
@@ -1633,7 +1572,6 @@ def main_dashboard():
                 maximize_toggle_sku = st.toggle("🗖 Mode Layar Penuh (Tabel Super Lebar)", key='fs_sku')
                 submit_button_sku = st.form_submit_button(label='🚀 Terapkan Filter (Super Cepat)', use_container_width=True)
 
-            # Filtering Execution
             df_sku_filtered = df_sku_for_options.copy() 
 
             if selected_tahun_sku:
@@ -1645,154 +1583,151 @@ def main_dashboard():
             if filter_kota_sku: df_sku_filtered = df_sku_filtered[df_sku_filtered['Kota'].astype(str).isin(filter_kota_sku)]
             if filter_sku_spesifik: df_sku_filtered = df_sku_filtered[df_sku_filtered['Nama Barang'].astype(str).isin(filter_sku_spesifik)]
 
-            if not filter_nama_sku and not filter_sku_spesifik:
-                st.info("👈 Silakan pilih minimal 1 'Nama Customer' ATAU 'Nama Barang (SKU)' di kotak pencarian atas lalu klik 'Terapkan Filter' untuk melihat detail transaksi.")
-            else:
-                st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
+            # ---> KUNCI DIBUKA DISINI <---
+            st.caption(f"Menampilkan transaksi dari {df_sku_filtered['Nama Outlet'].nunique()} toko.")
 
-                if maximize_toggle_sku:
-                    st.markdown("""
-                    <style>
-                        header {display: none !important;}
-                        [data-testid="stSidebar"] {display: none !important;}
-                        .block-container {
-                            max-width: 100% !important;
-                            padding-top: 1rem !important;
-                            padding-right: 1rem !important;
-                            padding-left: 1rem !important;
-                            padding-bottom: 1rem !important;
-                        }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
+            if maximize_toggle_sku:
+                st.markdown("""
+                <style>
+                    header {display: none !important;}
+                    [data-testid="stSidebar"] {display: none !important;}
+                    .block-container { max-width: 100% !important; padding-top: 1rem !important; padding-right: 1rem !important; padding-left: 1rem !important; padding-bottom: 1rem !important; }
+                </style>
+                """, unsafe_allow_html=True)
+                st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
-                if not df_sku_filtered.empty:
-                    df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
+            if not df_sku_filtered.empty:
+                df_sku_filtered['Bulan Angka'] = df_sku_filtered['Tanggal'].dt.month
+                
+                if filter_sku_spesifik:
+                    index_col = 'Nama Outlet'
+                    display_col = 'Nama Toko'
+                else:
+                    index_col = 'Nama Barang'
+                    display_col = 'Nama Barang'
                     
-                    # --- 🚀 FITUR: Tabel SKU Bunglon ---
-                    # Jika user mencari SKU spesifik, balik tabelnya menjadi berbasis Toko
-                    if filter_sku_spesifik:
-                        index_col = 'Nama Outlet'
-                        display_col = 'Nama Toko'
-                    else:
-                        index_col = 'Nama Barang'
-                        display_col = 'Nama Barang'
-                        
-                    pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index=index_col, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-                    pivot_sku = pivot_sku.rename(columns={index_col: display_col})
+                pivot_sku = pd.pivot_table(df_sku_filtered, values='Jumlah', index=index_col, columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+                pivot_sku = pivot_sku.rename(columns={index_col: display_col})
+                
+                bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+                for i in range(1, 13):
+                    if i not in pivot_sku.columns: pivot_sku[i] = 0
                     
-                    bulan_indo_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
-                    for i in range(1, 13):
-                        if i not in pivot_sku.columns: pivot_sku[i] = 0
-                        
-                    cols_sku = [display_col] + list(range(1, 13))
-                    pivot_sku = pivot_sku[cols_sku]
-                    pivot_sku.columns = [display_col] + [bulan_indo_map[i] for i in range(1, 13)]
+                cols_sku = [display_col] + list(range(1, 13))
+                pivot_sku = pivot_sku[cols_sku]
+                pivot_sku.columns = [display_col] + [bulan_indo_map[i] for i in range(1, 13)]
+                
+                pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
+                
+                total_dict_sku = {col: "" for col in pivot_sku.columns}
+                total_dict_sku[display_col] = "GRAND TOTAL"
+                for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
+                    val = pivot_sku[col].sum()
+                    total_dict_sku[col] = float(val) if pd.notnull(val) else 0.0
+                
+                df_display_sku = pivot_sku.copy()
+                df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
+                
+                df_display_sku[display_col] = df_display_sku[display_col].astype(str)
+                num_cols_sku = [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']
+                for col in num_cols_sku:
+                    if col in df_display_sku.columns:
+                        df_display_sku[col] = pd.to_numeric(df_display_sku[col], errors='coerce').fillna(0).astype(float)
+                
+                df_display_sku_export = pd.concat([df_display_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
+                
+                if AGGRID_AVAILABLE:
+                    gb_sku = GridOptionsBuilder.from_dataframe(df_display_sku)
                     
-                    pivot_sku['Total Penjualan'] = pivot_sku[list(bulan_indo_map.values())].sum(axis=1)
+                    currency_formatter = JsCode("""
+                    function(params) {
+                        if (params.value === null || params.value === undefined || params.value === "") return '-';
+                        var val = Number(params.value);
+                        if (isNaN(val)) return params.value; 
+                        return (val < 0 ? '-' : '') + 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+                    }
+                    """)
                     
-                    # Grand Total Row
-                    total_dict_sku = {col: "" for col in pivot_sku.columns}
-                    total_dict_sku[display_col] = "GRAND TOTAL"
-                    for col in [bulan_indo_map[i] for i in range(1, 13)] + ['Total Penjualan']:
-                        total_dict_sku[col] = pivot_sku[col].sum()
-                    
-                    df_display_sku = pd.concat([pivot_sku, pd.DataFrame([total_dict_sku])], ignore_index=True)
-                    
-                    # --- 🚀 FITUR: Pemusnah Kolom Ganda ---
-                    df_display_sku = df_display_sku.loc[:, ~df_display_sku.columns.duplicated()]
-                    
-                    # HTML Table Rendering
-                    html_table_sku = """
-                    <style>
-                        .sku-table { width: 100%; border-collapse: collapse; font-family: 'Calibri', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                        .sku-table th { background-color: #2980b9; color: white; border: 1px solid #555555; padding: 8px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-                        .sku-table td { border: 1px solid #555555; padding: 6px 8px; color: #000; background-color: #fff; }
-                        .sku-table tr:nth-child(even) td { background-color: #f9f9f9; }
-                        .sku-table tr:hover td { background-color: #e3f2fd !important; }
-                        .grand-total-row td { background-color: #FFFF00 !important; font-weight: bold; color: black; border-top: 3px solid #333; }
-                        /* Styling untuk input Filter Corong */
-                        .filter-input-sku { width: 95%; padding: 3px; margin-top: 5px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: normal; color: #333; }
-                    </style>
-                    <div style="overflow-x: auto; max-height: 800px;">
-                        <table class="sku-table" id="table-sku-main">
-                            <thead>
-                                <tr>
-                    """
                     for col in df_display_sku.columns:
-                        # --- 🚀 FITUR: Filter Corong (Gaya A) ---
-                        html_table_sku += f"<th>{col}<br><input type='text' class='filter-input-sku' placeholder='🔍 Filter...' onkeyup=\"filterTableData('table-sku-main')\"></th>"
-                    html_table_sku += "</tr></thead><tbody>"
+                        if col in num_cols_sku:
+                            gb_sku.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
+                        elif col == display_col:
+                            gb_sku.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
+                        else:
+                            gb_sku.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
                     
-                    for _, row in df_display_sku.iterrows():
-                        is_gt = row.get(display_col) == 'GRAND TOTAL'
-                        tr_class = "grand-total-row" if is_gt else ""
-                        html_table_sku += f'<tr class="{tr_class}">'
-                        
-                        for col in df_display_sku.columns:
-                            val = row[col]
-                            if col != display_col:
-                                if pd.isna(val) or val == 0 or val == "":
-                                    val_str = "-"
-                                else:
-                                    try:
-                                        val_str = f"Rp {float(val):,.0f}".replace(',', '.')
-                                    except:
-                                        val_str = str(val)
-                                html_table_sku += f'<td style="text-align: right; white-space: nowrap;">{val_str}</td>'
-                            else:
-                                val_str = str(val) if pd.notna(val) and str(val).strip() != "" else "-"
-                                if is_gt:
-                                    html_table_sku += f'<td style="text-align: center;">{val_str}</td>'
-                                else:
-                                    html_table_sku += f'<td>{val_str}</td>'
-                        html_table_sku += "</tr>"
-                        
-                    html_table_sku += """
-                    </tbody></table></div><br>
-                    <script>
-                    function filterTableData(tableId) {
-                        var table = window.parent.document.getElementById(tableId) || document.getElementById(tableId);
-                        if (!table) return;
-                        var tr = table.getElementsByTagName("tr");
-                        var ths = table.getElementsByTagName("th");
-                        var inputs = [];
-                        for (var i=0; i<ths.length; i++) {
-                            inputs.push(ths[i].getElementsByTagName("input")[0]);
+                    gb_sku.configure_default_column(resizable=True, sortable=True)
+                    
+                    getRowHeightSKU = JsCode("""
+                    function(params) {
+                        if (params.node.rowPinned === 'bottom') return 45;
+                        return 40;
+                    }
+                    """)
+                    
+                    gb_sku.configure_grid_options(
+                        getRowHeight=getRowHeightSKU,
+                        headerHeight=45,
+                        floatingFiltersHeight=40,
+                        pinnedBottomRowData=[total_dict_sku]
+                    )
+                    
+                    getRowStyleSKU = JsCode("""
+                    function(params) {
+                        if (params.node.rowPinned === 'bottom') {
+                            return { 'background-color': '#FFFF00 !important', 'font-weight': 'bold !important', 'color': 'black !important', 'border-top': '3px solid #333 !important' };
                         }
-                        
-                        for (var i = 1; i < tr.length; i++) {
-                            if (tr[i].className.indexOf("grand-total-row") > -1) continue;
-                            var displayRow = true;
-                            for (var j = 0; j < inputs.length; j++) {
-                                if (inputs[j] && inputs[j].value !== "") {
-                                    var filter = inputs[j].value.toUpperCase();
-                                    var td = tr[i].getElementsByTagName("td")[j];
-                                    if (td) {
-                                        var txtValue = td.textContent || td.innerText;
-                                        if (txtValue.toUpperCase().indexOf(filter) === -1) {
-                                            displayRow = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            tr[i].style.display = displayRow ? "" : "none";
+                        return null;
+                    }
+                    """)
+                    gb_sku.configure_grid_options(getRowStyle=getRowStyleSKU)
+                    
+                    gridOptions_sku = gb_sku.build()
+                    
+                    # CSS CUSTOM: Input Putih, Teks Hitam, Filter Row Biru, Ikon Corong Putih
+                    custom_css_sku = {
+                        ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                        ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                        ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                        ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                        ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                        ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                        ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                        ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                        ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                        ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                        ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                        ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                            "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
                         }
                     }
-                    </script>
-                    """
                     
-                    st.markdown(html_table_sku, unsafe_allow_html=True)
-                    
-                    user_role_lower = role.lower()
-                    if user_role_lower in ['direktur', 'manager', 'supervisor']:
-                        output_sku = io.BytesIO()
-                        with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
-                            df_display_sku.to_excel(writer, index=False, sheet_name='Detail SKU')
+                    try:
+                        AgGrid(
+                            df_display_sku,
+                            gridOptions=gridOptions_sku,
+                            allow_unsafe_jscode=True,
+                            theme='balham', 
+                            height=600,
+                            fit_columns_on_grid_load=False,
+                            custom_css=custom_css_sku,
+                            enable_enterprise_modules=True
+                        )
+                    except Exception as e:
+                        st.warning("⚠️ Tabel interaktif AgGrid mengalami kendala dengan server. Menampilkan tabel standar sebagai alternatif.")
+                        st.dataframe(df_display_sku_export, use_container_width=True)
+                else:
+                    st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
+                
+                user_role_lower = role.lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    output_sku = io.BytesIO()
+                    has_sku_data = 'df_display_sku_export' in locals() and not df_display_sku_export.empty
+                    with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
+                        if has_sku_data:
+                            df_display_sku_export.to_excel(writer, index=False, sheet_name='Detail SKU')
                             workbook = writer.book
                             worksheet = writer.sheets['Detail SKU']
-                            
                             user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
                             time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
@@ -1800,67 +1735,186 @@ def main_dashboard():
                             
                             format1 = workbook.add_format({'num_format': '#,##0'})
                             worksheet.set_column('B:N', None, format1)
-                            bold_format = workbook.add_format({'bold': True, 'bg_color': '#f2f2f2', 'border': 1, 'num_format': '#,##0'})
-                            worksheet.set_row(len(df_display_sku), None, bold_format)
                             
+                            if 'df_display_sku_export' in locals() and not df_display_sku_export.empty:
+                                last_row_idx_sku = len(df_display_sku_export)
+                                bold_yellow_format_sku = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
+                                worksheet.set_row(last_row_idx_sku, 30, bold_yellow_format_sku)
+                        else:
+                            pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
+                            
+                    if has_sku_data:
                         st.download_button(
                             label="📥 Download Detail SKU (Excel)",
                             data=output_sku.getvalue(),
                             file_name=f"Detail_SKU_{datetime.date.today()}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
-                else:
-                    st.warning("Tidak ada transaksi untuk filter tersebut.")
+            else:
+                st.warning("Tidak ada transaksi untuk filter tersebut.")
 
         with tab_growth:
             st.markdown("### 📈 Rekap Growth Brand")
+            
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID GROWTH (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
+            def render_growth_aggrid(df_growth, total_dict_growth=None, pct_col=None, file_prefix="Growth", brand_name=""):
+                if not AGGRID_AVAILABLE:
+                    st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
+                    return
+
+                gb_growth = GridOptionsBuilder.from_dataframe(df_growth)
+                
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
+                
+                pct_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return (val * 100).toFixed(1) + '%';
+                }
+                """)
+                
+                # LOGIKA WARNA PERSENTASE - TANPA !important
+                pct_cell_style = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333', 'border-right': '1px solid #555555' };
+                    }
+                    var val = Number(params.value);
+                    if (!isNaN(val)) {
+                        if (val < 0.50) return { 'background-color': '#ffcccc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else return { 'background-color': '#d1e7dd', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                    }
+                    return null;
+                }
+                """)
+
+                for col in df_growth.columns:
+                    if col == pct_col:
+                        gb_growth.configure_column(col, valueFormatter=pct_formatter, cellStyle=pct_cell_style, headerClass="right-aligned-header", type=["numericColumn"])
+                    elif 'SALES' in col.upper():
+                        gb_growth.configure_column(col, valueFormatter=currency_formatter, headerClass="right-aligned-header", type=["numericColumn"])
+                    else:
+                        gb_growth.configure_column(col)
+
+                gb_growth.configure_default_column(resizable=True, sortable=True)
+                
+                getRowHeightGrowth = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
+                }
+                """)
+                
+                grid_opts = { "getRowHeight": getRowHeightGrowth, "headerHeight": 45 }
+                if total_dict_growth: grid_opts["pinnedBottomRowData"] = [total_dict_growth]
+                gb_growth.configure_grid_options(**grid_opts)
+                
+                getRowStyleGrowth = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                    }
+                    return null;
+                }
+                """)
+                gb_growth.configure_grid_options(getRowStyle=getRowStyleGrowth)
+                
+                custom_css_growth = {
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                    }
+                }
+                
+                try:
+                    AgGrid(
+                        df_growth,
+                        gridOptions=gb_growth.build(),
+                        allow_unsafe_jscode=True,
+                        theme='balham',
+                        height=400 if not total_dict_growth else 460,
+                        fit_columns_on_grid_load=True,
+                        custom_css=custom_css_growth,
+                        enable_enterprise_modules=True
+                    )
+                except Exception:
+                    st.dataframe(pd.concat([df_growth, pd.DataFrame([total_dict_growth])] if total_dict_growth else [df_growth]), use_container_width=True)
+
+                # --- EXCEL EXPORT BUTTON ---
+                user_role_lower = st.session_state.get('role', 'staff').lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    df_export = pd.concat([df_growth, pd.DataFrame([total_dict_growth])], ignore_index=True) if total_dict_growth else df_growth.copy()
+                    
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name=file_prefix[:30])
+                        workbook = writer.book
+                        worksheet = writer.sheets[file_prefix[:30]]
+                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        format_pct = workbook.add_format({'num_format': '0.0%'})
+                        
+                        for col_num, col_name in enumerate(df_export.columns):
+                            col_upper = col_name.upper()
+                            if col_name in ['RO', 'AO', 'NOO']:
+                                worksheet.set_column(col_num, col_num, 10, format1)
+                            elif '%' in col_upper or 'GROWTH' in col_upper or 'ACHV' in col_upper:
+                                worksheet.set_column(col_num, col_num, 12, format_pct)
+                            elif col_upper not in ['MONTH', 'COSTUMER', 'YEAR', 'NAMA OUTLET']:
+                                worksheet.set_column(col_num, col_num, 15, format1)
+                            else:
+                                worksheet.set_column(col_num, col_num, 20)
+                        
+                        if total_dict_growth:
+                            bold_yellow = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'font_color': 'black', 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_export), 30, bold_yellow)
+                            
+                    today_str = datetime.date.today().strftime("%Y%m%d")
+                    file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
+                    st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # -----------------------------------------------------------------------------------------
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
             if list_merk_growth:
                 brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
                 
-                # --- PIPA DATA RAW KHUSUS GROWTH ---
                 df_team_all = df.copy()
-                
                 if target_sales_filter != "SEMUA":
                     if target_sales_filter.upper() in TARGET_DATABASE:
                         tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
                         df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
-
-                invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-                df_team_all['ID_Patokan'] = np.where(
-                    df_team_all['Kode_Global'].str.strip().str.upper().isin(invalid_codes),
-                    df_team_all['Nama Outlet'].str.strip(),
-                    df_team_all['Kode_Global'].str.strip()
-                )
                 
-                prefixes = BRAND_PREFIXES.get(brand_growth, [brand_growth[:3].upper()])
-                prefix_tuple = tuple(prefixes)
-                
-                # === WATERTIGHT ALGORITMA RO (Murni dari Hulu) ===
+                # FILTER MURNI MEREK
+                is_valid_ro = df_team_all['Merk'] == brand_growth
                 is_target_brand = df_team_all['Merk'] == brand_growth
-                is_target_prefix = df_team_all['Kode_Global'].astype(str).str.strip().str.upper().apply(lambda x: any(x.startswith(p) for p in prefix_tuple))
-                is_valid_ro = is_target_brand | is_target_prefix
-
-                if st.checkbox("🔍 Buka Radar Detektif (Cek Toko Double)"):
-                    df_cek = df_team_all[is_valid_ro].copy()
-                    kd_col_cek = 'Kode_Global' if 'Kode_Global' in df_cek.columns else 'Kode Customer'
-                    
-                    if kd_col_cek in df_cek.columns:
-                        duplikat = df_cek.groupby('Nama Outlet')[kd_col_cek].nunique().reset_index()
-                        toko_double = duplikat[duplikat[kd_col_cek] > 1]['Nama Outlet'].tolist()
-                        
-                        if toko_double:
-                            st.error(f"🚨 Ditemukan {len(toko_double)} Toko yang tercatat ganda (karena beda Kode)!")
-                            df_tampil = df_cek[df_cek['Nama Outlet'].isin(toko_double)][['Nama Outlet', kd_col_cek, 'Provinsi', 'Kota']].drop_duplicates()
-                            st.dataframe(df_tampil.sort_values('Nama Outlet'), use_container_width=True)
-                        else:
-                            st.success("✅ Tidak ada nama toko yang kodenya ganda.")
-                    else:
-                        st.warning("Kolom Kode tidak ditemukan untuk pengecekan.")
 
                 if not df_team_all.empty:
                     df_team_all['Tahun'] = df_team_all['Tanggal'].dt.year
@@ -1870,7 +1924,8 @@ def main_dashboard():
                     min_period_2026 = pd.Period('2026-01', freq='M')
                     df_base = df_team_all[(df_team_all['Bulan-Tahun'] < min_period_2026) & is_valid_ro]
                     
-                    ro_accumulated = set(df_base['ID_Patokan'].dropna().unique())
+                    # LOGIKA BARU: MENGHITUNG MURNI BERDASARKAN NAMA OUTLET (Seperti Pivot)
+                    ro_accumulated = set(df_base['Nama Outlet'].dropna().unique())
                     growth_data = []
                     
                     for m in range(1, 13):
@@ -1878,26 +1933,20 @@ def main_dashboard():
                         period = pd.Period(period_str, freq='M')
                         
                         df_ao_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_target_brand]
-                        current_ao = set(df_ao_current['ID_Patokan'].dropna().unique())
+                        current_ao = set(df_ao_current['Nama Outlet'].dropna().unique())
                         sales = df_ao_current['Jumlah'].sum()
                         
                         noo = len(current_ao - ro_accumulated)
                         
                         df_ro_current = df_team_all[(df_team_all['Bulan-Tahun'] == period) & is_valid_ro]
-                        ro_accumulated.update(df_ro_current['ID_Patokan'].dropna().unique())
+                        ro_accumulated.update(df_ro_current['Nama Outlet'].dropna().unique())
                         
                         ro = len(ro_accumulated)
                         ao = len(current_ao)
                         ao_vs_ro = (ao / ro) if ro > 0 else 0
                         
                         growth_data.append({
-                            'Year': 2026,
-                            'Month': m,
-                            'SALES': sales,
-                            'RO': ro,
-                            'AO': ao,
-                            'AO VS RO %': ao_vs_ro,
-                            'NOO': noo
+                            'Year': 2026, 'Month': m, 'SALES': sales, 'RO': ro, 'AO': ao, 'AO VS RO %': ao_vs_ro, 'NOO': noo
                         })
                     
                     df_growth_all = pd.DataFrame(growth_data)
@@ -1922,22 +1971,11 @@ def main_dashboard():
                                     'NOO': int(r['NOO'])
                                 })
                             else:
-                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0, 'NOO': 0})
+                                display_2026.append({'MONTH': f"{bulan_dict_short[m]}-26", 'SALES': 0.0, 'RO': 0, 'AO': 0, 'AO VS RO %': 0.0, 'NOO': 0})
                         
-                        def style_tab1(row):
-                            styles = []
-                            for col in row.index:
-                                base_style = 'border: 1px solid #dcdcdc; '
-                                if col == 'AO VS RO %':
-                                    bg = get_color_achv(row[col])
-                                    styles.append(base_style + f'background-color: {bg}; color: black;')
-                                else:
-                                    styles.append(base_style)
-                            return styles
-
-                        st.dataframe(pd.DataFrame(display_2026).style.format({
-                            'SALES': 'Rp {:,.0f}', 'AO VS RO %': '{:.0%}'
-                        }).apply(style_tab1, axis=1), use_container_width=True)
+                        # Render Tabel 1 dengan AgGrid Corporate
+                        df_display_t1 = pd.DataFrame(display_2026)
+                        render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %', file_prefix="Aktivitas_Outlet", brand_name=brand_growth)
                         
                         st.divider()
                         col_g1, col_g2 = st.columns(2)
@@ -1966,35 +2004,15 @@ def main_dashboard():
                                 tot_2026 += s26
                                 growth = ((s26 - s25) / s25) if s25 > 0 else (1 if s26 > 0 else 0)
                                 yoy_data.append({
-                                    'MONTH': bulan_dict_short[m], 'SALES 2025': s25, 'SALES 2026': s26, 'Growth MTM': growth
+                                    'MONTH': bulan_dict_short[m], 'SALES 2025': float(s25), 'SALES 2026': float(s26), 'Growth MTM': float(growth)
                                 })
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            df_t2_total = pd.DataFrame([{'MONTH': 'Total Sales', 'SALES 2025': tot_2025, 'SALES 2026': tot_2026, 'Growth MTM': tot_growth}])
-                            df_t2_display = pd.concat([df_t2, df_t2_total], ignore_index=True)
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
-                            def style_tab2(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                                    else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
-
-                            st.dataframe(df_t2_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab2, axis=1), use_container_width=True)
+                            # Render Tabel 2 dengan AgGrid Corporate
+                            render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
                         
                         with col_g2:
                             st.write(f"#### **Tabel 3: Quarterly Growth**")
@@ -2006,33 +2024,13 @@ def main_dashboard():
                                 
                                 q_growth = ((q_2026 - q_2025) / q_2025) if q_2025 > 0 else (1 if q_2026 > 0 else 0)
                                 q_data.append({
-                                    'MONTH': f"Total {q}", 'SALES 2025': q_2025, 'SALES 2026': q_2026, 'Growth MTM': q_growth
+                                    'MONTH': f"Total {q}", 'SALES 2025': float(q_2025), 'SALES 2026': float(q_2026), 'Growth MTM': float(q_growth)
                                 })
                             
                             df_q = pd.DataFrame(q_data)
-                            df_q_display = pd.concat([df_q, df_t2_total], ignore_index=True)
                             
-                            def style_tab3(row):
-                                styles = []
-                                for col in row.index:
-                                    base_style = 'border: 1px solid #dcdcdc; '
-                                    if row['MONTH'] == 'Total Sales':
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                                        else:
-                                            styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                                    else:
-                                        if col == 'Growth MTM':
-                                            bg = get_color_achv(row[col])
-                                            styles.append(base_style + f'background-color: {bg}; color: black;')
-                                        else:
-                                            styles.append(base_style)
-                                return styles
-
-                            st.dataframe(df_q_display.style.format({
-                                'SALES 2025': 'Rp {:,.0f}', 'SALES 2026': 'Rp {:,.0f}', 'Growth MTM': '{:.0%}'
-                            }).apply(style_tab3, axis=1), use_container_width=True)
+                            # Render Tabel 3 dengan AgGrid Corporate
+                            render_growth_aggrid(df_q, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Quarterly_Growth", brand_name=brand_growth)
                 else:
                     st.info(f"Belum ada data untuk brand {brand_growth}.")
             else:
@@ -2041,6 +2039,146 @@ def main_dashboard():
         with tab_ba:
             st.markdown("### 🎯 Pencapaian Target BA per Brand (Tahun 2026)")
             
+            # --- HELPER FUNCTION UNTUK RENDER AGGRID BA (WARNA DINAMIS + FOOTER KUNING + EXCEL EXPORT) ---
+            def render_ba_aggrid(df_ba, total_dict_ba=None, file_prefix="Target_BA", brand_name=""):
+                if not AGGRID_AVAILABLE:
+                    st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
+                    return
+
+                gb_ba = GridOptionsBuilder.from_dataframe(df_ba)
+                
+                currency_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return 'Rp ' + val.toLocaleString('id-ID');
+                }
+                """)
+                
+                pct_formatter = JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined || params.value === "") return '-';
+                    var val = Number(params.value);
+                    if (isNaN(val)) return params.value; 
+                    return (val * 100).toFixed(1) + '%';
+                }
+                """)
+                
+                pct_cell_style = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333', 'border-right': '1px solid #555555' };
+                    }
+                    var val = Number(params.value);
+                    if (!isNaN(val)) {
+                        if (val < 0.50) return { 'background-color': '#ffcccc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else if (val >= 0.50 && val < 0.85) return { 'background-color': '#fff2cc', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                        else return { 'background-color': '#d1e7dd', 'color': 'black', 'border-right': '1px solid #555555', 'border-bottom': '1px solid #555555', 'font-weight': '500' };
+                    }
+                    return null;
+                }
+                """)
+
+                for col in df_ba.columns:
+                    if col == 'ACHV':
+                        gb_ba.configure_column(col, valueFormatter=pct_formatter, cellStyle=pct_cell_style, headerClass="right-aligned-header", type=["numericColumn"])
+                    elif col != 'Costumer':
+                        gb_ba.configure_column(col, valueFormatter=currency_formatter, headerClass="right-aligned-header", type=["numericColumn"])
+                    else:
+                        # PINNED LEFT UNTUK KOLOM COSTUMER + ENTERPRISE FILTER
+                        gb_ba.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
+
+                gb_ba.configure_default_column(resizable=True, sortable=True)
+                
+                getRowHeightBA = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') return 45;
+                    return 40;
+                }
+                """)
+                
+                grid_opts = { "getRowHeight": getRowHeightBA, "headerHeight": 45, "floatingFiltersHeight": 40 }
+                if total_dict_ba: grid_opts["pinnedBottomRowData"] = [total_dict_ba]
+                gb_ba.configure_grid_options(**grid_opts)
+                
+                getRowStyleBA = JsCode("""
+                function(params) {
+                    if (params.node.rowPinned === 'bottom') {
+                        return { 'background-color': '#FFFF00', 'font-weight': 'bold', 'color': 'black', 'border-top': '3px solid #333' };
+                    }
+                    return null;
+                }
+                """)
+                gb_ba.configure_grid_options(getRowStyle=getRowStyleBA)
+                
+                custom_css_ba = {
+                    ".ag-root-wrapper": {"font-family": "sans-serif !important"},
+                    ".ag-header-cell-label": {"font-size": "14px !important", "color": "white !important", "font-weight": "bold !important"},
+                    ".ag-header-cell": {"background-color": "#2980b9 !important", "border-right": "1px solid #555555 !important"},
+                    ".ag-header": {"background-color": "#2980b9 !important", "border-bottom": "1px solid #555555 !important"},
+                    ".ag-header-row-column-filter": {"background-color": "#2980b9 !important"},
+                    ".ag-header .ag-icon": {"color": "white !important", "fill": "white !important"},
+                    ".ag-cell": {"font-size": "14px !important", "font-weight": "500 !important", "color": "black !important", "background-color": "white !important", "border-right": "1px solid #555555 !important", "border-bottom": "1px solid #555555 !important", "display": "flex", "align-items": "center"},
+                    ".ag-row-hover .ag-cell": {"background-color": "#e3f2fd !important"},
+                    ".ag-floating-filter-input input": {"font-size": "13px !important", "background-color": "white !important", "color": "black !important", "border-radius": "3px !important", "padding": "2px 5px !important", "border": "1px solid #ccc !important"},
+                    ".right-aligned-header .ag-header-cell-label": {"justify-content": "flex-end !important"},
+                    ".ag-floating-bottom-container .ag-row, .ag-pinned-left-floating-bottom .ag-row": {"border-top": "3px solid #333 !important"},
+                    ".ag-floating-bottom-container .ag-cell, .ag-pinned-left-floating-bottom .ag-cell": {
+                        "font-size": "14px !important", "background-color": "#FFFF00 !important", "color": "black !important", "font-weight": "bold !important", "border-right": "none !important"
+                    }
+                }
+                
+                try:
+                    AgGrid(
+                        df_ba,
+                        gridOptions=gb_ba.build(),
+                        allow_unsafe_jscode=True,
+                        theme='balham',
+                        height=400 if not total_dict_ba else 460,
+                        fit_columns_on_grid_load=False,
+                        custom_css=custom_css_ba,
+                        enable_enterprise_modules=True
+                    )
+                except Exception:
+                    st.dataframe(pd.concat([df_ba, pd.DataFrame([total_dict_ba])] if total_dict_ba else [df_ba]), use_container_width=True)
+
+                # --- EXCEL EXPORT BUTTON ---
+                user_role_lower = st.session_state.get('role', 'staff').lower()
+                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                    df_export = pd.concat([df_ba, pd.DataFrame([total_dict_ba])], ignore_index=True) if total_dict_ba else df_ba.copy()
+                    
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name=file_prefix[:30])
+                        workbook = writer.book
+                        worksheet = writer.sheets[file_prefix[:30]]
+                        user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
+                        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
+                        worksheet.set_header(f'&C&10{watermark_text}')
+                        
+                        format1 = workbook.add_format({'num_format': '#,##0'})
+                        format_pct = workbook.add_format({'num_format': '0.0%'})
+                        
+                        for col_num, col_name in enumerate(df_export.columns):
+                            col_upper = col_name.upper()
+                            if '%' in col_upper or 'ACHV' in col_upper:
+                                worksheet.set_column(col_num, col_num, 12, format_pct)
+                            elif col_upper not in ['COSTUMER']:
+                                worksheet.set_column(col_num, col_num, 15, format1)
+                            else:
+                                worksheet.set_column(col_num, col_num, 30)
+                        
+                        if total_dict_ba:
+                            bold_yellow = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'font_color': 'black', 'num_format': '#,##0'})
+                            worksheet.set_row(len(df_export), 30, bold_yellow)
+                            
+                    today_str = datetime.date.today().strftime("%Y%m%d")
+                    file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
+                    st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # -----------------------------------------------------------------------------------------
             TARGET_BA_PER_BRAND = {
                 "Careso": {
                     "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
@@ -2098,8 +2236,16 @@ def main_dashboard():
                         merged_ba[bulan_dict_ba[m]] = 0
                 
                 st.write(f"**Rekap Keseluruhan Toko BA untuk Brand `{selected_ba_brand}` (2026)**")
-                format_ba = {col: 'Rp {:,.0f}' for col in list(bulan_dict_ba.values()) + ['Target BA']}
-                st.dataframe(merged_ba.style.format(format_ba), use_container_width=True, hide_index=True)
+                
+                # Tambahkan Grand Total untuk Tabel 1 BA
+                total_dict_ba1 = {col: "" for col in merged_ba.columns}
+                total_dict_ba1['Costumer'] = "GRAND TOTAL"
+                for col in list(bulan_dict_ba.values()) + ['Target BA']:
+                    if col in merged_ba.columns:
+                        total_dict_ba1[col] = float(merged_ba[col].sum())
+                        
+                # Render Tabel 1 dengan AgGrid Corporate
+                render_ba_aggrid(merged_ba, total_dict_ba=total_dict_ba1, file_prefix="Rekap_Toko_BA", brand_name=selected_ba_brand)
                 
                 st.divider()
                 
@@ -2120,47 +2266,24 @@ def main_dashboard():
                     
                     achv_data.append({
                         'Costumer': costumer,
-                        'Target BA': target,
-                        f'Pencapaian {selected_month_ba}': pencapaian,
-                        'ACHV': achv_pct
+                        'Target BA': float(target),
+                        f'Pencapaian {selected_month_ba}': float(pencapaian),
+                        'ACHV': float(achv_pct)
                     })
                 
                 df_achv = pd.DataFrame(achv_data)
                 
-                df_achv_total = pd.DataFrame([{
-                    'Costumer': 'Total Achievement',
-                    'Target BA': total_target,
-                    f'Pencapaian {selected_month_ba}': total_achv,
-                    'ACHV': (total_achv/total_target) if total_target > 0 else 0
-                }])
-                
-                df_achv_display = pd.concat([df_achv, df_achv_total], ignore_index=True)
+                total_dict_ba2 = {
+                    'Costumer': 'GRAND TOTAL',
+                    'Target BA': float(total_target),
+                    f'Pencapaian {selected_month_ba}': float(total_achv),
+                    'ACHV': float(total_achv/total_target) if total_target > 0 else 0.0
+                }
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
                 
-                def style_ba(row):
-                    styles = []
-                    for col in row.index:
-                        base_style = 'border: 1px solid #dcdcdc; '
-                        if row['Costumer'] == 'Total Achievement':
-                            if col == 'ACHV':
-                                bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black; font-weight: bold;')
-                            else:
-                                styles.append(base_style + 'background-color: lightblue; font-weight: bold; color: black;')
-                        else:
-                            if col == 'ACHV':
-                                bg = get_color_achv(row[col])
-                                styles.append(base_style + f'background-color: {bg}; color: black;')
-                            else:
-                                styles.append(base_style)
-                    return styles
-                
-                st.dataframe(df_achv_display.style.format({
-                    'Target BA': 'Rp {:,.0f}',
-                    f'Pencapaian {selected_month_ba}': 'Rp {:,.0f}',
-                    'ACHV': '{:.0%}'
-                }).apply(style_ba, axis=1), use_container_width=True)
+                # Render Tabel 2 dengan AgGrid Corporate
+                render_ba_aggrid(df_achv, total_dict_ba=total_dict_ba2, file_prefix=f"Achv_BA_{selected_month_ba}", brand_name=selected_ba_brand)
 
         with tab_ai:
             st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
@@ -2185,7 +2308,6 @@ def main_dashboard():
                         if st.button("💡 Analisis Sekarang"):
                             with st.spinner("AI sedang membaca ringkasan data Anda..."):
                                 
-                                # Merangkum Data
                                 summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
                                 summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
                                 top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
