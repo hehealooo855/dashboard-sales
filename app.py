@@ -109,6 +109,16 @@ PROVINCE_MAPPING = {
     "BALI": ["DENPASAR", "BADUNG", "GIANYAR", "BULELENG", "BANGLI", "JEMBRANA", "KARANGASEM", "KLUNGKUNG", "TABANAN", "MANGUPURA", "SINGARAJA", "NEGARA", "AMLAPURA", "SEMARAPURA"]
 }
 
+def map_city_to_province(city_name):
+    if pd.isna(city_name): return "LAIN-LAIN"
+    c = str(city_name).upper().strip()
+    if c in ["", "-", "NAN", "0.0", "NONE", "NULL", "0"]: return "LAIN-LAIN"
+    c = re.sub(r'^(KECAMATAN|KEC\.|KEC|KABUPATEN|KAB\.|KAB|KOTA)\s+', '', c).strip()
+    for province, cities in PROVINCE_MAPPING.items():
+        for city in cities:
+            if re.search(rf'\b{city}\b', c): return province
+    return "LAIN-LAIN"
+
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_200_000_000, "SYB": 120_000_000, "Sekawan": 300_000_000, "Avione": 150_000_000, "Honor": 220_000_000, "Vlagio": 50_000_000, "Ren & R & L": 20_000_000, "Mad For Make Up": 40_000_000, "Satto": 525_000_000, "Mykonos": 20_000_000, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 50_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 80_000_000, "Sombong": 50_000_000},
     "LISMAN": { "Javinci": 1_300_000_000, "Careso": 400_000_000, "Newlab": 120_000_000, "Gloow & Be": 170_000_000, "Dorskin": 30_000_000, "Whitelab": 100_000_000, "Bonavie": 50_000_000, "Goute": 70_000_000, "Mlen": 225_000_000, "Artist Inc": 150_000_000, "Maskit": 50_000_000, "Birth Beyond": 120_000_000, "Everpure": 0},
@@ -252,138 +262,152 @@ def render_custom_progress(title, current, target):
     </div>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=600) 
-def load_data_from_mysql():
-    try:
-        import pymysql
-        import sqlalchemy
-        
-        db_user = st.secrets["mysql"]["user"]
-        db_pass = st.secrets["mysql"]["password"]
-        db_host = st.secrets["mysql"]["host"]
-        db_port = st.secrets["mysql"]["port"]
-        db_name = st.secrets["mysql"]["database"]
-        
-        engine = sqlalchemy.create_engine(f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
-        
-        query = "SELECT * FROM nama_tabel_penjualan"
-        df = pd.read_sql(query, engine)
-        
-        if df.empty:
-            return None
-            
-        df.columns = df.columns.str.strip()
-        
-        for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
-            if alt_col in df.columns:
-                if 'Penjualan' in df.columns: df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
-                else: df['Penjualan'] = df[alt_col]
-                    
-        for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-            if col_name in df.columns:
-                if 'Kode_Global' not in df.columns: df['Kode_Global'] = df[col_name]
-                else: df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-        if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
-
-        faktur_col = None
-        for col in df.columns:
-            if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-                faktur_col = col; break
-        if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
-        
-        if 'Nama Barang' in df.columns:
-            df['Nama Barang'] = df['Nama Barang'].fillna("-")
-            df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
-            df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
-
-        if 'Nama Outlet' in df.columns:
-            df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
-            df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
-            df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
-            df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
-
-        def clean_rupiah(x):
-            if isinstance(x, (int, float)): 
-                return float(x)
-            
-            s = str(x).upper().replace('RP', '').replace(' ', '').strip()
-            if not s or s == '-': return 0.0
-            
-            is_negative = False
-            if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
-                is_negative = True
-                
-            s = re.sub(r'[,.]\d{2}$', '', s) 
-            s = re.sub(r'[^\d]', '', s) 
-            try: 
-                val = float(s)
-                return -val if is_negative else val
-            except: 
-                return 0.0
-
-        if 'Jumlah' in df.columns: df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-        else: df['Jumlah'] = 0.0
-
-        if 'Tanggal' in df.columns:
-            tanggal_raw = df['Tanggal'].astype(str).str.strip()
-            d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
-            d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
-            d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
-            df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
-        else: df['Tanggal'] = pd.to_datetime('2000-01-01')
-
-        if 'Penjualan' in df.columns:
-            df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
-            valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
-            valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
-            df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
-            df_valid = df[df['Penjualan'] != 'Non-Sales']
-            outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
-            mask_non = df['Penjualan'] == 'Non-Sales'
-            df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
-            df['Penjualan'] = df['Penjualan'].astype('category')
-        else: df['Penjualan'] = 'Non-Sales'
-
-        def normalize_brand(raw_brand):
-            raw_upper = str(raw_brand).upper()
-            for target_brand, keywords in BRAND_ALIASES.items(): 
-                for keyword in keywords:
-                    if keyword in raw_upper: return target_brand
-            return raw_brand
-            
-        if 'Merk' in df.columns: df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
-        else: df['Merk'] = "-"
-        
-        cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
-        for col in cols_to_convert:
-            if col in df.columns: 
-                df[col] = df[col].fillna("-").astype(str).str.strip()
-                df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
-        
-        if 'Kota' in df.columns: df['Provinsi'] = df['Kota'].apply(map_city_to_province)
-        else: df['Provinsi'] = "-"
-        
-        try: df.to_parquet("master_database_penjualan.parquet", index=False)
-        except: pass 
-                
-        return df
-    except Exception as e:
-        st.error(f"Gagal memuat data MySQL. Detail error: {e}")
+@st.cache_data(ttl=43200) 
+def load_data_from_url():
+    urls = [
+            ]
+    
+    def fetch_url(url):
+        if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
+            try:
+                url_with_ts = f"{url}&t={int(time.time())}"
+                return pd.read_csv(url_with_ts, dtype=str, engine='pyarrow')
+            except Exception as e:
+                return None
         return None
+
+    all_dfs = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = executor.map(fetch_url, urls)
+        for res in results:
+            if res is not None and not res.empty:
+                all_dfs.append(res)
+                
+    if not all_dfs: return None
+        
+    df = pd.concat(all_dfs, ignore_index=True)
+    df.columns = df.columns.str.strip()
+    
+    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
+        if alt_col in df.columns:
+            if 'Penjualan' in df.columns:
+                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
+            else:
+                df['Penjualan'] = df[alt_col]
+                
+    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
+        if col_name in df.columns:
+            if 'Kode_Global' not in df.columns:
+                df['Kode_Global'] = df[col_name]
+            else:
+                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+
+    faktur_col = None
+    for col in df.columns:
+        if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
+            faktur_col = col; break
+    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+    
+    if 'Nama Barang' in df.columns:
+        df['Nama Barang'] = df['Nama Barang'].fillna("-")
+        df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
+        df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
+
+    if 'Nama Outlet' in df.columns:
+        df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
+        df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
+        df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
+
+    def clean_rupiah(x):
+        s = str(x).upper().replace('RP', '').replace(' ', '').strip()
+        if not s or s == '-': return 0.0
+        
+        is_negative = False
+        if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
+            is_negative = True
+            
+        s = re.sub(r'[,.]\d{2}$', '', s) 
+        s = re.sub(r'[^\d]', '', s) 
+        
+        try: 
+            val = float(s)
+            return -val if is_negative else val
+        except: 
+            return 0.0
+
+    if 'Jumlah' in df.columns:
+        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    else:
+        df['Jumlah'] = 0.0
+
+    if 'Tanggal' in df.columns:
+        tanggal_raw = df['Tanggal'].astype(str).str.strip()
+        d1 = pd.to_datetime(tanggal_raw, format='%d/%m/%Y', errors='coerce')
+        d2 = pd.to_datetime(tanggal_raw, format='%d-%m-%Y', errors='coerce')
+        d3 = pd.to_datetime(tanggal_raw, dayfirst=True, errors='coerce', format='mixed')
+        df['Tanggal'] = d1.fillna(d2).fillna(d3).fillna(pd.to_datetime('2000-01-01'))
+    else:
+        df['Tanggal'] = pd.to_datetime('2000-01-01')
+
+    if 'Penjualan' in df.columns:
+        df['Penjualan'] = df['Penjualan'].astype(str).str.strip().replace(SALES_MAPPING)
+        valid_sales_names = list(INDIVIDUAL_TARGETS.keys())
+        valid_sales_names.extend(["MADONG", "LISMAN", "AKBAR"]) 
+        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+        df_valid = df[df['Penjualan'] != 'Non-Sales']
+        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
+        mask_non = df['Penjualan'] == 'Non-Sales'
+        df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
+        df['Penjualan'] = df['Penjualan'].astype('category')
+    else:
+        df['Penjualan'] = 'Non-Sales'
+
+    def normalize_brand(raw_brand):
+        raw_upper = str(raw_brand).upper()
+        for target_brand, keywords in BRAND_ALIASES.items(): 
+            for keyword in keywords:
+                if keyword in raw_upper: return target_brand
+        return raw_brand
+        
+    if 'Merk' in df.columns:
+        df['Merk'] = df['Merk'].fillna("-").apply(normalize_brand).astype('category')
+    else:
+        df['Merk'] = "-"
+    
+    cols_to_convert = ['Kota', 'Nama Outlet', 'No Faktur', 'Kode_Global']
+    for col in cols_to_convert:
+        if col in df.columns: 
+            df[col] = df[col].fillna("-").astype(str).str.strip()
+            df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
+    
+    if 'Kota' in df.columns:
+        df['Provinsi'] = df['Kota'].apply(map_city_to_province)
+    else:
+        df['Provinsi'] = "-"
+    
+    try: df.to_parquet("master_database_penjualan.parquet", index=False)
+    except: pass 
+            
+    return df
 
 def load_data(fast_mode=False):
     if fast_mode and os.path.exists("master_database_penjualan.parquet"):
-        try: return pd.read_parquet("master_database_penjualan.parquet")
-        except: pass
-    return load_data_from_mysql()
+        try:
+            return pd.read_parquet("master_database_penjualan.parquet")
+        except Exception:
+            pass
+    return load_data_from_url()
 
 # =========================================================================
-# PIVOT FAST ENGINE - (SUDAH DIPERBARUI DENGAN HOW='LEFT')
+# PIVOT FAST ENGINE
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple):
     group_cols = list(group_cols_tuple)
 
     if not df_pivot_source.empty:
+        # Filter berdasarkan Merk untuk mendapatkan BASELINE seluruh toko
         if selected_merk_excel != "SEMUA":
             final_mask = df_pivot_source['Merk'] == selected_merk_excel
         else:
@@ -393,23 +417,23 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
+        # Ekstrak data transaksi KHUSUS untuk tahun yang dipilih
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
+            # Buat pivot nilai penjualan untuk tahun tersebut
             pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             
+            # Ambil master list toko (baseline) dari seluruh sejarah transaksi merk tersebut
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
             base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
             
-            # Perubahan ke how='left' agar toko yang tidak ada transaksi tetap muncul
+            # MENGGUNAKAN how='left' agar semua toko di base_customers tetap muncul meski penjualannya 0
             master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
-            
-            # Memastikan kolom 1-12 (Jan-Des) selalu ada
-            for i in range(1, 13):
-                if i not in master_pivot.columns: master_pivot[i] = 0
         else:
+            # Jika tahun yang dipilih sama sekali tidak ada transaksi, tampilkan semua toko dengan nilai 0
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
             master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
             for i in range(1, 13): master_pivot[i] = 0
@@ -475,6 +499,7 @@ def get_cross_sell_recommendations(df):
     if recommendations: return pd.DataFrame(recommendations)
     return None
 
+@st.fragment
 def render_pivot_fragment(df_scope_all, role):
     list_merk_excel = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
     list_tahun = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -661,97 +686,27 @@ def render_pivot_fragment(df_scope_all, role):
         else:
             st.info("Data Kosong setelah difilter.")
             
-        # =========================================================================
-        # EXPORT EXCEL ENGINE - (SUDAH DIPERBARUI DENGAN TEMPLATE XLSXWRITER)
-        # =========================================================================
         user_role_lower = role.lower()
         if user_role_lower in ['direktur', 'manager', 'supervisor']:
             output = io.BytesIO()
-            has_data_to_export = 'df_display' in locals() and not df_display.empty
+            has_data_to_export = 'df_display_export' in locals() and not df_display_export.empty
             
-            if has_data_to_export:
-                # 1. Tambahkan kolom RO (Registered Outlet) urut dari 1 hingga akhir
-                df_excel_data = df_display.copy()
-                ro_list = list(range(1, len(df_excel_data) + 1))
-                df_excel_data.insert(0, 'RO', ro_list)
-                
-                # 2. Siapkan baris Grand Total
-                total_dict_excel = total_dict.copy()
-                total_dict_excel['Kode Customer'] = 'GRAND TOTAL'
-                
-                # Gabungkan data utama dengan Grand Total
-                df_final_export = pd.concat([df_excel_data, pd.DataFrame([total_dict_excel])], ignore_index=True)
-                
-                # Pastikan kolom RO benar-benar ada di paling kiri (index 0)
-                cols_order = ['RO'] + [c for c in df_final_export.columns if c != 'RO']
-                df_final_export = df_final_export[cols_order]
-                # Baris total untuk kolom RO dikosongkan
-                df_final_export.at[len(df_final_export)-1, 'RO'] = ""
-
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                if has_data_to_export:
+                    df_display_export.to_excel(writer, index=False, sheet_name='Master Data')
                     workbook = writer.book
-                    worksheet = workbook.add_worksheet('Master Data')
-                    
-                    # --- SETUP FORMAT EXCEL ---
-                    # Format Header: Background Aqua Accent 5 Lighter 60% (#DAEEF3), Teks Hitam, Thick Outer Border (border: 2)
-                    header_format = workbook.add_format({'bg_color': '#DAEEF3', 'font_color': 'black', 'bold': True, 'border': 2, 'align': 'center', 'valign': 'vcenter'})
-                    # Format Data Standard: Border tipis (border: 1)
-                    data_format = workbook.add_format({'border': 1, 'valign': 'vcenter'})
-                    data_num_format = workbook.add_format({'border': 1, 'num_format': '#,##0', 'valign': 'vcenter'})
-                    # Format Footer: Thick Outer Border (border: 2)
-                    footer_format = workbook.add_format({'bold': True, 'border': 2, 'num_format': '#,##0', 'valign': 'vcenter'})
-                    footer_text_format = workbook.add_format({'bold': True, 'border': 2, 'valign': 'vcenter', 'align': 'center'})
-                    
-                    # --- SETUP JUDUL HALAMAN & WATERMARK ---
+                    worksheet = writer.sheets['Master Data']
                     user_identity = f"{st.session_state.get('sales_name', 'Unknown')} ({st.session_state.get('role', 'Unknown').upper()})"
                     time_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     watermark_text = f"CONFIDENTIAL DOCUMENT | TRACKED USER: {user_identity} | DOWNLOADED: {time_stamp} | DO NOT DISTRIBUTE"
                     worksheet.set_header(f'&C&10{watermark_text}')
                     worksheet.set_footer(f'&RPage &P of &N')
-
-                    title_format = workbook.add_format({'bold': True, 'font_size': 14})
-                    worksheet.write(0, 0, f"LAPORAN PENJUALAN MASTER - {selected_merk_excel}", title_format)
-                    worksheet.write(1, 0, f"Tanggal Download: {time_stamp}")
-
-                    # --- MENULIS HEADER ---
-                    worksheet.set_row(3, 18) # Setting tinggi header 18px
-                    for col_num, col_name in enumerate(df_final_export.columns):
-                        worksheet.write(3, col_num, col_name, header_format)
-
-                    # --- MENULIS DATA & FOOTER ---
-                    for row_num in range(len(df_final_export)):
-                        is_footer = row_num == len(df_final_export) - 1
-                        
-                        # Tinggi Baris: 18px untuk data, 35px untuk footer
-                        worksheet.set_row(row_num + 4, 35 if is_footer else 18)
-                        
-                        for col_num, col_name in enumerate(df_final_export.columns):
-                            val = df_final_export.iloc[row_num, col_num]
-                            
-                            # Cek value valid, bersihkan NaN
-                            if pd.isna(val) or str(val).lower() == "nan":
-                                val = ""
-                                
-                            # Aplikasikan Format
-                            if is_footer:
-                                fmt = footer_format if isinstance(val, (int, float)) else footer_text_format
-                            else:
-                                fmt = data_num_format if isinstance(val, (int, float)) else data_format
-                                
-                            worksheet.write(row_num + 4, col_num, val, fmt)
-
-                    # --- MENGATUR LEBAR KOLOM ---
-                    worksheet.set_column(0, 0, 5)   # Kolom RO (A)
-                    worksheet.set_column(1, 1, 15)  # Kolom Kode Customer (B)
-                    worksheet.set_column(2, 2, 35)  # Kolom Nama Outlet (C)
-                    worksheet.set_column(3, 4, 15)  # Kolom Provinsi & Kota (D, E)
-                    worksheet.set_column(5, len(df_final_export.columns)-1, 14) # Kolom Bulan (F ke akhir)
-
-                    # --- FREEZE PANES ---
-                    # Membekukan baris ke 1-4 (sampai Header) dan Kolom 1-3 (RO, Kode, Nama Outlet)
-                    worksheet.freeze_panes(4, 3)
-            else:
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    format1 = workbook.add_format({'num_format': '#,##0'})
+                    worksheet.set_column('E:Q', None, format1) 
+                    last_row_idx = len(df_display_export) 
+                    bold_yellow_format = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
+                    worksheet.set_row(last_row_idx, 30, bold_yellow_format)
+                else:
                     pd.DataFrame(["Data Kosong"]).to_excel(writer, index=False, sheet_name='Kosong')
             
             if has_data_to_export:
@@ -984,7 +939,7 @@ def main_dashboard():
             
     df = load_data(fast_mode)
     if df is None or df.empty:
-        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Konfigurasi Database MySQL Anda.")
+        st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link CSV Google Sheet Anda.")
         return
 
     user_role = st.session_state['role']
@@ -1986,7 +1941,7 @@ def main_dashboard():
                             
                             df_t2 = pd.DataFrame(yoy_data)
                             tot_growth = ((tot_2026 - tot_2025) / tot_2025) if tot_2025 > 0 else (1 if tot_2026 > 0 else 0)
-                            total_dict_t2 = {'MONTH': 'GRAND TOTAL', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
+                            total_dict_t2 = {'MONTH': 'Total Sales', 'SALES 2025': float(tot_2025), 'SALES 2026': float(tot_2026), 'Growth MTM': float(tot_growth)}
                             
                             # Render Tabel 2 dengan AgGrid Corporate
                             render_growth_aggrid(df_t2, total_dict_growth=total_dict_t2, pct_col='Growth MTM', file_prefix="Sales_Growth", brand_name=brand_growth)
@@ -2155,6 +2110,7 @@ def main_dashboard():
                     file_name_clean = re.sub(r'[^A-Za-z0-9_]', '_', f"{file_prefix}_{brand_name}_{today_str}") + ".xlsx"
                     st.download_button(label=f"📥 Download {file_prefix.replace('_', ' ')} (Excel)", data=output.getvalue(), file_name=file_name_clean, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+            # -----------------------------------------------------------------------------------------
             TARGET_BA_PER_BRAND = {
                 "Careso": {
                     "PT. PESONA ASIA GROUP ( GM STORE )": 30_000_000,
@@ -2213,12 +2169,14 @@ def main_dashboard():
                 
                 st.write(f"**Rekap Keseluruhan Toko BA untuk Brand `{selected_ba_brand}` (2026)**")
                 
+                # Tambahkan Grand Total untuk Tabel 1 BA
                 total_dict_ba1 = {col: "" for col in merged_ba.columns}
                 total_dict_ba1['Costumer'] = "GRAND TOTAL"
                 for col in list(bulan_dict_ba.values()) + ['Target BA']:
                     if col in merged_ba.columns:
                         total_dict_ba1[col] = float(merged_ba[col].sum())
                         
+                # Render Tabel 1 dengan AgGrid Corporate
                 render_ba_aggrid(merged_ba, total_dict_ba=total_dict_ba1, file_prefix="Rekap_Toko_BA", brand_name=selected_ba_brand)
                 
                 st.divider()
@@ -2255,6 +2213,8 @@ def main_dashboard():
                 }
                 
                 st.write(f"**Tabel Pencapaian Target BA `{selected_ba_brand}` - {selected_month_ba} 2026**")
+                
+                # Render Tabel 2 dengan AgGrid Corporate
                 render_ba_aggrid(df_achv, total_dict_ba=total_dict_ba2, file_prefix=f"Achv_BA_{selected_month_ba}", brand_name=selected_ba_brand)
 
         with tab_ai:
