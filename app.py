@@ -342,39 +342,25 @@ def load_data_from_url():
     df.columns = df.columns.str.strip()
     
     # -------------------------------------------------------------------------
-    # 1. PENYATUAN NAMA KOLOM BRUTAL (CASE INSENSITIVE)
+    # 1. PENYATUAN NAMA KOLOM BRUTAL (MENGGABUNGKAN SEMUA SHEET)
     # -------------------------------------------------------------------------
-    cols_upper = {c.upper(): c for c in df.columns}
+    def gabungkan_kolom(df, target_name, aliases):
+        if target_name not in df.columns:
+            df[target_name] = np.nan
+        for alias in aliases:
+            matched_cols = [c for c in df.columns if c.upper() == alias.upper() and c != target_name]
+            for match in matched_cols:
+                df[target_name] = df[target_name].fillna(df[match])
+        return df
+
+    df = gabungkan_kolom(df, 'Nama Outlet', ['NAMA CUSTOMER', 'CUSTOMER', 'NAMA TOKO', 'TOKO', 'PELANGGAN', 'OUTLET', 'NAMA OUTLET'])
+    df = gabungkan_kolom(df, 'Kode_Global', ['KODE CUSTOMER', 'KODE COSTUMER', 'KODE OUTLET', 'KODE TOKO', 'KODE GLOBAL', 'KODE_GLOBAL'])
+    df = gabungkan_kolom(df, 'Penjualan', ['SALES', 'SALESMAN', 'NAMA SALES', 'PENJUALAN'])
+    df = gabungkan_kolom(df, 'Merk', ['BRAND', 'PRODUK', 'MERK'])
     
-    # Alias Nama Toko
-    for alias in ['NAMA CUSTOMER', 'CUSTOMER', 'NAMA TOKO', 'TOKO', 'PELANGGAN', 'OUTLET']:
-        if alias in cols_upper and 'Nama Outlet' not in df.columns:
-            df = df.rename(columns={cols_upper[alias]: 'Nama Outlet'})
-            break
-            
-    # Alias Kode
-    for alias in ['KODE CUSTOMER', 'KODE COSTUMER', 'KODE OUTLET', 'KODE TOKO']:
-        if alias in cols_upper and 'Kode_Global' not in df.columns:
-            df = df.rename(columns={cols_upper[alias]: 'Kode_Global'})
-            break
-            
-    # Alias Sales
-    for alias in ['SALES', 'SALESMAN', 'NAMA SALES']:
-        if alias in cols_upper and 'Penjualan' not in df.columns:
-            df = df.rename(columns={cols_upper[alias]: 'Penjualan'})
-            break
-            
-    # Alias Merk
-    for alias in ['BRAND', 'PRODUK']:
-        if alias in cols_upper and 'Merk' not in df.columns:
-            df = df.rename(columns={cols_upper[alias]: 'Merk'})
-            break
-            
-    # Alias Faktur
-    for c in df.columns:
-        if 'faktur' in c.lower() or 'bukti' in c.lower() or 'invoice' in c.lower():
-            df = df.rename(columns={c: 'No Faktur'})
-            break
+    faktur_cols = [c for c in df.columns if 'faktur' in c.lower() or 'bukti' in c.lower() or 'invoice' in c.lower()]
+    if faktur_cols:
+        df = gabungkan_kolom(df, 'No Faktur', faktur_cols)
 
     # -------------------------------------------------------------------------
     # 2. PEMBERSIHAN DATA DASAR
@@ -391,7 +377,7 @@ def load_data_from_url():
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
     else:
-        df['Nama Outlet'] = "-" # Fallback jika kolom benar-benar tidak ada
+        df['Nama Outlet'] = "-" 
 
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
@@ -448,16 +434,8 @@ def load_data_from_url():
     # -------------------------------------------------------------------------
     # 3. RADAR DETEKTIF PROVINSI
     # -------------------------------------------------------------------------
-    if 'Provinsi' not in df.columns:
-        for alias in ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH']:
-            if alias in cols_upper:
-                df = df.rename(columns={cols_upper[alias]: 'Provinsi'})
-                break
-    if 'Kota' not in df.columns:
-        for alias in ['CITY', 'KABUPATEN', 'KAB', 'DAERAH', 'LOKASI']:
-            if alias in cols_upper:
-                df = df.rename(columns={cols_upper[alias]: 'Kota'})
-                break
+    df = gabungkan_kolom(df, 'Provinsi', ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH'])
+    df = gabungkan_kolom(df, 'Kota', ['CITY', 'KABUPATEN', 'KAB', 'DAERAH', 'LOKASI'])
 
     def determine_province(row):
         valid_provinces = {
@@ -517,17 +495,24 @@ def load_data_from_url():
     df['Provinsi'] = df.apply(determine_province, axis=1)
 
     # -------------------------------------------------------------------------
-    # 4. AUTO-HEALING TOKO PECAH
+    # 4. AUTO-HEALING CERDAS (Kode Spesifik per Brand)
     # -------------------------------------------------------------------------
     df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
-    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Nama_Pencocokan')['Kode_Global'].first()
+    
+    # KUNCI UTAMA: Kita pasangkan Toko DENGAN Brand-nya (Merk)
+    df['Kunci_Kode'] = list(zip(df['Nama_Pencocokan'], df['Merk']))
+    
+    # Healing 1: Kode Customer WAJIB di-group berdasarkan Toko + Brand
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].first()
+    df['Kode_Global'] = df['Kunci_Kode'].map(valid_kodes).fillna(df['Kode_Global'])
+    
+    # Healing 2: Provinsi & Kota di-group murni berdasarkan Toko (karena lokasi fisik sama)
     valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
     valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
-
-    df['Kode_Global'] = df['Nama_Pencocokan'].map(valid_kodes).fillna(df['Kode_Global'])
     df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
     df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
-    df = df.drop(columns=['Nama_Pencocokan'])
+    
+    df = df.drop(columns=['Nama_Pencocokan', 'Kunci_Kode'])
     
     try: df.to_parquet("master_database_penjualan.parquet", index=False)
     except: pass 
