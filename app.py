@@ -2316,7 +2316,7 @@ def main_dashboard():
                                         success_model = m_name
                                         break
                                     except Exception:
-                                        continue model
+                                        continue
                                 
                                 if response:
                                     st.success(f"Analisis Selesai! (Powered by {success_model})")
