@@ -565,30 +565,33 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
-        # --- PERBAIKAN: Safety Net agar kolom Nama Outlet tidak hilang saat digabung ---
         cols_to_keep = group_cols.copy()
         if 'Nama Outlet' not in cols_to_keep:
             cols_to_keep.append('Nama Outlet')
+            
+        # --- KUNCI UTAMA: Pastikan Kolom Merk Dipertahankan ---
+        if 'Merk' not in cols_to_keep:
+            cols_to_keep.append('Merk')
 
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
             
-            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+            # KUNCI UTAMA: Pivot dipisah berdasarkan Nama Outlet DAN Merk
+            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index=['Nama Outlet', 'Merk'], columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
             
-            # Gunakan cols_to_keep yang sudah dijamin amannya
-            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[cols_to_keep]
+            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet', 'Merk'], keep='first')[cols_to_keep]
             
-            master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
+            master_pivot = pd.merge(base_customers, pivot_sales, on=['Nama Outlet', 'Merk'], how='left').fillna(0)
             
             for i in range(1, 13):
                 if i not in master_pivot.columns: master_pivot[i] = 0
         else:
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
-            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[cols_to_keep]
+            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet', 'Merk'], keep='first')[cols_to_keep]
             for i in range(1, 13): master_pivot[i] = 0
             
         return master_pivot
@@ -759,8 +762,8 @@ def render_pivot_fragment(df_scope_all, role):
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            # Tambahkan 'Nama Customer' kembali ke urutan kolom
-            cols_reordered = ['Kode Customer', 'Nama Customer', 'Provinsi', 'Kota'] + num_cols
+            # Tambahkan 'Nama Customer' dan 'Merk' kembali ke urutan kolom
+            cols_reordered = ['Kode Customer', 'Nama Customer', 'Merk', 'Provinsi', 'Kota'] + num_cols
             
             # Antisipasi agar tidak error jika kolom ada yang kurang
             cols_reordered = [c for c in cols_reordered if c in df_filtered.columns]
