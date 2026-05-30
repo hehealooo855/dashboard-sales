@@ -1291,8 +1291,7 @@ def main_dashboard():
                 dict_sales_mtd = df_brand_active.groupby('Penjualan')['Jumlah'].sum().to_dict()
                 
                 df_brand_h1 = df_scope_all[(df_scope_all['Tanggal'].dt.date == h_1_date) & (df_scope_all['Merk'] == selected_brand_detail)]
-                dict_sales_h1 = df_brand_h1.groupby('Penjualan')['Circle'].sum().to_dict() # Gunakan Jumlah jika kolom Circle typo
-                if not dict_sales_h1: dict_sales_h1 = df_brand_h1.groupby('Penjualan')['Jumlah'].sum().to_dict()
+                dict_sales_h1 = df_brand_h1.groupby('Penjualan')['Jumlah'].sum().to_dict()
                 dict_toko_h1 = df_brand_h1.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
                 dict_toko_mtd = df_brand_active.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
                 
