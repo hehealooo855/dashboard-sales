@@ -740,13 +740,17 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-            if 'Nama Customer' in df_filtered.columns:
-                df_filtered = df_filtered.drop(columns=['Nama Customer'])
+            # (Baris yang membuang Nama Customer SUDAH DIHAPUS DARI SINI)
 
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            cols_reordered = ['Kode Customer', 'Provinsi', 'Kota'] + num_cols
+            # Tambahkan 'Nama Customer' kembali ke urutan kolom
+            cols_reordered = ['Kode Customer', 'Nama Customer', 'Provinsi', 'Kota'] + num_cols
+            
+            # Antisipasi agar tidak error jika kolom ada yang kurang
+            cols_reordered = [c for c in cols_reordered if c in df_filtered.columns]
+            
             df_display = df_filtered[cols_reordered].copy()
             
             total_dict = {col: "" for col in df_display.columns}
@@ -778,7 +782,7 @@ def render_pivot_fragment(df_scope_all, role):
                 for col in df_display.columns:
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
-                    elif col in ['Kode Customer']:
+                    elif col in ['Kode Customer', 'Nama Customer']:
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
