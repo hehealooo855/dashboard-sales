@@ -424,10 +424,83 @@ def load_data_from_url():
             df[col] = df[col].fillna("-").astype(str).str.strip()
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
     
-    if 'Kota' in df.columns:
-        df['Provinsi'] = df['Kota'].apply(map_city_to_province)
-    else:
-        df['Provinsi'] = "-"
+    # =========================================================================
+    # LOGIKA HIERARKI PROVINSI BARU (ULTIMATE AGGRESSIVE DETECTOR)
+    # =========================================================================
+    cols_upper = {c.upper(): c for c in df.columns}
+    if 'Provinsi' not in df.columns:
+        for alias in ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH']:
+            if alias in cols_upper:
+                df = df.rename(columns={cols_upper[alias]: 'Provinsi'})
+                break
+    if 'Kota' not in df.columns:
+        for alias in ['CITY', 'KABUPATEN', 'KAB', 'DAERAH', 'LOKASI']:
+            if alias in cols_upper:
+                df = df.rename(columns={cols_upper[alias]: 'Kota'})
+                break
+
+    def determine_province(row):
+        valid_provinces = {
+            "ACEH", "SUMATERA UTARA", "SUMATERA BARAT", "RIAU", "KEPULAUAN RIAU", 
+            "JAMBI", "SUMATERA SELATAN", "BANGKA BELITUNG", "BENGKULU", "LAMPUNG", 
+            "DKI JAKARTA", "JAWA BARAT", "BANTEN", "JAWA TENGAH", "DI YOGYAKARTA", 
+            "JAWA TIMUR", "BALI", "NUSA TENGGARA BARAT", "NUSA TENGGARA TIMUR", 
+            "KALIMANTAN BARAT", "KALIMANTAN TENGAH", "KALIMANTAN SELATAN", "KALIMANTAN TIMUR", 
+            "KALIMANTAN UTARA", "SULAWESI UTARA", "SULAWESI TENGAH", "SULAWESI SELATAN", 
+            "SULAWESI TENGGARA", "SULAWESI BARAT", "GORONTALO", "MALUKU", "MALUKU UTARA", 
+            "PAPUA BARAT", "PAPUA", "PAPUA SELATAN", "PAPUA TENGAH", "PAPUA PEGUNUNGAN", "PAPUA BARAT DAYA"
+        }
+        
+        abbreviations = {
+            "SUMUT": "SUMATERA UTARA", "SUMBAR": "SUMATERA BARAT", "KEPRI": "KEPULAUAN RIAU",
+            "SUMSEL": "SUMATERA SELATAN", "BABEL": "BANGKA BELITUNG", "DKI": "DKI JAKARTA",
+            "JAKARTA": "DKI JAKARTA", "JABAR": "JAWA BARAT", "JATENG": "JAWA TENGAH",
+            "DIY": "DI YOGYAKARTA", "JOGJA": "DI YOGYAKARTA", "YOGYAKARTA": "DI YOGYAKARTA",
+            "JATIM": "JAWA TIMUR", "NTB": "NUSA TENGGARA BARAT", "NTT": "NUSA TENGGARA TIMUR",
+            "KALBAR": "KALIMANTAN BARAT", "KALTENG": "KALIMANTAN TENGAH", "KALSEL": "KALIMANTAN SELATAN",
+            "KALTIM": "KALIMANTAN TIMUR", "KALUT": "KALIMANTAN UTARA", "SULUT": "SULAWESI UTARA",
+            "SULTENG": "SULAWESI TENGAH", "SULSEL": "SULAWESI SELATAN", "SULTRA": "SULAWESI TENGGARA",
+            "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA",
+            "NAD": "ACEH", "NANGGROE ACEH DARUSSALAM": "ACEH"
+        }
+        
+        p_raw = str(row.get('Provinsi', '')).strip().upper()
+        c_raw = str(row.get('Kota', '')).strip().upper()
+        o_raw = str(row.get('Nama Outlet', '')).strip().upper()
+        
+        if p_raw in ['NAN', '-', 'NONE', '0']: p_raw = ""
+        if c_raw in ['NAN', '-', 'NONE', '0']: c_raw = ""
+        if o_raw in ['NAN', '-', 'NONE', '0']: o_raw = ""
+        
+        # 1. Cek Exact & Typo di Kolom Provinsi
+        if p_raw:
+            if p_raw in valid_provinces: return p_raw
+            if p_raw in abbreviations: return abbreviations[p_raw]
+            matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
+            if matches: return matches[0]
+
+        # 2. Analisis Gabungan Kota
+        teks_lokasi = f"{p_raw} {c_raw}".strip()
+        if teks_lokasi:
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                for city in cities:
+                    if city == teks_lokasi or f" {city} " in f" {teks_lokasi} ": return prov_name
+            semua_kota = [ct for cities in PROVINCE_MAPPING.values() for ct in cities]
+            map_kota_prov = {ct: p_name for p_name, cities in PROVINCE_MAPPING.items() for ct in cities}
+            matches_kota = difflib.get_close_matches(teks_lokasi, semua_kota, n=1, cutoff=0.85)
+            if matches_kota: return map_kota_prov[matches_kota[0]]
+
+        # 3. Deteksi Nama Outlet
+        if o_raw:
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                for city in cities:
+                    if len(city) >= 4: 
+                        if f" {city} " in f" {o_raw} " or o_raw.endswith(f" {city}") or o_raw.startswith(f"{city} "):
+                            return prov_name
+
+        return "LAIN-LAIN"
+
+    df['Provinsi'] = df.apply(determine_province, axis=1)
     
     try: df.to_parquet("master_database_penjualan.parquet", index=False)
     except: pass 
