@@ -12,6 +12,7 @@ import hashlib
 import numpy as np
 import pyotp  
 import qrcode 
+import difflib  # <-- Modul bawaan Python untuk mendeteksi typo/salah ketik
 from calendar import monthrange
 from itertools import combinations
 from collections import Counter
@@ -93,7 +94,7 @@ PROVINCE_MAPPING = {
     "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
     "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
     "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR", "LUBUK BASUNG", "SIMPANG EMPAT", "UJUNG GADING", "LUBUK SIKAPING", "MUARA LABUH", "PULAU PUNJUNG", "SUNGAI RUMBAI"],
-    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KOANTAN"],
+    "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KUANTAN"],
     "KEPULAUAN RIAU": ["BATAM", "TANJUNGPINANG", "BINTAN", "KARIMUN", "NATUNA", "LINGGA", "ANAMBAS"],
     "JAMBI": ["JAMBI", "SUNGAI PENUH", "BUNGO", "MERANGIN", "BATANGHARI", "MUARO", "SAROLANGUN", "TANJUNG JABUNG", "TEBO", "BANGKO", "MUARA BUNGO", "KUALA TUNGKAL", "RIMBO BUJANG", "SUNGAI BENGKAL"],
     "SUMATERA SELATAN": ["PALEMBANG", "LUBUKLINGGAU", "PRABUMULIH", "PAGAR ALAM", "BANYUASIN", "EMPAT LAWANG", "LAHAT", "MUARA ENIM", "MUSI", "OGAN", "OKU", "OKI", "SEKAYU", "INDRALAYA"],
@@ -390,12 +391,19 @@ def load_data_from_mysql():
             # Step 1: Cek input kolom Provinsi asal Google Sheet
             if 'Provinsi' in row.index and pd.notna(row['Provinsi']):
                 p_raw = str(row['Provinsi']).strip().upper()
-                if p_raw in abbreviations:
-                    return abbreviations[p_raw]
+                
+                # A. Cek Exact Match (Cocok 100%)
                 if p_raw in valid_provinces:
                     return p_raw
+                if p_raw in abbreviations:
+                    return abbreviations[p_raw]
+                    
+                # B. Cek Typo / Kemiripan menggunakan difflib (Toleransi Typo 80%)
+                matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
+                if matches:
+                    return matches[0]
             
-            # Step 2: Jika salah/kosong, periksa berdasarkan data Kota
+            # Step 2: Jika salah/kosong/tidak masuk kriteria, periksa berdasarkan data Kota
             if 'Kota' in row.index and pd.notna(row['Kota']):
                 c_raw = str(row['Kota']).strip().upper()
                 for prov_name, cities in PROVINCE_MAPPING.items():
@@ -403,7 +411,7 @@ def load_data_from_mysql():
                         if city in c_raw:
                             return prov_name
             
-            # Step 3: Jika di Indonesia memang tidak valid, lempar ke LAIN-LAIN
+            # Step 3: Jika di Indonesia memang tidak valid & kota tak terlacak, lempar ke LAIN-LAIN
             return "LAIN-LAIN"
 
         df['Provinsi'] = df.apply(determine_province, axis=1)
@@ -721,6 +729,11 @@ def render_pivot_fragment(df_scope_all, role):
                 
                 cols_order = ['RO'] + [c for c in df_final_export.columns if c != 'RO']
                 df_final_export = df_final_export[cols_order]
+                
+                # UBAH TIPE DATA KOLOM RO MENJADI STRING AGAR BISA DIISI TEKS KOSONG
+                df_final_export['RO'] = df_final_export['RO'].astype(str)
+                
+                # Baris total untuk kolom RO dikosongkan
                 df_final_export.at[len(df_final_export)-1, 'RO'] = ""
 
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -783,7 +796,7 @@ def login_page():
     st.markdown("<br><br><h1 style='text-align: center;'>🦅 Executive Command Center</h1>", unsafe_allow_html=True)
     
     if st.session_state.get('logged_out_due_to_inactivity', False):
-        st.warning("⏱️ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Dilakan login kembali demi keamanan.")
+        st.warning("⏱️ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali demi keamanan.")
         st.session_state['logged_out_due_to_inactivity'] = False
 
     col1, col2, col3 = st.columns([1,2,1])
@@ -2315,7 +2328,7 @@ def main_dashboard():
                                         success_model = m_name
                                         break
                                     except Exception:
-                                        continue
+                                        continue 
                                 
                                 if response:
                                     st.success(f"Analisis Selesai! (Powered by {success_model})")
