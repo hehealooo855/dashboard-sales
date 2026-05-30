@@ -340,6 +340,14 @@ def load_data_from_url():
         
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
+    for alias in ['Nama Customer', 'Customer', 'Nama Toko', 'Toko', 'Outlet']:
+        # Cari kolom yang mirip tanpa peduli huruf besar/kecil
+        col_matches = [c for c in df.columns if c.upper() == alias.upper()]
+        for match in col_matches:
+            if 'Nama Outlet' not in df.columns:
+                df['Nama Outlet'] = df[match]
+            else:
+                df['Nama Outlet'] = df['Nama Outlet'].fillna(df[match])
     
     for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
         if alt_col in df.columns:
