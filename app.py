@@ -340,35 +340,46 @@ def load_data_from_url():
         
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
-    for alias in ['Nama Customer', 'Customer', 'Nama Toko', 'Toko', 'Outlet']:
-        # Cari kolom yang mirip tanpa peduli huruf besar/kecil
-        col_matches = [c for c in df.columns if c.upper() == alias.upper()]
-        for match in col_matches:
-            if 'Nama Outlet' not in df.columns:
-                df['Nama Outlet'] = df[match]
-            else:
-                df['Nama Outlet'] = df['Nama Outlet'].fillna(df[match])
     
-    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
-        if alt_col in df.columns:
-            if 'Penjualan' in df.columns:
-                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
-            else:
-                df['Penjualan'] = df[alt_col]
-                
-    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-        if col_name in df.columns:
-            if 'Kode_Global' not in df.columns:
-                df['Kode_Global'] = df[col_name]
-            else:
-                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+    # -------------------------------------------------------------------------
+    # 1. PENYATUAN NAMA KOLOM BRUTAL (CASE INSENSITIVE)
+    # -------------------------------------------------------------------------
+    cols_upper = {c.upper(): c for c in df.columns}
+    
+    # Alias Nama Toko
+    for alias in ['NAMA CUSTOMER', 'CUSTOMER', 'NAMA TOKO', 'TOKO', 'PELANGGAN', 'OUTLET']:
+        if alias in cols_upper and 'Nama Outlet' not in df.columns:
+            df = df.rename(columns={cols_upper[alias]: 'Nama Outlet'})
+            break
+            
+    # Alias Kode
+    for alias in ['KODE CUSTOMER', 'KODE COSTUMER', 'KODE OUTLET', 'KODE TOKO']:
+        if alias in cols_upper and 'Kode_Global' not in df.columns:
+            df = df.rename(columns={cols_upper[alias]: 'Kode_Global'})
+            break
+            
+    # Alias Sales
+    for alias in ['SALES', 'SALESMAN', 'NAMA SALES']:
+        if alias in cols_upper and 'Penjualan' not in df.columns:
+            df = df.rename(columns={cols_upper[alias]: 'Penjualan'})
+            break
+            
+    # Alias Merk
+    for alias in ['BRAND', 'PRODUK']:
+        if alias in cols_upper and 'Merk' not in df.columns:
+            df = df.rename(columns={cols_upper[alias]: 'Merk'})
+            break
+            
+    # Alias Faktur
+    for c in df.columns:
+        if 'faktur' in c.lower() or 'bukti' in c.lower() or 'invoice' in c.lower():
+            df = df.rename(columns={c: 'No Faktur'})
+            break
 
-    faktur_col = None
-    for col in df.columns:
-        if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-            faktur_col = col; break
-    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+    # -------------------------------------------------------------------------
+    # 2. PEMBERSIHAN DATA DASAR
+    # -------------------------------------------------------------------------
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
     
     if 'Nama Barang' in df.columns:
         df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
@@ -376,8 +387,11 @@ def load_data_from_url():
 
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
+        df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
         df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
         df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+    else:
+        df['Nama Outlet'] = "-" # Fallback jika kolom benar-benar tidak ada
 
     def clean_rupiah(x):
         x = str(x).upper().replace('RP', '').strip()
@@ -388,10 +402,8 @@ def load_data_from_url():
         try: return float(x)
         except: return 0.0
 
-    if 'Jumlah' in df.columns:
-        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-    else:
-        df['Jumlah'] = 0.0
+    if 'Jumlah' in df.columns: df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    else: df['Jumlah'] = 0.0
 
     if 'Tanggal' in df.columns:
         tanggal_raw = df['Tanggal'].astype(str).str.strip()
@@ -432,11 +444,10 @@ def load_data_from_url():
         if col in df.columns: 
             df[col] = df[col].fillna("-").astype(str).str.strip()
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
-    
-    # =========================================================================
-    # LOGIKA HIERARKI PROVINSI BARU (ULTIMATE AGGRESSIVE DETECTOR) - GOOGLE SHEETS
-    # =========================================================================
-    cols_upper = {c.upper(): c for c in df.columns}
+
+    # -------------------------------------------------------------------------
+    # 3. RADAR DETEKTIF PROVINSI
+    # -------------------------------------------------------------------------
     if 'Provinsi' not in df.columns:
         for alias in ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH']:
             if alias in cols_upper:
@@ -459,7 +470,6 @@ def load_data_from_url():
             "SULAWESI TENGGARA", "SULAWESI BARAT", "GORONTALO", "MALUKU", "MALUKU UTARA", 
             "PAPUA BARAT", "PAPUA", "PAPUA SELATAN", "PAPUA TENGAH", "PAPUA PEGUNUNGAN", "PAPUA BARAT DAYA"
         }
-        
         abbreviations = {
             "SUMUT": "SUMATERA UTARA", "SUMBAR": "SUMATERA BARAT", "KEPRI": "KEPULAUAN RIAU",
             "SUMSEL": "SUMATERA SELATAN", "BABEL": "BANGKA BELITUNG", "DKI": "DKI JAKARTA",
@@ -480,14 +490,12 @@ def load_data_from_url():
         if c_raw in ['NAN', '-', 'NONE', '0']: c_raw = ""
         if o_raw in ['NAN', '-', 'NONE', '0']: o_raw = ""
         
-        # 1. Cek Exact & Typo di Kolom Provinsi
         if p_raw:
             if p_raw in valid_provinces: return p_raw
             if p_raw in abbreviations: return abbreviations[p_raw]
             matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
             if matches: return matches[0]
 
-        # 2. Analisis Gabungan Kota
         teks_lokasi = f"{p_raw} {c_raw}".strip()
         if teks_lokasi:
             for prov_name, cities in PROVINCE_MAPPING.items():
@@ -498,29 +506,27 @@ def load_data_from_url():
             matches_kota = difflib.get_close_matches(teks_lokasi, semua_kota, n=1, cutoff=0.85)
             if matches_kota: return map_kota_prov[matches_kota[0]]
 
-        # 3. Deteksi Nama Outlet
         if o_raw:
             for prov_name, cities in PROVINCE_MAPPING.items():
                 for city in cities:
                     if len(city) >= 4: 
                         if f" {city} " in f" {o_raw} " or o_raw.endswith(f" {city}") or o_raw.startswith(f"{city} "):
                             return prov_name
-
         return "LAIN-LAIN"
 
     df['Provinsi'] = df.apply(determine_province, axis=1)
+
+    # -------------------------------------------------------------------------
+    # 4. AUTO-HEALING TOKO PECAH
+    # -------------------------------------------------------------------------
     df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
-    
-    # Ambil data paling valid dari setiap toko (yang tidak kosong/strip)
     valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Nama_Pencocokan')['Kode_Global'].first()
     valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
     valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
 
-    # Timpa baris yang datanya kosong dengan data valid
     df['Kode_Global'] = df['Nama_Pencocokan'].map(valid_kodes).fillna(df['Kode_Global'])
     df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
     df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
-    
     df = df.drop(columns=['Nama_Pencocokan'])
     
     try: df.to_parquet("master_database_penjualan.parquet", index=False)
