@@ -534,18 +534,6 @@ def load_data(fast_mode=False):
 # =========================================================================
 def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_excel_tuple, group_cols_tuple, brand_prefixes_dict):
     group_cols = list(group_cols_tuple)
-    
-    if 'Nama Outlet' in df_pivot_source.columns and 'Nama Customer' not in df_pivot_source.columns:
-        df_pivot_source = df_pivot_source.rename(columns={'Nama Outlet': 'Nama Customer'})
-        if 'Nama Outlet' in group_cols:
-            group_cols[group_cols.index('Nama Outlet')] = 'Nama Customer'
-
-    invalid_codes = ['-', '', 'NAN', 'NONE', '0.0']
-    df_pivot_source['ID_Patokan'] = np.where(
-        df_pivot_source['Kode_Global'].astype(str).str.strip().str.upper().isin(invalid_codes),
-        df_pivot_source['Nama Customer'].astype(str).str.strip(),
-        df_pivot_source['Kode_Global'].astype(str).str.strip()
-    )
 
     if not df_pivot_source.empty:
         if selected_merk_excel != "SEMUA":
@@ -563,20 +551,26 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
-        df_filtered = df_filtered.sort_values('Tanggal', ascending=False)
-        base_customers = df_filtered.drop_duplicates(subset=['ID_Patokan'], keep='first')[['ID_Patokan'] + group_cols]
-        
+        # KEMBALI KE LOGIKA APP AWAL (Gunakan murni Nama Outlet)
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='ID_Patokan', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-            master_pivot = pd.merge(base_customers, pivot_sales, on='ID_Patokan', how='left').fillna(0)
+            
+            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
+            
+            df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
+            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            
+            master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
+            
+            for i in range(1, 13):
+                if i not in master_pivot.columns: master_pivot[i] = 0
         else:
-            master_pivot = base_customers.copy()
+            df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
+            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
             for i in range(1, 13): master_pivot[i] = 0
             
-        master_pivot = master_pivot.drop(columns=['ID_Patokan'])
         return master_pivot
         
     return pd.DataFrame()
