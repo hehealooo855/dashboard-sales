@@ -565,7 +565,11 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
         
         if df_filtered.empty: return pd.DataFrame()
 
-        # KEMBALI KE LOGIKA APP AWAL (Gunakan murni Nama Outlet)
+        # --- PERBAIKAN: Safety Net agar kolom Nama Outlet tidak hilang saat digabung ---
+        cols_to_keep = group_cols.copy()
+        if 'Nama Outlet' not in cols_to_keep:
+            cols_to_keep.append('Nama Outlet')
+
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
@@ -574,7 +578,9 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
             pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
-            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            
+            # Gunakan cols_to_keep yang sudah dijamin amannya
+            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[cols_to_keep]
             
             master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
             
@@ -582,7 +588,7 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
                 if i not in master_pivot.columns: master_pivot[i] = 0
         else:
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
-            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[cols_to_keep]
             for i in range(1, 13): master_pivot[i] = 0
             
         return master_pivot
