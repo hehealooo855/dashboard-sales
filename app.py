@@ -12,7 +12,7 @@ import hashlib
 import numpy as np
 import pyotp  
 import qrcode 
-import difflib  # <-- Modul bawaan Python untuk mendeteksi typo/salah ketik
+import difflib  
 from calendar import monthrange
 from itertools import combinations
 from collections import Counter
@@ -91,7 +91,7 @@ HOLIDAYS_2026 = [
 ]
 
 PROVINCE_MAPPING = {
-    "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU", "PERTUMBUKAN"],
+    "SUMATERA UTARA": ["MEDAN", "MDN", "BINJAI", "BINJEI", "TEBING", "SIANTAR", "PEMATANG", "TANJUNG BALAI", "SIBOLGA", "SIDEMPUAN", "PADANGSIDEMPUAN", "GUNUNGSITOLI", "DELI", "SERDANG", "KARO", "LANGKAT", "ASAHAN", "SIMALUNGUN", "DAIRI", "TOBA", "MANDAILING", "NIAS", "TAPANULI", "BATUBARA", "LABUHAN", "KISARAN", "RANTAU", "TARUTUNG", "STABAT", "PAKAM", "KABANJAHE", "SAMOSIR", "HUMBANG", "PAKPAK", "BALIGE", "SIDIKALANG", "PANGURURAN", "SALAK", "PANYABUNGAN", "SUNGGAL", "PERCUT", "TEMBUNG", "TAMORA", "TANJUNG MORAWA", "BERASTAGI", "SEI RAMPAH", "PERBAUNGAN", "INDRAPURA", "LIMA PULUH", "AEK KANOPAN", "KOTA PINANG", "SIBUHUAN", "GUNUNG TUA", "SIPIROK", "PANCUR BATU"],
     "ACEH": ["ACEH", "SABANG", "LHOKSEUMAWE", "LANGSA", "SUBULUSSALAM", "BIREUEN", "BIREUN", "PIDIE", "MEULABOH", "SIGLI", "KUTACANE", "TAKENGON", "GAYO", "BENER MERIAH", "NAGAN", "SIMEULUE", "TAPAKTUAN", "SINGKIL", "BLANGPIDIE", "IDI", "PEUREULAK", "PERULAK", "LHOKSUKON", "KUALA SIMPANG", "MATANG", "PANTON", "MEUREUDU"],
     "SUMATERA BARAT": ["PADANG", "BUKITTINGGI", "PAYAKUMBUH", "PARIAMAN", "SOLOK", "SAWAHLUNTO", "AGAM", "DHARMASRAYA", "MENTAWAI", "PASAMAN", "PESISIR", "SIJUNJUNG", "TANAH DATAR", "BATUSANGKAR", "LUBUK BASUNG", "SIMPANG EMPAT", "UJUNG GADING", "LUBUK SIKAPING", "MUARA LABUH", "PULAU PUNJUNG", "SUNGAI RUMBAI"],
     "RIAU": ["PEKANBARU", "PKU", "DUMAI", "BENGKALIS", "KAMPAR", "ROKAN", "SIAK", "PELALAWAN", "INDRAGIRI", "MERANTI", "KUANTAN", "BANGKINANG", "TEMBILAHAN", "RENGAT", "UJUNGBATU", "PASIR PENGARAIAN", "BAGANSIAPIAPI", "DURI", "BAGAN BATU", "UJUNG BATU", "MINAS", "PERAWANG", "KANDIS", "PANGKALAN KERINCI", "SOREK", "BELILAS", "UKUI", "AIR MOLEK", "LIRIK", "TELUK KUANTAN"],
@@ -360,10 +360,24 @@ def load_data_from_mysql():
             if col in df.columns: 
                 df[col] = df[col].fillna("-").astype(str).str.strip()
                 df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
+
+        # =========================================================================
+        # LOGIKA HIERARKI PROVINSI BARU (ULTIMATE AGGRESSIVE DETECTOR)
+        # =========================================================================
         
-        # =========================================================================
-        # LOGIKA HIERARKI PROVINSI BARU (VALIDASI BERLAPIS INDONESIA & LAIN-LAIN)
-        # =========================================================================
+        # 1. Alias Kolom Dinamis (Membaca kolom yang tertukar namanya)
+        cols_upper = {c.upper(): c for c in df.columns}
+        if 'Provinsi' not in df.columns:
+            for alias in ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH']:
+                if alias in cols_upper:
+                    df = df.rename(columns={cols_upper[alias]: 'Provinsi'})
+                    break
+        if 'Kota' not in df.columns:
+            for alias in ['CITY', 'KABUPATEN', 'KAB', 'DAERAH', 'LOKASI']:
+                if alias in cols_upper:
+                    df = df.rename(columns={cols_upper[alias]: 'Kota'})
+                    break
+
         def determine_province(row):
             valid_provinces = {
                 "ACEH", "SUMATERA UTARA", "SUMATERA BARAT", "RIAU", "KEPULAUAN RIAU", 
@@ -385,35 +399,58 @@ def load_data_from_mysql():
                 "KALBAR": "KALIMANTAN BARAT", "KALTENG": "KALIMANTAN TENGAH", "KALSEL": "KALIMANTAN SELATAN",
                 "KALTIM": "KALIMANTAN TIMUR", "KALUT": "KALIMANTAN UTARA", "SULUT": "SULAWESI UTARA",
                 "SULTENG": "SULAWESI TENGAH", "SULSEL": "SULAWESI SELATAN", "SULTRA": "SULAWESI TENGGARA",
-                "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA"
+                "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA",
+                "NAD": "ACEH", "NANGGROE ACEH DARUSSALAM": "ACEH"
             }
             
-            # Step 1: Cek input kolom Provinsi asal Google Sheet
-            if 'Provinsi' in row.index and pd.notna(row['Provinsi']):
-                p_raw = str(row['Provinsi']).strip().upper()
-                
-                # A. Cek Exact Match (Cocok 100%)
-                if p_raw in valid_provinces:
-                    return p_raw
-                if p_raw in abbreviations:
-                    return abbreviations[p_raw]
-                    
-                # B. Cek Typo / Kemiripan menggunakan difflib (Toleransi Typo 80%)
-                matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
-                if matches:
-                    return matches[0]
+            p_raw = str(row.get('Provinsi', '')).strip().upper()
+            c_raw = str(row.get('Kota', '')).strip().upper()
+            o_raw = str(row.get('Nama Outlet', '')).strip().upper()
             
-            # Step 2: Jika salah/kosong/tidak masuk kriteria, periksa berdasarkan data Kota
-            if 'Kota' in row.index and pd.notna(row['Kota']):
-                c_raw = str(row['Kota']).strip().upper()
+            # Bersihkan nilai kosong
+            if p_raw in ['NAN', '-', 'NONE', '0']: p_raw = ""
+            if c_raw in ['NAN', '-', 'NONE', '0']: c_raw = ""
+            if o_raw in ['NAN', '-', 'NONE', '0']: o_raw = ""
+            
+            # STEP 1: Cek Kolom Provinsi (Exact Match & Toleransi Typo)
+            if p_raw:
+                if p_raw in valid_provinces: return p_raw
+                if p_raw in abbreviations: return abbreviations[p_raw]
+                
+                # Toleransi Typo (Misal: Sumatra Utara -> Sumatera Utara)
+                matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
+                if matches: return matches[0]
+
+            # STEP 2: Analisis Teks Gabungan (Cek apakah Kota diketik di kolom Provinsi atau sebaliknya)
+            teks_lokasi = f"{p_raw} {c_raw}".strip()
+            
+            if teks_lokasi:
+                # Cari kata kunci Kota di dalam teks gabungan
                 for prov_name, cities in PROVINCE_MAPPING.items():
                     for city in cities:
-                        if city in c_raw:
+                        if city == teks_lokasi or f" {city} " in f" {teks_lokasi} ":
                             return prov_name
-            
-            # Step 3: Jika di Indonesia memang tidak valid & kota tak terlacak, lempar ke LAIN-LAIN
+                            
+                # Fallback: Cek kemiripan string kota (jika ada typo nama kota)
+                semua_kota = [ct for cities in PROVINCE_MAPPING.values() for ct in cities]
+                map_kota_prov = {ct: p_name for p_name, cities in PROVINCE_MAPPING.items() for ct in cities}
+                
+                matches_kota = difflib.get_close_matches(teks_lokasi, semua_kota, n=1, cutoff=0.85)
+                if matches_kota:
+                    return map_kota_prov[matches_kota[0]]
+
+            # STEP 3: Deteksi Agresif dari Nama Outlet (Contoh: "PT PESONA ASIA (BANDA ACEH)")
+            if o_raw:
+                for prov_name, cities in PROVINCE_MAPPING.items():
+                    for city in cities:
+                        # Syarat panjang kota minimal 4 agar singkatan "AS" tidak nyangkut di "PESONA ASIA"
+                        if len(city) >= 4: 
+                            if f" {city} " in f" {o_raw} " or o_raw.endswith(f" {city}") or o_raw.startswith(f"{city} "):
+                                return prov_name
+
             return "LAIN-LAIN"
 
+        # Terapkan fungsi pembacaan provinsi
         df['Provinsi'] = df.apply(determine_province, axis=1)
         
         try: df.to_parquet("master_database_penjualan.parquet", index=False)
@@ -730,10 +767,7 @@ def render_pivot_fragment(df_scope_all, role):
                 cols_order = ['RO'] + [c for c in df_final_export.columns if c != 'RO']
                 df_final_export = df_final_export[cols_order]
                 
-                # UBAH TIPE DATA KOLOM RO MENJADI STRING AGAR BISA DIISI TEKS KOSONG
                 df_final_export['RO'] = df_final_export['RO'].astype(str)
-                
-                # Baris total untuk kolom RO dikosongkan
                 df_final_export.at[len(df_final_export)-1, 'RO'] = ""
 
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
