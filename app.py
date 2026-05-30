@@ -425,7 +425,7 @@ def load_data_from_url():
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
     
     # =========================================================================
-    # LOGIKA HIERARKI PROVINSI BARU (ULTIMATE AGGRESSIVE DETECTOR)
+    # LOGIKA HIERARKI PROVINSI BARU (ULTIMATE AGGRESSIVE DETECTOR) - GOOGLE SHEETS
     # =========================================================================
     cols_upper = {c.upper(): c for c in df.columns}
     if 'Provinsi' not in df.columns:
@@ -460,8 +460,7 @@ def load_data_from_url():
             "KALBAR": "KALIMANTAN BARAT", "KALTENG": "KALIMANTAN TENGAH", "KALSEL": "KALIMANTAN SELATAN",
             "KALTIM": "KALIMANTAN TIMUR", "KALUT": "KALIMANTAN UTARA", "SULUT": "SULAWESI UTARA",
             "SULTENG": "SULAWESI TENGAH", "SULSEL": "SULAWESI SELATAN", "SULTRA": "SULAWESI TENGGARA",
-            "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA",
-            "NAD": "ACEH", "NANGGROE ACEH DARUSSALAM": "ACEH"
+            "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA", "NAD": "ACEH"
         }
         
         p_raw = str(row.get('Provinsi', '')).strip().upper()
