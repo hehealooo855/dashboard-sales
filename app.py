@@ -501,11 +501,25 @@ def load_data_from_url():
         return "LAIN-LAIN"
 
     df['Provinsi'] = df.apply(determine_province, axis=1)
+    df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
+    
+    # Ambil data paling valid dari setiap toko (yang tidak kosong/strip)
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Nama_Pencocokan')['Kode_Global'].first()
+    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
+    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
+
+    # Timpa baris yang datanya kosong dengan data valid
+    df['Kode_Global'] = df['Nama_Pencocokan'].map(valid_kodes).fillna(df['Kode_Global'])
+    df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
+    df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
+    
+    df = df.drop(columns=['Nama_Pencocokan'])
     
     try: df.to_parquet("master_database_penjualan.parquet", index=False)
     except: pass 
             
     return df
+
 
 def load_data(fast_mode=False):
     if fast_mode and os.path.exists("master_database_penjualan.parquet"):
