@@ -1980,10 +1980,18 @@ def main_dashboard():
                         df_display_t1 = pd.DataFrame(display_2026)
                         render_growth_aggrid(df_display_t1, total_dict_growth=None, pct_col='AO VS RO %', file_prefix="Aktivitas_Outlet", brand_name=brand_growth)
                         
-                        st.divider()
                         col_g1, col_g2 = st.columns(2)
                         df_2025 = df_team_all[df_team_all['Tahun'] == 2025] 
                         df_2026_sales = df_growth_all[df_growth_all['Year'] == 2026]
+                        
+                        # --- 2 FUNGSI YANG HILANG DIKEMBALIKAN KE SINI ---
+                        def get_sales_2025(df_yr, m, brand_name):
+                            res = df_yr[(df_yr['Bulan'] == m) & (df_yr['Merk'] == brand_name)]['Jumlah']
+                            return res.sum() if not res.empty else 0
+                            
+                        def get_sales_2026(df_yr, m):
+                            res = df_yr[df_yr['Month'] == m]['SALES']
+                            return res.sum() if not res.empty else 0
                         
                         with col_g1:
                             st.write(f"#### **Tabel 2: {brand_growth} 2025 vs 2026 Sales Growth**")
