@@ -265,22 +265,18 @@ def render_custom_progress(title, current, target):
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
     urls = [
-            ]
+        # PASTIKAN ANDA MEMASUKKAN KEMBALI 7 LINK GOOGLE SHEETS ANDA DI SINI
+    ]
     
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
-                # Langkah 1: Coba paksa ambil data paling baru (Bypass Cache)
                 url_with_ts = f"{url}&t={int(time.time())}"
-                # Menghapus engine='pyarrow' agar tidak bentrok dengan karakter aneh di Sheets
                 return pd.read_csv(url_with_ts, dtype=str, on_bad_lines='skip')
             except Exception as e:
                 try:
-                    # Langkah 2: JARING PENGAMAN! Jika Google memblokir karena terlalu sering refresh,
-                    # gunakan URL murni yang ditangani langsung oleh server CDN kuat milik Google.
                     return pd.read_csv(url, dtype=str, on_bad_lines='skip')
                 except Exception as e2:
-                    # Langkah 3: Cetak error asli ke sistem agar kita tahu jika link benar-benar mati
                     print(f"⚠️ Gagal menarik data dari {url}. Detail Error: {e2}")
                     return None
         return None
@@ -297,59 +293,54 @@ def load_data_from_url():
     df = pd.concat(all_dfs, ignore_index=True)
     df.columns = df.columns.str.strip()
     
-    for alt_col in ['Sales', 'Salesman', 'Nama Sales']:
-        if alt_col in df.columns:
-            if 'Penjualan' in df.columns:
-                df['Penjualan'] = df['Penjualan'].fillna(df[alt_col])
-            else:
-                df['Penjualan'] = df[alt_col]
-                
-    for col_name in ['Kode Customer', 'Kode Costumer', 'Kode Outlet']:
-        if col_name in df.columns:
-            if 'Kode_Global' not in df.columns:
-                df['Kode_Global'] = df[col_name]
-            else:
-                df['Kode_Global'] = df['Kode_Global'].fillna(df[col_name])
-    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
+    # --- 1. PENYATUAN NAMA KOLOM BRUTAL ---
+    def gabungkan_kolom(df, target_name, aliases):
+        if target_name not in df.columns: df[target_name] = np.nan
+        for alias in aliases:
+            matched_cols = [c for c in df.columns if c.upper() == alias.upper() and c != target_name]
+            for match in matched_cols:
+                df[target_name] = df[target_name].fillna(df[match])
+        return df
 
-    faktur_col = None
-    for col in df.columns:
-        if 'faktur' in col.lower() or 'bukti' in col.lower() or 'invoice' in col.lower():
-            faktur_col = col; break
-    if faktur_col: df = df.rename(columns={faktur_col: 'No Faktur'})
+    df = gabungkan_kolom(df, 'Nama Outlet', ['NAMA CUSTOMER', 'CUSTOMER', 'NAMA TOKO', 'TOKO', 'PELANGGAN', 'OUTLET', 'NAMA OUTLET'])
+    df = gabungkan_kolom(df, 'Kode_Global', ['KODE CUSTOMER', 'KODE COSTUMER', 'KODE OUTLET', 'KODE TOKO', 'KODE GLOBAL', 'KODE_GLOBAL'])
+    df = gabungkan_kolom(df, 'Penjualan', ['SALES', 'SALESMAN', 'NAMA SALES', 'PENJUALAN'])
+    df = gabungkan_kolom(df, 'Merk', ['BRAND', 'PRODUK', 'MERK'])
+    
+    faktur_cols = [c for c in df.columns if 'faktur' in c.lower() or 'bukti' in c.lower() or 'invoice' in c.lower()]
+    if faktur_cols: df = gabungkan_kolom(df, 'No Faktur', faktur_cols)
+
+    # --- 2. PEMBERSIHAN DATA DASAR ---
+    if 'Kode_Global' not in df.columns: df['Kode_Global'] = "-"
     
     if 'Nama Barang' in df.columns:
+        df = df[~df['Nama Barang'].astype(str).str.match(r'^(Total|Jumlah)', case=False, na=False)]
         df['Nama Barang'] = df['Nama Barang'].fillna("-")
-        df.loc[df['Nama Barang'].astype(str).str.strip() == '', 'Nama Barang'] = "-"
-        df.loc[df['Nama Barang'].astype(str).str.lower() == 'nan', 'Nama Barang'] = "-"
 
     if 'Nama Outlet' in df.columns:
         df = df[~df['Nama Outlet'].astype(str).str.match(r'^(Total|Jumlah|Subtotal|Grand|Rekap)', case=False, na=False)]
         df['Nama Outlet'] = df['Nama Outlet'].fillna("-")
-        df.loc[df['Nama Outlet'].astype(str).str.strip() == '', 'Nama Outlet'] = "-"
-        df.loc[df['Nama Outlet'].astype(str).str.lower() == 'nan', 'Nama Outlet'] = "-"
+        df = df[df['Nama Outlet'].astype(str).str.strip() != ''] 
+        df = df[df['Nama Outlet'].astype(str).str.lower() != 'nan']
+    else:
+        df['Nama Outlet'] = "-" 
 
     def clean_rupiah(x):
         s = str(x).upper().replace('RP', '').replace(' ', '').strip()
         if not s or s == '-': return 0.0
-        
         is_negative = False
         if (s.startswith('(') and s.endswith(')')) or s.startswith('-') or s.endswith('-') or s.startswith('–') or s.startswith('—'):
             is_negative = True
-            
         s = re.sub(r'[,.]\d{2}$', '', s) 
         s = re.sub(r'[^\d]', '', s) 
-        
         try: 
             val = float(s)
             return -val if is_negative else val
         except: 
             return 0.0
 
-    if 'Jumlah' in df.columns:
-        df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
-    else:
-        df['Jumlah'] = 0.0
+    if 'Jumlah' in df.columns: df['Jumlah'] = df['Jumlah'].apply(clean_rupiah)
+    else: df['Jumlah'] = 0.0
 
     if 'Tanggal' in df.columns:
         tanggal_raw = df['Tanggal'].astype(str).str.strip()
@@ -390,11 +381,87 @@ def load_data_from_url():
         if col in df.columns: 
             df[col] = df[col].fillna("-").astype(str).str.strip()
             df[col] = df[col].replace({'nan': '-', 'NaN': '-', '0.0': '-', 'None': '-', '': '-'})
+
+    # --- 3. RADAR DETEKTIF PROVINSI ---
+    df = gabungkan_kolom(df, 'Provinsi', ['PROPINSI', 'PROVINCE', 'PROV', 'WILAYAH'])
+    df = gabungkan_kolom(df, 'Kota', ['CITY', 'KABUPATEN', 'KAB', 'DAERAH', 'LOKASI'])
+
+    def determine_province(row):
+        valid_provinces = {
+            "ACEH", "SUMATERA UTARA", "SUMATERA BARAT", "RIAU", "KEPULAUAN RIAU", 
+            "JAMBI", "SUMATERA SELATAN", "BANGKA BELITUNG", "BENGKULU", "LAMPUNG", 
+            "DKI JAKARTA", "JAWA BARAT", "BANTEN", "JAWA TENGAH", "DI YOGYAKARTA", 
+            "JAWA TIMUR", "BALI", "NUSA TENGGARA BARAT", "NUSA TENGGARA TIMUR", 
+            "KALIMANTAN BARAT", "KALIMANTAN TENGAH", "KALIMANTAN SELATAN", "KALIMANTAN TIMUR", 
+            "KALIMANTAN UTARA", "SULAWESI UTARA", "SULAWESI TENGAH", "SULAWESI SELATAN", 
+            "SULAWESI TENGGARA", "SULAWESI BARAT", "GORONTALO", "MALUKU", "MALUKU UTARA", 
+            "PAPUA BARAT", "PAPUA", "PAPUA SELATAN", "PAPUA TENGAH", "PAPUA PEGUNUNGAN", "PAPUA BARAT DAYA"
+        }
+        abbreviations = {
+            "SUMUT": "SUMATERA UTARA", "SUMBAR": "SUMATERA BARAT", "KEPRI": "KEPULAUAN RIAU",
+            "SUMSEL": "SUMATERA SELATAN", "BABEL": "BANGKA BELITUNG", "DKI": "DKI JAKARTA",
+            "JAKARTA": "DKI JAKARTA", "JABAR": "JAWA BARAT", "JATENG": "JAWA TENGAH",
+            "DIY": "DI YOGYAKARTA", "JOGJA": "DI YOGYAKARTA", "YOGYAKARTA": "DI YOGYAKARTA",
+            "JATIM": "JAWA TIMUR", "NTB": "NUSA TENGGARA BARAT", "NTT": "NUSA TENGGARA TIMUR",
+            "KALBAR": "KALIMANTAN BARAT", "KALTENG": "KALIMANTAN TENGAH", "KALSEL": "KALIMANTAN SELATAN",
+            "KALTIM": "KALIMANTAN TIMUR", "KALUT": "KALIMANTAN UTARA", "SULUT": "SULAWESI UTARA",
+            "SULTENG": "SULAWESI TENGAH", "SULSEL": "SULAWESI SELATAN", "SULTRA": "SULAWESI TENGGARA",
+            "SULBAR": "SULAWESI BARAT", "MALUT": "MALUKU UTARA", "NAD": "ACEH"
+        }
+        
+        p_raw = str(row.get('Provinsi', '')).strip().upper()
+        c_raw = str(row.get('Kota', '')).strip().upper()
+        o_raw = str(row.get('Nama Outlet', '')).strip().upper()
+        
+        if p_raw in ['NAN', '-', 'NONE', '0']: p_raw = ""
+        if c_raw in ['NAN', '-', 'NONE', '0']: c_raw = ""
+        if o_raw in ['NAN', '-', 'NONE', '0']: o_raw = ""
+        
+        if p_raw:
+            if p_raw in valid_provinces: return p_raw
+            if p_raw in abbreviations: return abbreviations[p_raw]
+            try:
+                import difflib
+                matches = difflib.get_close_matches(p_raw, valid_provinces, n=1, cutoff=0.8)
+                if matches: return matches[0]
+            except: pass
+
+        teks_lokasi = f"{p_raw} {c_raw}".strip()
+        if teks_lokasi:
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                for city in cities:
+                    if city == teks_lokasi or f" {city} " in f" {teks_lokasi} ": return prov_name
+            try:
+                import difflib
+                semua_kota = [ct for cities in PROVINCE_MAPPING.values() for ct in cities]
+                map_kota_prov = {ct: p_name for p_name, cities in PROVINCE_MAPPING.items() for ct in cities}
+                matches_kota = difflib.get_close_matches(teks_lokasi, semua_kota, n=1, cutoff=0.85)
+                if matches_kota: return map_kota_prov[matches_kota[0]]
+            except: pass
+
+        if o_raw:
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                for city in cities:
+                    if len(city) >= 4: 
+                        if f" {city} " in f" {o_raw} " or o_raw.endswith(f" {city}") or o_raw.startswith(f"{city} "):
+                            return prov_name
+        return "LAIN-LAIN"
+
+    df['Provinsi'] = df.apply(determine_province, axis=1)
+
+    # --- 4. AUTO-HEALING CERDAS (Kode Spesifik per Brand) ---
+    df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
+    df['Kunci_Kode'] = list(zip(df['Nama_Pencocokan'], df['Merk']))
     
-    if 'Kota' in df.columns:
-        df['Provinsi'] = df['Kota'].apply(map_city_to_province)
-    else:
-        df['Provinsi'] = "-"
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].first()
+    df['Kode_Global'] = df['Kunci_Kode'].map(valid_kodes).fillna(df['Kode_Global'])
+    
+    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
+    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
+    df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
+    df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
+    
+    df = df.drop(columns=['Nama_Pencocokan', 'Kunci_Kode'])
     
     try: df.to_parquet("master_database_penjualan.parquet", index=False)
     except: pass 
@@ -416,39 +483,37 @@ def generate_pivot_fast(df_pivot_source, selected_merk_excel, selected_tahun_exc
     group_cols = list(group_cols_tuple)
 
     if not df_pivot_source.empty:
-        # Filter berdasarkan Merk untuk mendapatkan BASELINE seluruh toko
         if selected_merk_excel != "SEMUA":
             final_mask = df_pivot_source['Merk'] == selected_merk_excel
         else:
             final_mask = pd.Series(True, index=df_pivot_source.index)
             
         df_filtered = df_pivot_source[final_mask].copy()
-        
         if df_filtered.empty: return pd.DataFrame()
 
-        # Ekstrak data transaksi KHUSUS untuk tahun yang dipilih
+        cols_to_keep = group_cols.copy()
+        if 'Nama Outlet' not in cols_to_keep:
+            cols_to_keep.append('Nama Outlet')
+        if 'Merk' not in cols_to_keep:
+            cols_to_keep.append('Merk')
+
         df_excel = df_filtered[df_filtered['Tanggal'].dt.year.isin(selected_tahun_excel_tuple)].copy()
         
         if not df_excel.empty:
             df_excel['Bulan Angka'] = df_excel['Tanggal'].dt.month
-            
-            # Buat pivot nilai penjualan untuk tahun tersebut
-            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index='Nama Outlet', columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
-            
-            # Ambil master list toko (baseline) dari seluruh sejarah transaksi merk tersebut
+            pivot_sales = pd.pivot_table(df_excel, values='Jumlah', index=['Nama Outlet', 'Merk'], columns='Bulan Angka', aggfunc='sum', fill_value=0).reset_index()
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
-            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            base_customers = df_sorted.drop_duplicates(subset=['Nama Outlet', 'Merk'], keep='first')[cols_to_keep]
+            master_pivot = pd.merge(base_customers, pivot_sales, on=['Nama Outlet', 'Merk'], how='left').fillna(0)
             
-            # MENGGUNAKAN how='left' agar semua toko di base_customers tetap muncul meski penjualannya 0
-            master_pivot = pd.merge(base_customers, pivot_sales, on='Nama Outlet', how='left').fillna(0)
+            for i in range(1, 13):
+                if i not in master_pivot.columns: master_pivot[i] = 0
         else:
-            # Jika tahun yang dipilih sama sekali tidak ada transaksi, tampilkan semua toko dengan nilai 0
             df_sorted = df_filtered.sort_values(by=['Nama Outlet', 'Kode_Global'], ascending=[True, False])
-            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet'], keep='first')[group_cols]
+            master_pivot = df_sorted.drop_duplicates(subset=['Nama Outlet', 'Merk'], keep='first')[cols_to_keep]
             for i in range(1, 13): master_pivot[i] = 0
             
         return master_pivot
-        
     return pd.DataFrame()
 
 def load_users():
@@ -563,6 +628,8 @@ def render_pivot_fragment(df_scope_all, role):
         cols_to_keep = []
         for c in grp_cols:
             if c in master_pivot.columns: cols_to_keep.append(c)
+        if 'Merk' in master_pivot.columns and 'Merk' not in cols_to_keep:
+            cols_to_keep.append('Merk')
         cols_to_keep.extend(list(range(1, 13)))
         
         master_pivot = master_pivot[cols_to_keep]
@@ -575,21 +642,23 @@ def render_pivot_fragment(df_scope_all, role):
         
         master_pivot['Total Penjualan'] = master_pivot[list(bulan_indo_map.values())].sum(axis=1)
         
-        ren_dict = {'Kode_Global': 'Kode Customer'}
+        # MENGUBAH NAMA OUTLET MENJADI NAMA CUSTOMER
+        ren_dict = {'Kode_Global': 'Kode Customer', 'Nama Outlet': 'Nama Customer'}
         master_pivot = master_pivot.rename(columns=ren_dict)
         
         if 'Kode Customer' not in master_pivot.columns: master_pivot['Kode Customer'] = "-"
-        if 'Nama Outlet' not in master_pivot.columns: master_pivot['Nama Outlet'] = "-"
+        if 'Nama Customer' not in master_pivot.columns: master_pivot['Nama Customer'] = "-"
+        if 'Merk' not in master_pivot.columns: master_pivot['Merk'] = "-"
         if 'Provinsi' not in master_pivot.columns: master_pivot['Provinsi'] = "-"
         if 'Kota' not in master_pivot.columns: master_pivot['Kota'] = "-"
 
         df_filtered = master_pivot.copy()
         if filter_kode: df_filtered = df_filtered[df_filtered['Kode Customer'].astype(str).isin(filter_kode)]
-        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Outlet'].astype(str).isin(filter_nama)]
+        if filter_nama: df_filtered = df_filtered[df_filtered['Nama Customer'].astype(str).isin(filter_nama)]
         if filter_provinsi: df_filtered = df_filtered[df_filtered['Provinsi'].astype(str).isin(filter_provinsi)]
         if filter_kota: df_filtered = df_filtered[df_filtered['Kota'].astype(str).isin(filter_kota)]
 
-        st.caption(f"Menampilkan {len(df_filtered)} data customer.")
+        st.caption(f"Menampilkan {len(df_filtered)} baris data.")
 
         if maximize_toggle:
             st.markdown("""
@@ -602,11 +671,13 @@ def render_pivot_fragment(df_scope_all, role):
             st.info("ℹ️ Mode Layar Penuh aktif. Hilangkan centang pada toggle 'Mode Layar Penuh' di atas untuk kembali.")
 
         if not df_filtered.empty:
-
             bulan_indo_list = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
             num_cols = bulan_indo_list + ['Total Penjualan']
             
-            cols_reordered = ['Kode Customer', 'Nama Outlet', 'Provinsi', 'Kota'] + num_cols
+            # MEMUNCULKAN NAMA CUSTOMER DAN MERK DI TABEL
+            cols_reordered = ['Kode Customer', 'Nama Customer', 'Merk', 'Provinsi', 'Kota'] + num_cols
+            cols_reordered = [c for c in cols_reordered if c in df_filtered.columns]
+            
             df_display = df_filtered[cols_reordered].copy()
             df_display = df_display.loc[:, ~df_display.columns.duplicated()]
             
@@ -635,7 +706,7 @@ def render_pivot_fragment(df_scope_all, role):
                 for col in df_display.columns:
                     if col in num_cols:
                         gb.configure_column(col, type=["numericColumn"], headerClass="right-aligned-header", filter='agNumberColumnFilter', floatingFilter=True, valueFormatter=currency_formatter)
-                    elif col in ['Kode Customer', 'Nama Outlet']:
+                    elif col in ['Kode Customer', 'Nama Customer', 'Merk']:
                         gb.configure_column(col, pinned='left', filter='agSetColumnFilter', floatingFilter=True)
                     else:
                         gb.configure_column(col, filter='agSetColumnFilter', floatingFilter=True)
@@ -711,7 +782,7 @@ def render_pivot_fragment(df_scope_all, role):
                     worksheet.set_header(f'&C&10{watermark_text}')
                     worksheet.set_footer(f'&RPage &P of &N')
                     format1 = workbook.add_format({'num_format': '#,##0'})
-                    worksheet.set_column('E:Q', None, format1) 
+                    worksheet.set_column('F:R', None, format1) 
                     last_row_idx = len(df_display_export) 
                     bold_yellow_format = workbook.add_format({'bold': True, 'bg_color': '#FFFF00', 'border': 1, 'num_format': '#,##0', 'font_color': 'black'})
                     worksheet.set_row(last_row_idx, 30, bold_yellow_format)
