@@ -270,10 +270,19 @@ def load_data_from_url():
     def fetch_url(url):
         if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
             try:
+                # Langkah 1: Coba paksa ambil data paling baru (Bypass Cache)
                 url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str, engine='pyarrow')
+                # Menghapus engine='pyarrow' agar tidak bentrok dengan karakter aneh di Sheets
+                return pd.read_csv(url_with_ts, dtype=str, on_bad_lines='skip')
             except Exception as e:
-                return None
+                try:
+                    # Langkah 2: JARING PENGAMAN! Jika Google memblokir karena terlalu sering refresh,
+                    # gunakan URL murni yang ditangani langsung oleh server CDN kuat milik Google.
+                    return pd.read_csv(url, dtype=str, on_bad_lines='skip')
+                except Exception as e2:
+                    # Langkah 3: Cetak error asli ke sistem agar kita tahu jika link benar-benar mati
+                    print(f"⚠️ Gagal menarik data dari {url}. Detail Error: {e2}")
+                    return None
         return None
 
     all_dfs = []
