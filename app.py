@@ -1516,25 +1516,26 @@ def main_dashboard():
             list_tahun_sku = sorted(df_sku_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
             kd_asal = 'Kode_Global' if 'Kode_Global' in df_sku_base.columns else 'Kode Customer'
             
-            col_s1, col_s2 = st.columns(2)
-            with col_s1:
-                selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
-            with col_s2:
-                selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
-                
-            metric_choice_sku = st.radio("📊 Tampilkan Data Berdasarkan:", ["Value (Omset)", "QTY (Kuantitas)", "Value & QTY"], horizontal=True, key='metric_sku_radio')
-                
-            df_sku_for_options = df_sku_base.copy()
-            if selected_merk_sku != "SEMUA":
-                df_sku_for_options = df_sku_for_options[df_sku_for_options['Merk'] == selected_merk_sku]
-                
-            list_sku_cascading = sorted(df_sku_for_options['Nama Barang'].dropna().astype(str).unique())
-            list_kode_all_sku = sorted(df_sku_for_options[kd_asal].astype(str).unique())
-            list_nama_all_sku = sorted(df_sku_for_options['Nama Outlet'].astype(str).unique())
-            list_provinsi_all_sku = sorted(df_sku_for_options['Provinsi'].astype(str).unique())
-            list_kota_all_sku = sorted(df_sku_for_options['Kota'].astype(str).unique())
-
+            # Memasukkan semua filter ke dalam satu Form Box agar rapi dan tidak auto-refresh
             with st.form(key='sku_filter_form'):
+                col_s1, col_s2 = st.columns(2)
+                with col_s1:
+                    selected_merk_sku = st.selectbox("🎯 Pilih Merk:", ["SEMUA"] + list_merk_sku, key='merk_sku')
+                with col_s2:
+                    selected_tahun_sku = st.multiselect("🗓️ Pilih Tahun:", list_tahun_sku, default=list_tahun_sku, key='tahun_sku')
+                    
+                metric_choice_sku = st.radio("📊 Tampilkan Data Berdasarkan:", ["Value (Omset)", "QTY (Kuantitas)", "Value & QTY"], horizontal=True, key='metric_sku_radio')
+                    
+                df_sku_for_options = df_sku_base.copy()
+                if selected_merk_sku != "SEMUA":
+                    df_sku_for_options = df_sku_for_options[df_sku_for_options['Merk'] == selected_merk_sku]
+                    
+                list_sku_cascading = sorted(df_sku_for_options['Nama Barang'].dropna().astype(str).unique())
+                list_kode_all_sku = sorted(df_sku_for_options[kd_asal].astype(str).unique())
+                list_nama_all_sku = sorted(df_sku_for_options['Nama Outlet'].astype(str).unique())
+                list_provinsi_all_sku = sorted(df_sku_for_options['Provinsi'].astype(str).unique())
+                list_kota_all_sku = sorted(df_sku_for_options['Kota'].astype(str).unique())
+
                 st.markdown("#### 🔎 Filter Spesifik (Batch Processing)")
                 
                 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
