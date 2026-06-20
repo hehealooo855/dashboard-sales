@@ -1907,16 +1907,30 @@ def main_dashboard():
             list_merk_growth = sorted(df['Merk'].dropna().astype(str).unique())
             list_merk_growth = [m for m in list_merk_growth if m != "-"]
             
+            # Tarik daftar provinsi yang tersedia di database
+            list_prov_growth = sorted(df['Provinsi'].dropna().astype(str).unique())
+            list_prov_growth = [p for p in list_prov_growth if p not in ["-", "LAIN-LAIN", "", "nan", "None"]]
+            
             if list_merk_growth:
-                brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
+                col_grow1, col_grow2 = st.columns(2)
+                with col_grow1:
+                    brand_growth = st.selectbox("Pilih Brand untuk Analisis Growth:", list_merk_growth)
+                with col_grow2:
+                    provinsi_growth = st.multiselect("Pilih Provinsi (Kosongkan untuk melihat SEMUA):", list_prov_growth)
                 
                 df_team_all = df.copy()
+                
+                # --- APPLY FILTER SALES ---
                 if target_sales_filter != "SEMUA":
                     if target_sales_filter.upper() in TARGET_DATABASE:
                         tim_sales_list = list(TARGET_DATABASE[target_sales_filter.upper()].keys())
                         df_team_all = df_team_all[df_team_all['Penjualan'].isin(tim_sales_list)]
                     else:
                         df_team_all = df_team_all[df_team_all['Penjualan'] == target_sales_filter]
+                
+                # --- APPLY FILTER PROVINSI ---
+                if provinsi_growth:
+                    df_team_all = df_team_all[df_team_all['Provinsi'].isin(provinsi_growth)]
                 
                 # FILTER MURNI MEREK
                 is_valid_ro = df_team_all['Merk'] == brand_growth
