@@ -1049,16 +1049,25 @@ def ui_operasional_manager():
             st.link_button("🚨 Senggol Tim Gudang/Kurir (via WA)", f"https://wa.me/6281234567890?text={pesan_wa}")
         
     with t_efektif:
-        st.caption("PETA DISTRIBUSI PENGIRIMAN HARI INI (Medan Area)")
-        st.info("Peta ini menggunakan st.map() gratis. (Contoh titik koordinat dummy di sekitar Medan)")
+        st.caption("PETA KEMACETAN & DISTRIBUSI PENGIRIMAN (Medan Area)")
         
-        # Contoh data koordinat dummy (Medan Area)
+        # 1. Tombol Pintar ke Google Maps Asli (Mode Kemacetan / Traffic Layer AKTIF)
+        st.info("Gunakan tombol di bawah untuk memantau kemacetan, penutupan jalan, dan rute real-time di Google Maps.")
+        st.link_button(
+            "🗺️ Buka Live Traffic Google Maps (Full Fitur)", 
+            "https://www.google.com/maps/@3.5852867,98.6756689,13z/data=!5m1!1e1", 
+            type="primary", 
+            use_container_width=True
+        )
+        
+        st.markdown("---")
+        st.write("**Titik Sebaran Area Pengiriman Hari ini:**")
+        
+        # 2. Peta Bawaan Streamlit (Hanya untuk melihat gambaran titik sebaran toko)
         df_lokasi = pd.DataFrame({
             "lat": [3.595, 3.585, 3.600, 3.570],
             "lon": [98.672, 98.660, 98.680, 98.650],
-            "status": ["Lancar", "Lancar", "Stuck", "Selesai"]
         })
-        # Peta gratis bawaan Streamlit
         st.map(df_lokasi, zoom=12)
 
 def ui_operasional_gudang():
