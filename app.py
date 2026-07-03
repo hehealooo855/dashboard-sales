@@ -317,7 +317,7 @@ def load_data_from_url():
     # Fungsi pembantu untuk ambil list dari master
     def get_urls_from_master(master_url):
         df_index = pd.read_csv(master_url)
-        return df_index['Link_Sheet'].tolist()
+        return df_index['Link_Sheets'].tolist()
 
     # Ambil semua link
     sales_urls = get_urls_from_master(MASTER_SALES_URL)
@@ -989,44 +989,79 @@ def login_page():
 # MOCKUP UI OPERASIONAL (MANAGER, GUDANG, DRIVER) - VERSI 2.0 (ENHANCED)
 # =========================================================================
 def ui_operasional_manager():
-    st.markdown("## 📦 Dashboard Operasional & Logistik")
-    
-    st.markdown("""
-    <style>
-    .op-card { border: 1px solid #e0e6ed; border-radius: 8px; padding: 15px; background: white; margin-bottom: 15px;}
-    .op-card-title { font-size: 13px; color: #64748b; font-weight: 600; margin-bottom: 5px; }
-    .op-card-val { font-size: 28px; font-weight: bold; }
-    .val-blue { color: #0f172a; }
-    .val-red { color: #dc2626; }
-    .op-btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; margin-bottom: 20px;}
-    .op-btn { padding: 5px 15px; border-radius: 20px; border: 1px solid #e0e6ed; font-size: 13px; background: white; color: #475569;}
-    .op-btn-active { background: #0f172a; color: white; border: 1px solid #0f172a;}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div style='display:flex; gap:10px; margin-bottom:10px;'>
-        <div style='background:#fef3c7; padding:5px 10px; border-radius:5px; font-size:12px; color:#b45309;'>🕒 3 dok titip</div>
-        <div style='background:#fef3c7; padding:5px 10px; border-radius:5px; font-size:12px; color:#b45309;'>📸 1 kirim tanpa foto · hari ini</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.markdown("<div class='op-card'><div class='op-card-title'>In-flight</div><div class='op-card-val val-blue'>114</div></div>", unsafe_allow_html=True)
-    with c2: st.markdown("<div class='op-card'><div class='op-card-title'>> batas SLA</div><div class='op-card-val val-red'>0</div></div>", unsafe_allow_html=True)
-    with c3: st.markdown("<div class='op-card'><div class='op-card-title'>Stuck antar</div><div class='op-card-val val-blue'>1</div></div>", unsafe_allow_html=True)
-    with c4: st.markdown("<div class='op-card' style='border:2px solid #3b82f6;'><div class='op-card-title'>Selesai</div><div class='op-card-val val-blue'>0</div></div>", unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class='op-btn-group'>
-        <div class='op-btn op-btn-active'>Flow</div>
-        <div class='op-btn'>Office</div>
-        <div class='op-btn'>Gudang</div>
-        <div class='op-btn'>Checker</div>
-        <div class='op-btn'>Delivery</div>
-        <div class='op-btn'>Fakturis</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 📦 Dashboard Operasional & Logistik")
+
+    # --- 1. TOP BADGES / TOMBOL PERINGATAN (Bisa diklik, Data Kosong) ---
+    col_badge1, col_badge2, _ = st.columns([2, 3, 5])
+    with col_badge1:
+        if st.button("🕒 0 dok titip", use_container_width=True):
+            st.toast("Menampilkan filter dokumen titip...")
+    with col_badge2:
+        if st.button("📸 0 kirim tanpa foto · hari ini", use_container_width=True):
+            st.toast("Menampilkan filter kiriman tanpa foto...")
+
+    st.write("") # Spacer
+
+    # --- 2. MAIN METRICS CARDS (Data 0, Tooltip Logika Ditambahkan) ---
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "In-flight"
+            st.markdown("**In-flight**", help="Faktur telah diterima Gudang")
+            st.markdown("## 0")
+            
+    with col2:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "Batas SLA"
+            st.markdown("**> batas SLA**", help="Faktur telat diantar lebih dari ketentuan yang berlaku")
+            # Menggunakan warna merah (Red) untuk menandakan SLA
+            st.markdown("<h2 style='color: #e74c3c;'>0</h2>", unsafe_allow_html=True)
+
+    with col3:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "Stuck antar"
+            st.markdown("**Stuck antar**", help="Faktur ditahan gudang dengan alasan apapun")
+            st.markdown("## 0")
+            
+    with col4:
+        with st.container(border=True):
+            st.markdown("**Selesai**", help="Faktur telah kembali ke Gudang setelah barang diantar")
+            st.markdown("## 0")
+            
+            # Indikator Visual 4 Garis Hijau & Teks "Selesai" sesuai gambar image_cfe404.png
+            st.markdown("""
+            <div style="display: flex; gap: 4px; align-items: center; margin-top: 8px;">
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+            </div>
+            <div style="color: #7bb88f; font-weight: 600; font-size: 15px; margin-top: 4px; font-family: sans-serif;">Selesai</div>
+            """, unsafe_allow_html=True)
+
+    st.write("") # Spacer
+
+    # --- 3. FILTER BUTTONS ROW (Flow, Office, Gudang, dll) ---
+    # Dibuat menggunakan kolom agar tersusun rapi secara horizontal seperti di desain
+    btn_col1, btn_col2, btn_col3, btn_col4, btn_col5, btn_col6, _ = st.columns([1, 1, 1, 1, 1, 1, 4])
+
+    with btn_col1:
+        st.button("Flow", type="primary", use_container_width=True) # Dibuat primary agar lebih menonjol (aktif)
+    with btn_col2:
+        st.button("Office", use_container_width=True)
+    with btn_col3:
+        st.button("Gudang", use_container_width=True)
+    with btn_col4:
+        st.button("Checker", use_container_width=True)
+    with btn_col5:
+        st.button("Delivery", use_container_width=True)
+    with btn_col6:
+        st.button("Fakturis", use_container_width=True)
+
+    # --- 4. PLACEHOLDER UNTUK DATA TABEL NANTINYA ---
+    st.divider()
+    st.caption("Menunggu sinkronisasi data operasional...")
     
     st.markdown("### Laporan")
     t_ringkasan, t_harian, t_detail, t_kurir, t_efektif, t_sla = st.tabs([
