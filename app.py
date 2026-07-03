@@ -314,26 +314,54 @@ def load_data_from_url():
     MASTER_SALES_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vSJ-xqNCgSOSjOle60U1UQZX7101O0sBluq84Ge5ifnQVeZgv17j8Jc5ZYaqYhdfRRvJ8WCNYs4bujk/pub?output=csv" 
     MASTER_OPS_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-OjZqccPb57iVJtIXtyrEXgXfev3tnDZC0zhmPR7cCdVVC6Pifl_p7cgd2wmJ4MFfux_hbs_Ou7t/pub?output=csv" 
     
-    # Fungsi pembantu untuk ambil list dari master
+    # Fungsi pembantu untuk ambil list dari master dan membersihkannya
     def get_urls_from_master(master_url):
         df_index = pd.read_csv(master_url)
-        return df_index['Link_Sheets'].tolist()
+        # 1. Hapus baris yang kosong / NaN agar tidak menjadi error
+        df_index = df_index.dropna(subset=['Link_Sheets']) 
+        # 2. Bersihkan spasi tersembunyi di awal/akhir teks URL
+        return [str(url).strip() for url in df_index['Link_Sheets'].tolist() if str(url).strip() != '']
 
     # Ambil semua link
     sales_urls = get_urls_from_master(MASTER_SALES_URL)
     ops_urls = get_urls_from_master(MASTER_OPS_URL)
     
-    # ... (proses pengunduhan data tetap menggunakan ThreadPoolExecutor seperti biasa) ...
-    # Beri label otomatis setelah data digabung:
-    df_sales = pd.concat([pd.read_csv(u) for u in sales_urls], ignore_index=True)
-    df_sales['Tipe_Data'] = 'SALES'
-    
-    df_ops = pd.concat([pd.read_csv(u) for u in ops_urls], ignore_index=True)
-    df_ops['Tipe_Data'] = 'OPERASIONAL'
-    
-    pd.concat([df_sales, df_ops], ignore_index=True)
+    # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN (TRY-EXCEPT) ---
+    sales_dfs = []
+    for u in sales_urls:
+        try:
+            temp_df = pd.read_csv(u)
+            sales_dfs.append(temp_df)
+        except Exception as e:
+            # Jika ada 1 link rusak, lewati saja tanpa membuat aplikasi crash
+            st.error(f"Gagal membaca link Sales: {u}")
+            
+    if sales_dfs:
+        df_sales = pd.concat(sales_dfs, ignore_index=True)
+        df_sales['Tipe_Data'] = 'SALES'
+    else:
+        df_sales = pd.DataFrame()
+        
+    # --- PENGUNDUHAN DATA OPERASIONAL DENGAN PENGAMAN ---
+    ops_dfs = []
+    for u in ops_urls:
+        try:
+            temp_df = pd.read_csv(u)
+            ops_dfs.append(temp_df)
+        except Exception as e:
+            st.error(f"Gagal membaca link Ops: {u}")
+            
+    if ops_dfs:
+        df_ops = pd.concat(ops_dfs, ignore_index=True)
+        df_ops['Tipe_Data'] = 'OPERASIONAL'
+    else:
+        df_ops = pd.DataFrame()
+
+    # Gabungkan semua data
+    df = pd.concat([df_sales, df_ops], ignore_index=True)
     df.columns = df.columns.str.strip()
     
+    # Penambahan status default jika belum ada
     if 'Status Faktur' not in df.columns:
         df['Status Faktur'] = "Baru"
     
