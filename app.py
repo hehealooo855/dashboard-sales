@@ -1070,30 +1070,114 @@ def ui_operasional_manager():
         })
         st.map(df_lokasi, zoom=12)
 
-def ui_operasional_gudang():
-    st.markdown("## 🏭 Panel Gudang (Checklist Mode)")
-    st.info("Centang kotak [Selesai] jika pesanan sudah siap. Data akan otomatis berpindah ke Checker.")
+def ui_operasional_admin():
+    st.markdown("## 🏢 Panel Admin / Fakturis")
+    st.info("Buat Tanda Terima (TT) digital agar Kepala Gudang bisa mencocokkan dokumen fisik.")
     
-    # Mode Tabel Interaktif dengan skala warna
-    df_gudang = pd.DataFrame({
-        "Selesai Packing": [False, False, False, False],
-        "Waktu Tunggu": ["2 Jam 15 Menit 🔴", "1 Jam 10 Menit 🟡", "30 Menit 🟢", "10 Menit 🟢"],
-        "No. Faktur": ["INV-001", "INV-002", "INV-003", "INV-004"],
-        "Customer": ["Toko SinarKos", "Be Luv Cosmetic", "Queen Store", "Rumah Kosmetik"],
-        "Total Item": [12, 45, 5, 8]
+    with st.container(border=True):
+        st.markdown("### 📝 Buat Tanda Terima Baru")
+        with st.form("form_buat_tt"):
+            col1, col2 = st.columns(2)
+            no_tt = col1.text_input("Nomor Tanda Terima (TT)", placeholder="Misal: TT-202607-001")
+            nama_sales = col2.selectbox("Nama Sales", ["WIRA", "HAMZAH", "FERI", "ADE", "RISKA", "DLL"])
+            
+            st.write("**Daftar Nomor Faktur yang diserahkan dalam TT ini:**")
+            daftar_faktur = st.text_area("Ketik / Scan Barcode Nomor Faktur (Pisahkan dengan koma atau Enter)", placeholder="INV-001\nINV-002\nINV-003", height=100)
+            
+            submitted = st.form_submit_button("📤 Upload & Serahkan ke Gudang", type="primary")
+            if submitted:
+                st.success(f"Tanda Terima {no_tt} berhasil dibuat! Status: Menunggu Konfirmasi Kepala Gudang.")
+                
+    st.divider()
+    st.markdown("### 📜 Riwayat Tanda Terima Hari Ini")
+    df_history = pd.DataFrame({
+        "Waktu": ["10:15 WIB", "09:30 WIB"],
+        "No. TT": ["TT-202607-002", "TT-202607-001"],
+        "Sales": ["ADE", "WIRA"],
+        "Jml Faktur": [5, 12],
+        "Status": ["Menunggu Gudang 🟡", "Diterima Gudang 🟢"]
+    })
+    st.dataframe(df_history, use_container_width=True, hide_index=True)
+    st.divider()
+    st.markdown("### 🏁 Finalisasi (Closing Faktur)")
+    st.caption("Faktur yang sudah kembali dari Gudang akan muncul di sini untuk di-Closing.")
+    
+    df_closing = pd.DataFrame({
+        "No. Faktur": ["INV-001", "INV-002"],
+        "Status": ["Kembali dari Gudang", "Kembali dari Gudang"],
+        "Aksi": [False, False]
     })
     
-    st.write("**Daftar Antrean Gudang Saat Ini:**")
-    st.data_editor(
-        df_gudang,
-        column_config={
-            "Selesai Packing": st.column_config.CheckboxColumn("Selesai Packing", help="Centang jika selesai", default=False),
-        },
-        disabled=["Waktu Tunggu", "No. Faktur", "Customer", "Total Item"],
-        hide_index=True,
-        use_container_width=True
-    )
-    st.button("💾 Simpan Perubahan ke Database")
+    edited_closing = st.data_editor(df_closing, column_config={"Aksi": st.column_config.CheckboxColumn("Finalisasi/Arsip")}, hide_index=True)
+    
+    if st.button("🔒 Finalisasi & Arsipkan Faktur Terpilih"):
+        st.success("Faktur berhasil diarsipkan ke database permanen.")
+
+def ui_operasional_gudang():
+    st.markdown("## 🏭 Panel Gudang & Checker (Dwi)")
+    
+    # --- BAGIAN 1: PENERIMAAN DOKUMEN DARI ADMIN (Langkah 4) ---
+    st.markdown("### 📥 Penerimaan Dokumen Tanda Terima (TT)")
+    with st.container(border=True):
+        col_tt1, col_tt2 = st.columns([3, 1])
+        with col_tt1:
+            st.write("**No. TT: TT-202607-002** (Sales: ADE)")
+            st.code("INV-004\nINV-005\nINV-006\nINV-007\nINV-008")
+        with col_tt2:
+            st.write("\n\n")
+            if st.button("✅ Konfirmasi Terima Dokumen Fisik", use_container_width=True, type="primary"):
+                st.success("Terkonfirmasi! Faktur masuk ke Antrean Packing.")
+    
+    st.divider()
+    
+    # --- BAGIAN 2: ALUR PACKING & SERAH TERIMA (Langkah 5 - 9) ---
+    st.markdown("### 🔄 Alur Operasional (Packing ➡️ Checker ➡️ Delivery)")
+    t_packing, t_checker, t_serah = st.tabs([
+        "📦 Tahap 1: Packing", "🔍 Tahap 2: Checker (Dwi)", "🤝 Tahap 3: Serah Terima Kurir"
+    ])
+    
+    with t_packing:
+        st.info("GUDANG: Centang kotak jika barang sudah siap dan masuk kardus.")
+        df_packing = pd.DataFrame({
+            "Selesai Packing": [False, False],
+            "Waktu Tunggu": ["30 Menit 🟢", "10 Menit 🟢"],
+            "No. Faktur": ["INV-001", "INV-002"],
+            "Customer": ["Toko SinarKos", "Be Luv Cosmetic"]
+        })
+        st.data_editor(df_packing, column_config={"Selesai Packing": st.column_config.CheckboxColumn("Selesai Packing", default=False)}, hide_index=True, use_container_width=True, key="pack_edit")
+        st.button("Teruskan ke Checker", key="btn_to_check")
+
+    with t_checker:
+        st.info("CHECKER (DWI): Cek kembali kesesuaian fisik barang dengan faktur.")
+        df_checker = pd.DataFrame({
+            "Barang Sesuai": [False],
+            "No. Faktur": ["INV-003"],
+            "Customer": ["Queen Store"],
+            "Total Item": [15]
+        })
+        st.data_editor(df_checker, column_config={"Barang Sesuai": st.column_config.CheckboxColumn("Barang Sesuai", default=False)}, hide_index=True, use_container_width=True, key="check_edit")
+        if st.button("✅ Konfirmasi Sudah Dipacking & Sesuai", type="primary", key="btn_checked"):
+            st.success("Terkonfirmasi! Status berubah menjadi 'Siap Dipacking / Menunggu Delivery'.")
+
+    with t_serah:
+        st.info("KEPALA GUDANG: Pilih faktur dan serahkan fisik barangnya ke Kurir.")
+        df_serah = pd.DataFrame({
+            "Pilih": [True, False],
+            "No. Faktur": ["INV-004", "INV-005"],
+            "Customer": ["Rumah Kosmetik", "Toko Cantik"],
+            "Pilih Kurir": ["BIMA", "JONATHAN"]
+        })
+        st.data_editor(df_serah, column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=False), "Pilih Kurir": st.column_config.SelectboxColumn("Pilih Kurir", options=["BIMA", "JONATHAN", "TOMI"])}, hide_index=True, use_container_width=True, key="serah_edit")
+        if st.button("🤝 Serahkan ke Delivery", type="primary"):
+            st.success("Berhasil diserahkan! Faktur & Barang kini otomatis masuk ke aplikasi HP kurir (Status: Dibawa).")
+    st.divider()
+    st.markdown("### 📥 Serah Terima Balik dari Kurir")
+    st.info("Kepala Gudang: Jika kurir sudah kembali, terima dokumen & barang retur (jika ada).")
+    # Tabel untuk mengecek barang balik
+    df_balik = pd.DataFrame({"No. Faktur": ["INV-004"], "Status Fisik": ["OK"], "Keterangan": ["Barang Kembali"]})
+    st.dataframe(df_balik, use_container_width=True)
+    if st.button("🔄 Terima Faktur & Barang Kembali dari Kurir", type="primary"):
+        st.success("Dokumen diterima kembali. Faktur diteruskan ke Admin untuk Closing.")
 
 def ui_operasional_driver():
     st.markdown("""
@@ -1111,16 +1195,18 @@ def ui_operasional_driver():
     
     st.divider()
     st.write("**Tugas Pengiriman Anda Hari Ini:**")
+    st.caption("Data di bawah ini otomatis muncul setelah Kepala Gudang menyerahkan faktur kepada Anda.")
     
     with st.container(border=True):
-        st.write("### Toko Sinar Kosmetik")
-        st.caption("Faktur: INV-2026-001 | Nilai: Rp 1.500.000")
-        st.write("📍 Jl. Setia Budi No. 45, Medan")
+        # Indikator Status Dibawa
+        st.markdown("<div style='background:#dbeafe; padding:5px; border-radius:5px; margin-bottom:10px; text-align:center;'><b style='color:#1e3a8a;'>Status: Dibawa 📦</b></div>", unsafe_allow_html=True)
+        
+        st.write("### Toko Rumah Kosmetik")
+        st.caption("Faktur: INV-004 | Nilai: Rp 2.706.315")
+        st.write("📍 Jl. Karya Wisata No. 12, Medan")
         
         col_m1, col_m2 = st.columns(2)
-        # Tombol Navigasi Gratis (Otomatis buka Google Maps App)
         col_m1.link_button("🗺️ Buka Google Maps", "https://maps.google.com/?q=3.585,98.660", use_container_width=True)
-        # Tombol WA Customer Gratis
         col_m2.link_button("💬 Chat Toko", "https://wa.me/628111222333", use_container_width=True)
         
         st.markdown("---")
@@ -1133,7 +1219,18 @@ def ui_operasional_driver():
         col_a, col_b = st.columns(2)
         col_a.button("✅ Konfirmasi Selesai Antar", key="btn_ok_1", use_container_width=True, type="primary")
         col_b.button("🔙 Laporkan Retur", key="btn_retur_1", use_container_width=True)
-        
+        # Tombol Retur dengan input alasan manual
+        if st.button("🔙 Laporkan Retur", key="btn_retur_open"):
+            st.session_state['show_retur_form'] = True
+            
+        if st.session_state.get('show_retur_form', False):
+            st.warning("⚠️ Laporan Retur (Isi alasan di bawah):")
+            alasan_retur = st.text_area("Alasan Retur / Tidak Terantar:", placeholder="Contoh: Toko tutup, pemilik sedang keluar kota...")
+            catatan_tambahan = st.text_input("Catatan Tambahan:")
+            if st.button("Kirim Laporan Retur"):
+                st.success("Laporan retur berhasil dikirim ke Gudang.")
+                st.session_state['show_retur_form'] = False
+                
 def main_dashboard():
     def get_color_achv(val):
         try:
@@ -1175,7 +1272,7 @@ def main_dashboard():
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             st.write("### 🔀 Modul Aplikasi")
-            app_mode = st.radio("Pilih Modul:", ["Dashboard Sales 📊", "Dashboard Operasional 🚚"])
+            app_mode = st.radio("Pilih Modul:", ["Dashboard Sales 📊", "Dashboard Operasional 🚚", "Panel Admin / Fakturis 🏢"])
         elif st.session_state['role'] == 'gudang':
             app_mode = "Gudang"
         elif st.session_state['role'] == 'driver':
@@ -1256,7 +1353,10 @@ def main_dashboard():
         # --- PENCEGAT (INTERCEPT) UNTUK MENAMPILKAN UI OPERASIONAL ---
     if app_mode == "Dashboard Operasional 🚚":
         ui_operasional_manager()
-        return  # Hentikan proses, jangan load dashboard sales
+        return  
+    elif app_mode == "Panel Admin / Fakturis 🏢":
+        ui_operasional_admin()
+        return
     elif app_mode == "Gudang":
         ui_operasional_gudang()
         return
