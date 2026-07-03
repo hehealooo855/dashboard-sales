@@ -327,41 +327,52 @@ def load_data_from_url():
     ops_urls = get_urls_from_master(MASTER_OPS_URL)
     
     # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN (TRY-EXCEPT) ---
-    # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN TINGKAT TINGGI ---
     sales_dfs = []
     for u in sales_urls:
         try:
-            # on_bad_lines='skip' akan melewati baris yang format kolomnya tidak beraturan
-            temp_df = pd.read_csv(u, on_bad_lines='skip')
-            
-            # Hanya masukkan data jika sheet tersebut tidak kosong
+            # Mencoba membaca data secara normal sebagai teks
+            temp_df = pd.read_csv(u, dtype=str)
+        except pd.errors.ParserError:
+            # Jika ada baris tidak rata, paksa baca dengan template 150 kolom
+            temp_df = pd.read_csv(u, header=None, names=range(150), dtype=str)
+            # Hapus sisa kolom yang benar-benar kosong semua
+            temp_df = temp_df.dropna(axis=1, how='all')
+            # Jadikan baris pertama sebagai judul kolom yang sah
             if not temp_df.empty:
-                sales_dfs.append(temp_df)
-                
-        except pd.errors.EmptyDataError:
-            # Jika sheet benar-benar kosong, sistem akan diam saja (tidak muncul error)
-            pass
-        except Exception as e:
-            # Mengganti st.error menjadi st.warning agar lebih soft, dan menampilkan alasan errornya
-            st.warning(f"Sheet dilewati (format tidak sesuai): {u}")
-            
+                temp_df.columns = temp_df.iloc[0]
+                temp_df = temp_df[1:]
+                temp_df = temp_df.reset_index(drop=True)
+        except Exception:
+            st.warning(f"Gagal membaca link Sales (Periksa link): {u}")
+            continue
+
+        if not temp_df.empty:
+            sales_dfs.append(temp_df)
+
     if sales_dfs:
         df_sales = pd.concat(sales_dfs, ignore_index=True)
         df_sales['Tipe_Data'] = 'SALES'
     else:
         df_sales = pd.DataFrame()
         
-    # --- PENGUNDUHAN DATA OPERASIONAL DENGAN PENGAMAN TINGKAT TINGGI ---
+    # --- PENGUNDUHAN DATA OPERASIONAL ---
     ops_dfs = []
     for u in ops_urls:
         try:
-            temp_df = pd.read_csv(u, on_bad_lines='skip')
+            temp_df = pd.read_csv(u, dtype=str)
+        except pd.errors.ParserError:
+            temp_df = pd.read_csv(u, header=None, names=range(150), dtype=str)
+            temp_df = temp_df.dropna(axis=1, how='all')
             if not temp_df.empty:
-                ops_dfs.append(temp_df)
-        except pd.errors.EmptyDataError:
-            pass
-        except Exception as e:
-            st.warning(f"Sheet Ops dilewati (format tidak sesuai): {u}")
+                temp_df.columns = temp_df.iloc[0]
+                temp_df = temp_df[1:]
+                temp_df = temp_df.reset_index(drop=True)
+        except Exception:
+            st.warning(f"Gagal membaca link Ops (Periksa link): {u}")
+            continue
+
+        if not temp_df.empty:
+            ops_dfs.append(temp_df)
             
     if ops_dfs:
         df_ops = pd.concat(ops_dfs, ignore_index=True)
@@ -369,13 +380,28 @@ def load_data_from_url():
     else:
         df_ops = pd.DataFrame()
 
-    # Gabungkan semua data
+    # Gabungkan seluruh hasil
     df = pd.concat([df_sales, df_ops], ignore_index=True)
     df.columns = df.columns.str.strip()
     
-    # Penambahan status default jika belum ada
+    # Penambahan kolom operasional
     if 'Status Faktur' not in df.columns:
         df['Status Faktur'] = "Baru"
+    if 'Tahun' in df.columns:
+        df['Tahun'] = df['Tahun'].fillna('2024')
+    if 'Tanggal' in df.columns:
+        df['Tanggal'] = df['Tanggal'].fillna('2024-01-01')
+
+    # 2. Mencegah tabel pivot membuang toko tanpa riwayat transaksi
+    # Pastikan Anda menyesuaikan nama 'Total' atau 'Nilai' sesuai dengan nama kolom di sheet Anda
+    kolom_transaksi = ['Total', 'Nilai', 'Qty', 'Nominal'] 
+    for col in kolom_transaksi:
+        if col in df.columns:
+            # Ubah menjadi numerik jika memungkinkan, lalu isi dengan 0
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+    # 3. Bersihkan sisa data kosong lainnya agar tampilan UI tetap rapi
+    df = df.fillna('')
         
     # -------------------------------------------------------------------------
     # 1. PENYATUAN NAMA KOLOM BRUTAL (MENGGABUNGKAN SEMUA SHEET)
