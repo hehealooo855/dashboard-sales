@@ -990,12 +990,11 @@ def login_page():
                         st.rerun()
 
 # =========================================================================
-# MOCKUP UI OPERASIONAL (MANAGER, GUDANG, DRIVER)
+# MOCKUP UI OPERASIONAL (MANAGER, GUDANG, DRIVER) - VERSI 2.0 (ENHANCED)
 # =========================================================================
 def ui_operasional_manager():
     st.markdown("## 📦 Dashboard Operasional & Logistik")
     
-    # Custom CSS untuk meniru gambar referensi
     st.markdown("""
     <style>
     .op-card { border: 1px solid #e0e6ed; border-radius: 8px; padding: 15px; background: white; margin-bottom: 15px;}
@@ -1009,7 +1008,6 @@ def ui_operasional_manager():
     </style>
     """, unsafe_allow_html=True)
     
-    # 1. KOTAK KPI ATAS (Seperti di gambar)
     st.markdown("""
     <div style='display:flex; gap:10px; margin-bottom:10px;'>
         <div style='background:#fef3c7; padding:5px 10px; border-radius:5px; font-size:12px; color:#b45309;'>🕒 3 dok titip</div>
@@ -1023,7 +1021,6 @@ def ui_operasional_manager():
     with c3: st.markdown("<div class='op-card'><div class='op-card-title'>Stuck antar</div><div class='op-card-val val-blue'>1</div></div>", unsafe_allow_html=True)
     with c4: st.markdown("<div class='op-card' style='border:2px solid #3b82f6;'><div class='op-card-title'>Selesai</div><div class='op-card-val val-blue'>0</div></div>", unsafe_allow_html=True)
     
-    # 2. TOMBOL FILTER FLOW (Pills)
     st.markdown("""
     <div class='op-btn-group'>
         <div class='op-btn op-btn-active'>Flow</div>
@@ -1035,73 +1032,64 @@ def ui_operasional_manager():
     </div>
     """, unsafe_allow_html=True)
     
-    # 3. BAGIAN LAPORAN (Tabs)
     st.markdown("### Laporan")
     t_ringkasan, t_harian, t_detail, t_kurir, t_efektif, t_sla = st.tabs([
-        "Ringkasan", "Rangkuman Harian", "Detail Harian", "Kinerja Kurir", "Efektivitas Antar", "Kepatuhan SLA"
+        "Ringkasan", "Rangkuman Harian", "Detail Harian", "Kinerja Kurir", "Peta Pengiriman (Live)", "Kepatuhan SLA"
     ])
     
     with t_ringkasan:
         st.caption("PERLU TINDAKAN")
         col_rt1, col_rt2 = st.columns(2)
-        col_rt1.warning("⏱️ > batas SLA - 4 hari (0)")
-        col_rt2.error("⚠️ Stuck antar >20 jam (1)")
+        with col_rt1:
+            st.warning("⏱️ > batas SLA - 4 hari (0)")
+        with col_rt2:
+            st.error("⚠️ Stuck antar >20 jam (1)")
+            # Fitur WA Gratis (Action Center)
+            pesan_wa = "Halo Tim, Mohon dicek ada 1 pesanan yang Stuck Antar lebih dari 20 jam. Mohon segera ditindaklanjuti."
+            st.link_button("🚨 Senggol Tim Gudang/Kurir (via WA)", f"https://wa.me/6281234567890?text={pesan_wa}")
         
-        st.caption("PERIODE - 7 HARI TERAKHIR")
-        col_m1, col_m2 = st.columns(2)
-        col_m1.metric("Masuk", "117")
-        col_m2.metric("Selesai", "2")
+    with t_efektif:
+        st.caption("PETA DISTRIBUSI PENGIRIMAN HARI INI (Medan Area)")
+        st.info("Peta ini menggunakan st.map() gratis. (Contoh titik koordinat dummy di sekitar Medan)")
         
-    with t_kurir:
-        st.caption("KINERJA KURIR")
-        st.button("📥 Export Excel")
-        df_kurir = pd.DataFrame({
-            "KURIR": ["JONATHAN", "BIMA", "TOMI", "RIDHO"],
-            "DIBAWA": [6, 5, 1, 5],
-            "TERKIRIM": [6, 3, 1, 1],
-            "RETUR": [0, 0, 0, 3],
-            "BERHASIL": ["100%", "100%", "100%", "25%"],
-            "RATA2 DI TANGAN": ["16.7 jam", "1.7 jam", "1.8 jam", "0.0 jam"],
-            "TANPA FOTO": [1, 0, 0, 0],
-            "TITIP": [4, 1, 0, 0]
+        # Contoh data koordinat dummy (Medan Area)
+        df_lokasi = pd.DataFrame({
+            "lat": [3.595, 3.585, 3.600, 3.570],
+            "lon": [98.672, 98.660, 98.680, 98.650],
+            "status": ["Lancar", "Lancar", "Stuck", "Selesai"]
         })
-        st.dataframe(df_kurir, use_container_width=True, hide_index=True)
-
-    with t_harian:
-        st.caption("RANGKUMAN HARIAN")
-        st.info("Visualisasi Masuk vs Terkirim vs Retur per hari.")
-        
-    with t_detail:
-        st.caption("DETAIL HARIAN")
-        st.text_input("🔍 Cari No. Faktur / Customer", placeholder="Ketik disini...")
-        df_detail = pd.DataFrame({
-            "TGL": ["22 Jun", "22 Jun", "22 Jun"],
-            "NO. FAKTUR": ["SMP/BXT/2026/...", "PFL/2026/06/0...", "SNY/2026/06/0..."],
-            "CUSTOMER": ["CASH", "BE LUV COSMETIK", "RUMAH COSMETIK"],
-            "NILAI": ["Rp 5.760", "Rp 6.012.115", "Rp 2.706.315"],
-            "STATUS": ["Office", "Delivery", "Selesai"]
-        })
-        st.dataframe(df_detail, use_container_width=True, hide_index=True)
+        # Peta gratis bawaan Streamlit
+        st.map(df_lokasi, zoom=12)
 
 def ui_operasional_gudang():
-    st.markdown("## 🏭 Panel Gudang (Warehouse)")
-    st.info("Halo Tim Gudang! Berikut adalah daftar faktur yang perlu disiapkan/dipacking hari ini.")
-    st.metric("Menunggu Packing", "32 Faktur")
+    st.markdown("## 🏭 Panel Gudang (Checklist Mode)")
+    st.info("Centang kotak [Selesai] jika pesanan sudah siap. Data akan otomatis berpindah ke Checker.")
     
-    st.write("**Daftar Antrean Packing:**")
+    # Mode Tabel Interaktif dengan skala warna
     df_gudang = pd.DataFrame({
-        "No. Faktur": ["INV-001", "INV-002", "INV-003"],
-        "Customer": ["Toko A", "Toko B", "Toko C"],
-        "Total Item": [12, 5, 45]
+        "Selesai Packing": [False, False, False, False],
+        "Waktu Tunggu": ["2 Jam 15 Menit 🔴", "1 Jam 10 Menit 🟡", "30 Menit 🟢", "10 Menit 🟢"],
+        "No. Faktur": ["INV-001", "INV-002", "INV-003", "INV-004"],
+        "Customer": ["Toko SinarKos", "Be Luv Cosmetic", "Queen Store", "Rumah Kosmetik"],
+        "Total Item": [12, 45, 5, 8]
     })
-    st.dataframe(df_gudang, use_container_width=True)
-    if st.button("Tandai Semua Selesai Packing (Lanjut Checker)"):
-        st.success("Berhasil! Faktur diteruskan ke tim Checker.")
+    
+    st.write("**Daftar Antrean Gudang Saat Ini:**")
+    st.data_editor(
+        df_gudang,
+        column_config={
+            "Selesai Packing": st.column_config.CheckboxColumn("Selesai Packing", help="Centang jika selesai", default=False),
+        },
+        disabled=["Waktu Tunggu", "No. Faktur", "Customer", "Total Item"],
+        hide_index=True,
+        use_container_width=True
+    )
+    st.button("💾 Simpan Perubahan ke Database")
 
 def ui_operasional_driver():
     st.markdown("""
     <div style='background:#0f172a; padding:15px; border-radius:10px; color:white; text-align:center;'>
-        <h2>🛵 Panel Kurir</h2>
+        <h2>🛵 Panel Kurir (Mobile Mode)</h2>
         <p>Halo, BIMA!</p>
     </div>
     <br>
@@ -1115,16 +1103,28 @@ def ui_operasional_driver():
     st.divider()
     st.write("**Tugas Pengiriman Anda Hari Ini:**")
     
-    for i in range(1, 3):
-        with st.container(border=True):
-            st.write(f"**Toko Sinar Kosmetik {i}**")
-            st.caption(f"Faktur: INV-2026-00{i} | Nilai: Rp 1.500.000")
-            st.write("📍 Jl. Merdeka No. 123, Medan")
-            col_a, col_b = st.columns(2)
-            col_a.button("✅ Selesai Antar", key=f"btn_ok_{i}", use_container_width=True, type="primary")
-            col_b.button("🔙 Retur", key=f"btn_retur_{i}", use_container_width=True)
-# =========================================================================
-
+    with st.container(border=True):
+        st.write("### Toko Sinar Kosmetik")
+        st.caption("Faktur: INV-2026-001 | Nilai: Rp 1.500.000")
+        st.write("📍 Jl. Setia Budi No. 45, Medan")
+        
+        col_m1, col_m2 = st.columns(2)
+        # Tombol Navigasi Gratis (Otomatis buka Google Maps App)
+        col_m1.link_button("🗺️ Buka Google Maps", "https://maps.google.com/?q=3.585,98.660", use_container_width=True)
+        # Tombol WA Customer Gratis
+        col_m2.link_button("💬 Chat Toko", "https://wa.me/628111222333", use_container_width=True)
+        
+        st.markdown("---")
+        st.write("**Upload Bukti Pengiriman (PoD):**")
+        foto_pod = st.camera_input("Ambil Foto Toko / Penerima", key="cam_1")
+        
+        if foto_pod:
+            st.success("📸 Foto berhasil ditangkap! Siap diunggah.")
+            
+        col_a, col_b = st.columns(2)
+        col_a.button("✅ Konfirmasi Selesai Antar", key="btn_ok_1", use_container_width=True, type="primary")
+        col_b.button("🔙 Laporkan Retur", key="btn_retur_1", use_container_width=True)
+        
 def main_dashboard():
     def get_color_achv(val):
         try:
