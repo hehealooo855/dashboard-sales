@@ -327,14 +327,23 @@ def load_data_from_url():
     ops_urls = get_urls_from_master(MASTER_OPS_URL)
     
     # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN (TRY-EXCEPT) ---
+    # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN TINGKAT TINGGI ---
     sales_dfs = []
     for u in sales_urls:
         try:
-            temp_df = pd.read_csv(u)
-            sales_dfs.append(temp_df)
+            # on_bad_lines='skip' akan melewati baris yang format kolomnya tidak beraturan
+            temp_df = pd.read_csv(u, on_bad_lines='skip')
+            
+            # Hanya masukkan data jika sheet tersebut tidak kosong
+            if not temp_df.empty:
+                sales_dfs.append(temp_df)
+                
+        except pd.errors.EmptyDataError:
+            # Jika sheet benar-benar kosong, sistem akan diam saja (tidak muncul error)
+            pass
         except Exception as e:
-            # Jika ada 1 link rusak, lewati saja tanpa membuat aplikasi crash
-            st.error(f"Gagal membaca link Sales: {u}")
+            # Mengganti st.error menjadi st.warning agar lebih soft, dan menampilkan alasan errornya
+            st.warning(f"Sheet dilewati (format tidak sesuai): {u}")
             
     if sales_dfs:
         df_sales = pd.concat(sales_dfs, ignore_index=True)
@@ -342,14 +351,17 @@ def load_data_from_url():
     else:
         df_sales = pd.DataFrame()
         
-    # --- PENGUNDUHAN DATA OPERASIONAL DENGAN PENGAMAN ---
+    # --- PENGUNDUHAN DATA OPERASIONAL DENGAN PENGAMAN TINGKAT TINGGI ---
     ops_dfs = []
     for u in ops_urls:
         try:
-            temp_df = pd.read_csv(u)
-            ops_dfs.append(temp_df)
+            temp_df = pd.read_csv(u, on_bad_lines='skip')
+            if not temp_df.empty:
+                ops_dfs.append(temp_df)
+        except pd.errors.EmptyDataError:
+            pass
         except Exception as e:
-            st.error(f"Gagal membaca link Ops: {u}")
+            st.warning(f"Sheet Ops dilewati (format tidak sesuai): {u}")
             
     if ops_dfs:
         df_ops = pd.concat(ops_dfs, ignore_index=True)
@@ -364,7 +376,7 @@ def load_data_from_url():
     # Penambahan status default jika belum ada
     if 'Status Faktur' not in df.columns:
         df['Status Faktur'] = "Baru"
-    
+        
     # -------------------------------------------------------------------------
     # 1. PENYATUAN NAMA KOLOM BRUTAL (MENGGABUNGKAN SEMUA SHEET)
     # -------------------------------------------------------------------------
