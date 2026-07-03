@@ -310,31 +310,28 @@ def render_custom_progress(title, current, target):
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
-    master_index_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSJ-xqNCgSOSjOle60U1UQZX7101O0sBluq84Ge5ifnQVeZgv17j8Jc5ZYaqYhdfRRvJ8WCNYs4bujk/pub?output=csv"
+    # LINK MASTER ANDA
+    MASTER_SALES_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vSJ-xqNCgSOSjOle60U1UQZX7101O0sBluq84Ge5ifnQVeZgv17j8Jc5ZYaqYhdfRRvJ8WCNYs4bujk/pub?output=csv" 
+    MASTER_OPS_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-OjZqccPb57iVJtIXtyrEXgXfev3tnDZC0zhmPR7cCdVVC6Pifl_p7cgd2wmJ4MFfux_hbs_Ou7t/pub?output=csv" 
     
-    # 1. Tarik daftar semua link dari Master Index
-    df_index = pd.read_csv(master_index_url)
-    urls = df_index['Link Sheets Sales'].tolist()
-    
-    def fetch_url(url):
-        if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
-            try:
-                url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str, engine='pyarrow')
-            except Exception as e:
-                return None
-        return None
+    # Fungsi pembantu untuk ambil list dari master
+    def get_urls_from_master(master_url):
+        df_index = pd.read_csv(master_url)
+        return df_index['Link_Sheet'].tolist()
 
-    all_dfs = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(fetch_url, urls)
-        for res in results:
-            if res is not None and not res.empty:
-                all_dfs.append(res)
-                
-    if not all_dfs: return None
-        
-    df = pd.concat(all_dfs, ignore_index=True)
+    # Ambil semua link
+    sales_urls = get_urls_from_master(MASTER_SALES_URL)
+    ops_urls = get_urls_from_master(MASTER_OPS_URL)
+    
+    # ... (proses pengunduhan data tetap menggunakan ThreadPoolExecutor seperti biasa) ...
+    # Beri label otomatis setelah data digabung:
+    df_sales = pd.concat([pd.read_csv(u) for u in sales_urls], ignore_index=True)
+    df_sales['Tipe_Data'] = 'SALES'
+    
+    df_ops = pd.concat([pd.read_csv(u) for u in ops_urls], ignore_index=True)
+    df_ops['Tipe_Data'] = 'OPERASIONAL'
+    
+    pd.concat([df_sales, df_ops], ignore_index=True)
     df.columns = df.columns.str.strip()
     
     if 'Status Faktur' not in df.columns:
@@ -1037,15 +1034,110 @@ def ui_operasional_manager():
     ])
     
     with t_ringkasan:
-        st.caption("PERLU TINDAKAN")
-        col_rt1, col_rt2 = st.columns(2)
+        st.markdown("### 📊 Ringkasan Eksekutif Operasional")
+        st.caption("Menampilkan data operasional hari ini. (Data saat ini masih kosong/menunggu integrasi)")
+        
+        # --- 1. ACTION CENTER (PERLU TINDAKAN CEPAT) ---
+        st.markdown("#### 🚨 Action Center")
+        col_rt1, col_rt2, col_rt3 = st.columns(3)
         with col_rt1:
-            st.warning("⏱️ > batas SLA - 4 hari (0)")
+            st.warning("⏱️ > Batas SLA (0 Faktur)")
         with col_rt2:
-            st.error("⚠️ Stuck antar >20 jam (1)")
-            # Fitur WA Gratis (Action Center)
-            pesan_wa = "Halo Tim, Mohon dicek ada 1 pesanan yang Stuck Antar lebih dari 20 jam. Mohon segera ditindaklanjuti."
-            st.link_button("🚨 Senggol Tim Gudang/Kurir (via WA)", f"https://wa.me/6281234567890?text={pesan_wa}")
+            st.error("⚠️ Stuck Antar > 20 Jam (0 Faktur)")
+            # Tombol dinonaktifkan sementara karena data kosong
+            st.button("🚨 Senggol Tim Gudang/Kurir (via WA)", disabled=True, use_container_width=True)
+        with col_rt3:
+            st.info("📦 Menunggu Checker / Packing (0 Faktur)")
+
+        st.divider()
+
+        # --- 2. KPI METRICS ---
+        st.markdown("#### 📈 Indikator Kinerja Utama (KPI)")
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        with kpi1:
+            st.metric(label="Total Surat Jalan Keluar", value="0", delta="0% vs Kemarin")
+        with kpi2:
+            st.metric(label="Berhasil Terkirim", value="0", delta="0% vs Kemarin")
+        with kpi3:
+            st.metric(label="Total Retur / Gagal", value="0", delta="0% vs Kemarin", delta_color="inverse")
+        with kpi4:
+            st.metric(label="Rata-rata Waktu Kirim", value="0 Jam", delta="0 Jam vs Kemarin", delta_color="inverse")
+
+        st.divider()
+
+        # --- 3. VISUALISASI DATA (EMPTY STATE) ---
+        st.markdown("#### 📉 Analisis Pengiriman")
+        chart_col1, chart_col2 = st.columns([1, 2])
+        
+        with chart_col1:
+            st.markdown("**Status Pengiriman Keseluruhan**")
+            # Grafik Donat Kosong
+            df_donut_empty = pd.DataFrame({
+                "Status": ["Terkirim", "Proses", "Retur"], 
+                "Jumlah": [0, 0, 0]
+            })
+            fig_donut = px.pie(
+                df_donut_empty, 
+                names="Status", 
+                values="Jumlah", 
+                hole=0.6,
+                color="Status",
+                color_discrete_map={"Terkirim": "#2ecc71", "Proses": "#3498db", "Retur": "#e74c3c"}
+            )
+            fig_donut.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, showlegend=True)
+            # Menampilkan teks "No Data" di tengah donat
+            fig_donut.add_annotation(text="No Data", x=0.5, y=0.5, font_size=20, showarrow=False)
+            st.plotly_chart(fig_donut, use_container_width=True)
+
+        with chart_col2:
+            st.markdown("**Tren Pengiriman (7 Hari Terakhir)**")
+            # Grafik Garis Kosong
+            tujuh_hari_lalu = [datetime.date.today() - datetime.timedelta(days=i) for i in range(6, -1, -1)]
+            df_line_empty = pd.DataFrame({
+                "Tanggal": tujuh_hari_lalu,
+                "Total Pengiriman": [0, 0, 0, 0, 0, 0, 0]
+            })
+            fig_line = px.line(
+                df_line_empty, 
+                x="Tanggal", 
+                y="Total Pengiriman", 
+                markers=True,
+                line_shape="spline"
+            )
+            fig_line.update_traces(line_color="#2980b9", marker=dict(size=8))
+            fig_line.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), 
+                height=280, 
+                yaxis_title="Jumlah Resi/Faktur", 
+                xaxis_title=""
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+
+        st.divider()
+
+        # --- 4. TABEL LOG AKTIVITAS TERBARU ---
+        st.markdown("#### 📋 Log Antrean & Aktivitas Terbaru")
+        # DataFrame Kosong dengan struktur kolom yang rapi
+        df_log_empty = pd.DataFrame(columns=[
+            "Waktu Update", 
+            "No. Tanda Terima", 
+            "No. Faktur", 
+            "Kurir", 
+            "Customer / Toko", 
+            "Status Operasional", 
+            "Keterangan"
+        ])
+        
+        # Konfigurasi UI Tabel agar tampak proporsional meski kosong
+        st.dataframe(
+            df_log_empty, 
+            use_container_width=True, 
+            hide_index=True,
+            column_config={
+                "Waktu Update": st.column_config.DatetimeColumn("Waktu Update", format="DD/MM/YYYY HH:mm"),
+                "Status Operasional": st.column_config.TextColumn("Status Operasional")
+            }
+        )
         
     with t_efektif:
         st.caption("PETA KEMACETAN & DISTRIBUSI PENGIRIMAN (Medan Area)")
