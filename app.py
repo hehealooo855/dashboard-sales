@@ -1093,6 +1093,7 @@ def main_dashboard():
 
     current_omset_total = df_active['Jumlah'].sum()
     
+    # --- 1. PEMBUATAN DATAFRAME PERIODE SEBELUMNYA (df_prev) ---
     if len(date_range) == 2:
         try:
             prev_start = start_date.replace(month=start_date.month - 1) if start_date.month > 1 else start_date.replace(year=start_date.year - 1, month=12)
@@ -1101,17 +1102,44 @@ def main_dashboard():
             prev_start = start_date - datetime.timedelta(days=30)
             prev_end = end_date - datetime.timedelta(days=30)
             
-        omset_prev_period = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
+        df_prev = df_scope_all[(df_scope_all['Tanggal'].dt.date >= prev_start) & (df_scope_all['Tanggal'].dt.date <= prev_end)]
         delta_label = f"vs {prev_start.strftime('%d %b')} - {prev_end.strftime('%d %b')}"
     else:
         prev_date = ref_date - datetime.timedelta(days=1)
-        omset_prev_period = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]['Jumlah'].sum()
-        delta_val = current_omset_total - omset_prev_period
+        df_prev = df_scope_all[df_scope_all['Tanggal'].dt.date == prev_date]
         delta_label = f"vs {prev_date.strftime('%d %b')}"
 
+    # --- 2. KALKULASI SELISIH OMSET, OUTLET, & TRANSAKSI ---
+    # Omset
+    omset_prev_period = df_prev['Jumlah'].sum()
+    delta_val = current_omset_total - omset_prev_period
+
+    # Outlet (Unik)
+    outlet_current = df_active['Nama Outlet'].nunique()
+    outlet_prev = df_prev['Nama Outlet'].nunique()
+    delta_outlet = outlet_current - outlet_prev
+
+    # Transaksi (Nomor Faktur Unik)
+    if 'No Faktur' in df_active.columns:
+        valid_faktur = df_active['No Faktur'].astype(str)
+        valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', '.'])]
+        valid_faktur = valid_faktur[valid_faktur.str.len() > 2]
+        transaksi_current = valid_faktur.nunique()
+        
+        valid_faktur_prev = df_prev['No Faktur'].astype(str)
+        valid_faktur_prev = valid_faktur_prev[~valid_faktur_prev.isin(['nan', 'None', '', '-', '0', '.'])]
+        valid_faktur_prev = valid_faktur_prev[valid_faktur_prev.str.len() > 2]
+        transaksi_prev = valid_faktur_prev.nunique()
+    else: 
+        transaksi_current = len(df_active)
+        transaksi_prev = len(df_prev)
+        
+    delta_transaksi = transaksi_current - transaksi_prev
+
+    # --- 3. RENDER UI METRIC KE LAYAR ---
     c1, c2, c3 = st.columns(3)
     
+    # Render Omset (HTML Custom)
     delta_str = format_idr(abs(delta_val))
     if delta_val < 0: delta_html = f"<span style='color: #f39c12; font-weight: bold; font-size: 14px;'>▼ - {delta_str} ({delta_label})</span>"
     elif delta_val > 0: delta_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_str} ({delta_label})</span>"
@@ -1125,16 +1153,10 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    c2.metric("🏪 Outlet Aktif", f"{df_active['Nama Outlet'].nunique()}")
+    # Render Outlet & Transaksi (Menggunakan st.metric dengan fitur Delta Bawaan)
+    c2.metric("🏪 Outlet Aktif", f"{outlet_current}", delta=f"{delta_outlet} ({delta_label})")
     
-    if 'No Faktur' in df_active.columns:
-        valid_faktur = df_active['No Faktur'].astype(str)
-        valid_faktur = valid_faktur[~valid_faktur.isin(['nan', 'None', '', '-', '0', 'None', '.'])]
-        valid_faktur = valid_faktur[valid_faktur.str.len() > 2]
-        transaksi_count = valid_faktur.nunique()
-    else: transaksi_count = len(df_active)
-        
-    c3.metric("🧾 Transaksi", f"{transaksi_count}")
+    c3.metric("🧾 Transaksi", f"{transaksi_current}", delta=f"{delta_transaksi} ({delta_label})")
 
     if role in ['manager', 'direktur'] or is_supervisor_account or target_sales_filter in INDIVIDUAL_TARGETS or target_sales_filter.upper() in TARGET_DATABASE:
         st.markdown("### 🎯 Target Monitor")
