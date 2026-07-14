@@ -1050,9 +1050,9 @@ def main_dashboard():
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
 
-    st.markdown("### 🌐 Filter Ruang Lingkup (Hierarki IJL)")
+    st.markdown("### 👤 User")
     list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
-    selected_ijl = st.selectbox("Pilih Ruang Lingkup Dashboard:", list_ijl, index=0)
+    selected_ijl = st.selectbox("Pilih User Dashboard:", list_ijl, index=0)
         
     st.sidebar.markdown("### ⚙️ Panel Filter Executive")
     with st.sidebar.form("main_filter_form"):
@@ -1330,6 +1330,11 @@ def main_dashboard():
                 dict_toko_h1 = df_brand_h1.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
                 dict_toko_mtd = df_brand_active.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
                 
+                # --- TAMBAHAN: Tarik data omset murni hari ini (Sistem Komputer) ---
+                today_sys_date = datetime.date.today()
+                df_brand_today = df_scope_all[(df_scope_all['Tanggal'].dt.date == today_sys_date) & (df_scope_all['Merk'] == selected_brand_detail)]
+                dict_sales_today = df_brand_today.groupby('Penjualan')['Jumlah'].sum().to_dict()
+                
                 for sales_name, targets in INDIVIDUAL_TARGETS.items():
                     if selected_brand_detail in targets:
                         t_pribadi = targets[selected_brand_detail]
@@ -1337,6 +1342,9 @@ def main_dashboard():
                         omset_h1 = dict_sales_h1.get(sales_name, 0.0)
                         toko_h1 = dict_toko_h1.get(sales_name, 0)
                         total_toko_mtd = dict_toko_mtd.get(sales_name, 0)
+                        
+                        # --- TAMBAHAN: Ambil omset hari ini dari dictionary ---
+                        omset_hari_ini = dict_sales_today.get(sales_name, 0.0)
                         
                         gap_sales = t_pribadi - real_sales
                         if gap_sales < 0:
@@ -1351,6 +1359,7 @@ def main_dashboard():
                             "Ach %": f"{(real_sales/t_pribadi)*100:.1f}%" if t_pribadi > 0 else "0%", 
                             "Gap Sales": format_idr(gap_sales),
                             "Target Harian": format_idr(target_harian),
+                            "Omset Hari ini": format_idr(omset_hari_ini), # <--- KOLOM BARU DISISIPKAN DI SINI
                             "Omset H-1": format_idr(omset_h1),
                             "Toko H-1": toko_h1, 
                             "Total Toko MTD": total_toko_mtd,
