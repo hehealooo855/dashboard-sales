@@ -61,6 +61,8 @@ st.markdown("""
     div[data-testid="stDataFrame"] div[role="gridcell"] {
         white-space: pre-wrap !important; 
     }
+    
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -69,14 +71,32 @@ st.markdown("""
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="manage-app-button"] {display: none !important;}
     
-    [data-testid="stMetricLabel"] p { font-size: 18px !important; font-weight: 600 !important; }
-    [data-testid="stMetricValue"] div { font-size: 36px !important; font-weight: bold !important; }
+    /* PERBESAR FONT METRIC BAWAAN STREAMLIT */
+    [data-testid="stMetricLabel"] p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"] div {
+        font-size: 36px !important;
+        font-weight: bold !important;
+    }
     
-    div[data-baseweb="tab-list"] button[aria-selected="true"] { color: #2980b9 !important; }
-    div[data-baseweb="tab-highlight"] { background-color: #2980b9 !important; }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] { border-bottom-color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover { color: #2980b9 !important; }
-    div[data-baseweb="tab-list"] button:hover span { color: #2980b9 !important; }
+    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
+    div[data-baseweb="tab-list"] button[aria-selected="true"] {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-highlight"] {
+        background-color: #2980b9 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        border-bottom-color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover {
+        color: #2980b9 !important;
+    }
+    div[data-baseweb="tab-list"] button:hover span {
+        color: #2980b9 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
