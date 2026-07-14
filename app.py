@@ -82,20 +82,18 @@ st.markdown("""
     }
     
     /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
-    div[data-baseweb="tab-list"] button[aria-selected="true"] {
+    div[data-baseweb="tab-list"] button:hover,
+    div[data-baseweb="tab-list"] button:hover p {
         color: #2980b9 !important;
     }
+    
+    div[data-baseweb="tab-list"] button[aria-selected="true"],
+    div[data-baseweb="tab-list"] button[aria-selected="true"] p {
+        color: #2980b9 !important;
+    }
+    
     div[data-baseweb="tab-highlight"] {
         background-color: #2980b9 !important;
-    }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-        border-bottom-color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover {
-        color: #2980b9 !important;
-    }
-    div[data-baseweb="tab-list"] button:hover span {
-        color: #2980b9 !important;
     }
 </style>
 """, unsafe_allow_html=True)
