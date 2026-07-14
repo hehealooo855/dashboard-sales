@@ -129,3 +129,5 @@ SALES_MAPPING = {
     "FAUZIAH CLA": "FAUZIAH", "FAUZIAH ST": "FAUZIAH", 
     "MARIANA CLIN": "MARIANA", "JAYA - MARIANA": "MARIANA"
 }
+[theme]
+primaryColor = "#3b82f6"
