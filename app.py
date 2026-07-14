@@ -62,7 +62,7 @@ st.markdown("""
         white-space: pre-wrap !important; 
     }
     
-    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT SECARA PAKSA */
+    /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT */
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
@@ -81,19 +81,34 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* MENGUBAH WARNA TAB (ACTIVE & HOVER) KE CORPORATE BLUE */
-    div[data-baseweb="tab-list"] button:hover,
-    div[data-baseweb="tab-list"] button:hover p {
+    /* ==========================================================
+       TARGET SUPER AGRESIF UNTUK WARNA TAB BIRU CORPORATE 
+       ========================================================== */
+       
+    /* 1. Efek Hover (Saat kursor menyentuh tab) - Paksa semua elemen teks di dalamnya */
+    .stTabs button[role="tab"]:hover, 
+    .stTabs button[role="tab"]:hover p, 
+    .stTabs button[role="tab"]:hover div, 
+    .stTabs button[role="tab"]:hover span {
         color: #2980b9 !important;
     }
     
-    div[data-baseweb="tab-list"] button[aria-selected="true"],
-    div[data-baseweb="tab-list"] button[aria-selected="true"] p {
+    /* 2. Efek Active (Saat tab sedang diklik/dibuka) - Paksa semua elemen teks */
+    .stTabs button[role="tab"][aria-selected="true"], 
+    .stTabs button[role="tab"][aria-selected="true"] p, 
+    .stTabs button[role="tab"][aria-selected="true"] div, 
+    .stTabs button[role="tab"][aria-selected="true"] span {
         color: #2980b9 !important;
     }
     
-    div[data-baseweb="tab-highlight"] {
+    /* 3. Garis bawah tab yang aktif */
+    .stTabs div[data-baseweb="tab-highlight"] {
         background-color: #2980b9 !important;
+    }
+    
+    /* 4. Mencegah Streamlit menimpa border-bottom secara default */
+    .stTabs button[role="tab"][aria-selected="true"] {
+        border-bottom-color: #2980b9 !important;
     }
 </style>
 """, unsafe_allow_html=True)
