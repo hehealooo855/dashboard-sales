@@ -310,37 +310,99 @@ def render_custom_progress(title, current, target):
 # =========================================================================
 @st.cache_data(ttl=43200) 
 def load_data_from_url():
-    urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv"  
-    ]
+    # LINK MASTER ANDA
+    MASTER_SALES_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vSJ-xqNCgSOSjOle60U1UQZX7101O0sBluq84Ge5ifnQVeZgv17j8Jc5ZYaqYhdfRRvJ8WCNYs4bujk/pub?output=csv" 
+    MASTER_OPS_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vQj-OjZqccPb57iVJtIXtyrEXgXfev3tnDZC0zhmPR7cCdVVC6Pifl_p7cgd2wmJ4MFfux_hbs_Ou7t/pub?output=csv" 
     
-    def fetch_url(url):
-        if url.strip() != "" and url.startswith("http") and "LINK_SHEET" not in url:
-            try:
-                url_with_ts = f"{url}&t={int(time.time())}"
-                return pd.read_csv(url_with_ts, dtype=str, engine='pyarrow')
-            except Exception as e:
-                return None
-        return None
+    # Fungsi pembantu untuk ambil list dari master dan membersihkannya
+    def get_urls_from_master(master_url):
+        df_index = pd.read_csv(master_url)
+        # 1. Hapus baris yang kosong / NaN agar tidak menjadi error
+        df_index = df_index.dropna(subset=['Link_Sheets']) 
+        # 2. Bersihkan spasi tersembunyi di awal/akhir teks URL
+        return [str(url).strip() for url in df_index['Link_Sheets'].tolist() if str(url).strip() != '']
 
-    all_dfs = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(fetch_url, urls)
-        for res in results:
-            if res is not None and not res.empty:
-                all_dfs.append(res)
-                
-    if not all_dfs: return None
+    # Ambil semua link
+    sales_urls = get_urls_from_master(MASTER_SALES_URL)
+    ops_urls = get_urls_from_master(MASTER_OPS_URL)
+    
+    # --- PENGUNDUHAN DATA SALES DENGAN PENGAMAN (TRY-EXCEPT) ---
+    sales_dfs = []
+    for u in sales_urls:
+        try:
+            # Mencoba membaca data secara normal sebagai teks
+            temp_df = pd.read_csv(u, dtype=str)
+        except pd.errors.ParserError:
+            # Jika ada baris tidak rata, paksa baca dengan template 150 kolom
+            temp_df = pd.read_csv(u, header=None, names=range(150), dtype=str)
+            # Hapus sisa kolom yang benar-benar kosong semua
+            temp_df = temp_df.dropna(axis=1, how='all')
+            # Jadikan baris pertama sebagai judul kolom yang sah
+            if not temp_df.empty:
+                temp_df.columns = temp_df.iloc[0]
+                temp_df = temp_df[1:]
+                temp_df = temp_df.reset_index(drop=True)
+        except Exception:
+            st.warning(f"Gagal membaca link Sales (Periksa link): {u}")
+            continue
+
+        if not temp_df.empty:
+            sales_dfs.append(temp_df)
+
+    if sales_dfs:
+        df_sales = pd.concat(sales_dfs, ignore_index=True)
+        df_sales['Tipe_Data'] = 'SALES'
+    else:
+        df_sales = pd.DataFrame()
         
-    df = pd.concat(all_dfs, ignore_index=True)
+    # --- PENGUNDUHAN DATA OPERASIONAL ---
+    ops_dfs = []
+    for u in ops_urls:
+        try:
+            temp_df = pd.read_csv(u, dtype=str)
+        except pd.errors.ParserError:
+            temp_df = pd.read_csv(u, header=None, names=range(150), dtype=str)
+            temp_df = temp_df.dropna(axis=1, how='all')
+            if not temp_df.empty:
+                temp_df.columns = temp_df.iloc[0]
+                temp_df = temp_df[1:]
+                temp_df = temp_df.reset_index(drop=True)
+        except Exception:
+            st.warning(f"Gagal membaca link Ops (Periksa link): {u}")
+            continue
+
+        if not temp_df.empty:
+            ops_dfs.append(temp_df)
+            
+    if ops_dfs:
+        df_ops = pd.concat(ops_dfs, ignore_index=True)
+        df_ops['Tipe_Data'] = 'OPERASIONAL'
+    else:
+        df_ops = pd.DataFrame()
+
+    # Gabungkan seluruh hasil
+    df = pd.concat([df_sales, df_ops], ignore_index=True)
     df.columns = df.columns.str.strip()
     
+    # Penambahan kolom operasional
+    if 'Status Faktur' not in df.columns:
+        df['Status Faktur'] = "Baru"
+    if 'Tahun' in df.columns:
+        df['Tahun'] = df['Tahun'].fillna('2024')
+    if 'Tanggal' in df.columns:
+        df['Tanggal'] = df['Tanggal'].fillna('2024-01-01')
+
+    # 2. Mencegah tabel pivot membuang toko tanpa riwayat transaksi
+    # Pastikan Anda menyesuaikan nama 'Total' atau 'Nilai' sesuai dengan nama kolom di sheet Anda
+    kolom_transaksi = ['Total', 'Nilai', 'Qty', 'Nominal'] 
+    for col in kolom_transaksi:
+        if col in df.columns:
+            # Ubah menjadi numerik jika memungkinkan, lalu isi dengan 0
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+    # 3. Bersihkan sisa data kosong lainnya agar tampilan UI tetap rapi
+    df = df.fillna('')
+        
     # -------------------------------------------------------------------------
     # 1. PENYATUAN NAMA KOLOM BRUTAL (MENGGABUNGKAN SEMUA SHEET)
     # -------------------------------------------------------------------------
@@ -990,118 +1052,329 @@ def login_page():
                         st.rerun()
 
 # =========================================================================
-# MOCKUP UI OPERASIONAL (MANAGER, GUDANG, DRIVER)
+# MOCKUP UI OPERASIONAL (MANAGER, GUDANG, DRIVER) - VERSI 2.0 (ENHANCED)
 # =========================================================================
 def ui_operasional_manager():
-    st.markdown("## 📦 Dashboard Operasional & Logistik")
+    st.markdown("### 📦 Dashboard Operasional & Logistik")
+
+    # --- 1. TOP BADGES / TOMBOL PERINGATAN (Bisa diklik, Data Kosong) ---
+    col_badge1, col_badge2, _ = st.columns([2, 3, 5])
+    with col_badge1:
+        if st.button("🕒 0 dok titip", use_container_width=True):
+            st.toast("Menampilkan filter dokumen titip...")
+    with col_badge2:
+        if st.button("📸 0 kirim tanpa foto · hari ini", use_container_width=True):
+            st.toast("Menampilkan filter kiriman tanpa foto...")
+
+    st.write("") # Spacer
+
+    # --- 2. MAIN METRICS CARDS (Data 0, Tooltip Logika Ditambahkan) ---
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "In-flight"
+            st.markdown("**In-flight**", help="Faktur telah diterima Gudang")
+            st.markdown("## 0")
+            
+    with col2:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "Batas SLA"
+            st.markdown("**> batas SLA**", help="Faktur telat diantar lebih dari ketentuan yang berlaku")
+            # Menggunakan warna merah (Red) untuk menandakan SLA
+            st.markdown("<h2 style='color: #e74c3c;'>0</h2>", unsafe_allow_html=True)
+
+    with col3:
+        with st.container(border=True):
+            # Tooltip help menjelaskan logika "Stuck antar"
+            st.markdown("**Stuck antar**", help="Faktur ditahan gudang dengan alasan apapun")
+            st.markdown("## 0")
+            
+    with col4:
+        with st.container(border=True):
+            st.markdown("**Selesai**", help="Faktur telah kembali ke Gudang setelah barang diantar")
+            st.markdown("## 0")
+            
+            # Indikator Visual 4 Garis Hijau & Teks "Selesai" sesuai gambar image_cfe404.png
+            st.markdown("""
+            <div style="display: flex; gap: 4px; align-items: center; margin-top: 8px;">
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+                <div style="width: 22px; height: 7px; background-color: #7bb88f; border-radius: 10px;"></div>
+            </div>
+            <div style="color: #7bb88f; font-weight: 600; font-size: 15px; margin-top: 4px; font-family: sans-serif;">Selesai</div>
+            """, unsafe_allow_html=True)
+
+    st.write("") # Spacer
+
+    # --- 3. FILTER BUTTONS ROW (Flow, Office, Gudang, dll) ---
+    # Dibuat menggunakan kolom agar tersusun rapi secara horizontal seperti di desain
+    btn_col1, btn_col2, btn_col3, btn_col4, btn_col5, btn_col6, _ = st.columns([1, 1, 1, 1, 1, 1, 4])
+
+    with btn_col1:
+        st.button("Flow", type="primary", use_container_width=True) # Dibuat primary agar lebih menonjol (aktif)
+    with btn_col2:
+        st.button("Office", use_container_width=True)
+    with btn_col3:
+        st.button("Gudang", use_container_width=True)
+    with btn_col4:
+        st.button("Checker", use_container_width=True)
+    with btn_col5:
+        st.button("Delivery", use_container_width=True)
+    with btn_col6:
+        st.button("Fakturis", use_container_width=True)
+
+    # --- 4. PLACEHOLDER UNTUK DATA TABEL NANTINYA ---
+    st.divider()
+    st.caption("Menunggu sinkronisasi data operasional...")
     
-    # Custom CSS untuk meniru gambar referensi
-    st.markdown("""
-    <style>
-    .op-card { border: 1px solid #e0e6ed; border-radius: 8px; padding: 15px; background: white; margin-bottom: 15px;}
-    .op-card-title { font-size: 13px; color: #64748b; font-weight: 600; margin-bottom: 5px; }
-    .op-card-val { font-size: 28px; font-weight: bold; }
-    .val-blue { color: #0f172a; }
-    .val-red { color: #dc2626; }
-    .op-btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; margin-bottom: 20px;}
-    .op-btn { padding: 5px 15px; border-radius: 20px; border: 1px solid #e0e6ed; font-size: 13px; background: white; color: #475569;}
-    .op-btn-active { background: #0f172a; color: white; border: 1px solid #0f172a;}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # 1. KOTAK KPI ATAS (Seperti di gambar)
-    st.markdown("""
-    <div style='display:flex; gap:10px; margin-bottom:10px;'>
-        <div style='background:#fef3c7; padding:5px 10px; border-radius:5px; font-size:12px; color:#b45309;'>🕒 3 dok titip</div>
-        <div style='background:#fef3c7; padding:5px 10px; border-radius:5px; font-size:12px; color:#b45309;'>📸 1 kirim tanpa foto · hari ini</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.markdown("<div class='op-card'><div class='op-card-title'>In-flight</div><div class='op-card-val val-blue'>114</div></div>", unsafe_allow_html=True)
-    with c2: st.markdown("<div class='op-card'><div class='op-card-title'>> batas SLA</div><div class='op-card-val val-red'>0</div></div>", unsafe_allow_html=True)
-    with c3: st.markdown("<div class='op-card'><div class='op-card-title'>Stuck antar</div><div class='op-card-val val-blue'>1</div></div>", unsafe_allow_html=True)
-    with c4: st.markdown("<div class='op-card' style='border:2px solid #3b82f6;'><div class='op-card-title'>Selesai</div><div class='op-card-val val-blue'>0</div></div>", unsafe_allow_html=True)
-    
-    # 2. TOMBOL FILTER FLOW (Pills)
-    st.markdown("""
-    <div class='op-btn-group'>
-        <div class='op-btn op-btn-active'>Flow</div>
-        <div class='op-btn'>Office</div>
-        <div class='op-btn'>Gudang</div>
-        <div class='op-btn'>Checker</div>
-        <div class='op-btn'>Delivery</div>
-        <div class='op-btn'>Fakturis</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # 3. BAGIAN LAPORAN (Tabs)
     st.markdown("### Laporan")
     t_ringkasan, t_harian, t_detail, t_kurir, t_efektif, t_sla = st.tabs([
-        "Ringkasan", "Rangkuman Harian", "Detail Harian", "Kinerja Kurir", "Efektivitas Antar", "Kepatuhan SLA"
+        "Ringkasan", "Rangkuman Harian", "Detail Harian", "Kinerja Kurir", "Peta Pengiriman (Live)", "Kepatuhan SLA"
     ])
     
     with t_ringkasan:
-        st.caption("PERLU TINDAKAN")
-        col_rt1, col_rt2 = st.columns(2)
-        col_rt1.warning("⏱️ > batas SLA - 4 hari (0)")
-        col_rt2.error("⚠️ Stuck antar >20 jam (1)")
+        st.markdown("### 📊 Ringkasan Eksekutif Operasional")
+        st.caption("Menampilkan data operasional hari ini. (Data saat ini masih kosong/menunggu integrasi)")
         
-        st.caption("PERIODE - 7 HARI TERAKHIR")
-        col_m1, col_m2 = st.columns(2)
-        col_m1.metric("Masuk", "117")
-        col_m2.metric("Selesai", "2")
-        
-    with t_kurir:
-        st.caption("KINERJA KURIR")
-        st.button("📥 Export Excel")
-        df_kurir = pd.DataFrame({
-            "KURIR": ["JONATHAN", "BIMA", "TOMI", "RIDHO"],
-            "DIBAWA": [6, 5, 1, 5],
-            "TERKIRIM": [6, 3, 1, 1],
-            "RETUR": [0, 0, 0, 3],
-            "BERHASIL": ["100%", "100%", "100%", "25%"],
-            "RATA2 DI TANGAN": ["16.7 jam", "1.7 jam", "1.8 jam", "0.0 jam"],
-            "TANPA FOTO": [1, 0, 0, 0],
-            "TITIP": [4, 1, 0, 0]
-        })
-        st.dataframe(df_kurir, use_container_width=True, hide_index=True)
+        # --- 1. ACTION CENTER (PERLU TINDAKAN CEPAT) ---
+        st.markdown("#### 🚨 Action Center")
+        col_rt1, col_rt2, col_rt3 = st.columns(3)
+        with col_rt1:
+            st.warning("⏱️ > Batas SLA (0 Faktur)")
+        with col_rt2:
+            st.error("⚠️ Stuck Antar > 20 Jam (0 Faktur)")
+            # Tombol dinonaktifkan sementara karena data kosong
+            st.button("🚨 Senggol Tim Gudang/Kurir (via WA)", disabled=True, use_container_width=True)
+        with col_rt3:
+            st.info("📦 Menunggu Checker / Packing (0 Faktur)")
 
-    with t_harian:
-        st.caption("RANGKUMAN HARIAN")
-        st.info("Visualisasi Masuk vs Terkirim vs Retur per hari.")
+        st.divider()
+
+        # --- 2. KPI METRICS ---
+        st.markdown("#### 📈 Indikator Kinerja Utama (KPI)")
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        with kpi1:
+            st.metric(label="Total Surat Jalan Keluar", value="0", delta="0% vs Kemarin")
+        with kpi2:
+            st.metric(label="Berhasil Terkirim", value="0", delta="0% vs Kemarin")
+        with kpi3:
+            st.metric(label="Total Retur / Gagal", value="0", delta="0% vs Kemarin", delta_color="inverse")
+        with kpi4:
+            st.metric(label="Rata-rata Waktu Kirim", value="0 Jam", delta="0 Jam vs Kemarin", delta_color="inverse")
+
+        st.divider()
+
+        # --- 3. VISUALISASI DATA (EMPTY STATE) ---
+        st.markdown("#### 📉 Analisis Pengiriman")
+        chart_col1, chart_col2 = st.columns([1, 2])
         
-    with t_detail:
-        st.caption("DETAIL HARIAN")
-        st.text_input("🔍 Cari No. Faktur / Customer", placeholder="Ketik disini...")
-        df_detail = pd.DataFrame({
-            "TGL": ["22 Jun", "22 Jun", "22 Jun"],
-            "NO. FAKTUR": ["SMP/BXT/2026/...", "PFL/2026/06/0...", "SNY/2026/06/0..."],
-            "CUSTOMER": ["CASH", "BE LUV COSMETIK", "RUMAH COSMETIK"],
-            "NILAI": ["Rp 5.760", "Rp 6.012.115", "Rp 2.706.315"],
-            "STATUS": ["Office", "Delivery", "Selesai"]
+        with chart_col1:
+            st.markdown("**Status Pengiriman Keseluruhan**")
+            # Grafik Donat Kosong
+            df_donut_empty = pd.DataFrame({
+                "Status": ["Terkirim", "Proses", "Retur"], 
+                "Jumlah": [0, 0, 0]
+            })
+            fig_donut = px.pie(
+                df_donut_empty, 
+                names="Status", 
+                values="Jumlah", 
+                hole=0.6,
+                color="Status",
+                color_discrete_map={"Terkirim": "#2ecc71", "Proses": "#3498db", "Retur": "#e74c3c"}
+            )
+            fig_donut.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, showlegend=True)
+            # Menampilkan teks "No Data" di tengah donat
+            fig_donut.add_annotation(text="No Data", x=0.5, y=0.5, font_size=20, showarrow=False)
+            st.plotly_chart(fig_donut, use_container_width=True)
+
+        with chart_col2:
+            st.markdown("**Tren Pengiriman (7 Hari Terakhir)**")
+            # Grafik Garis Kosong
+            tujuh_hari_lalu = [datetime.date.today() - datetime.timedelta(days=i) for i in range(6, -1, -1)]
+            df_line_empty = pd.DataFrame({
+                "Tanggal": tujuh_hari_lalu,
+                "Total Pengiriman": [0, 0, 0, 0, 0, 0, 0]
+            })
+            fig_line = px.line(
+                df_line_empty, 
+                x="Tanggal", 
+                y="Total Pengiriman", 
+                markers=True,
+                line_shape="spline"
+            )
+            fig_line.update_traces(line_color="#2980b9", marker=dict(size=8))
+            fig_line.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), 
+                height=280, 
+                yaxis_title="Jumlah Resi/Faktur", 
+                xaxis_title=""
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+
+        st.divider()
+
+        # --- 4. TABEL LOG AKTIVITAS TERBARU ---
+        st.markdown("#### 📋 Log Antrean & Aktivitas Terbaru")
+        # DataFrame Kosong dengan struktur kolom yang rapi
+        df_log_empty = pd.DataFrame(columns=[
+            "Waktu Update", 
+            "No. Tanda Terima", 
+            "No. Faktur", 
+            "Kurir", 
+            "Customer / Toko", 
+            "Status Operasional", 
+            "Keterangan"
+        ])
+        
+        # Konfigurasi UI Tabel agar tampak proporsional meski kosong
+        st.dataframe(
+            df_log_empty, 
+            use_container_width=True, 
+            hide_index=True,
+            column_config={
+                "Waktu Update": st.column_config.DatetimeColumn("Waktu Update", format="DD/MM/YYYY HH:mm"),
+                "Status Operasional": st.column_config.TextColumn("Status Operasional")
+            }
+        )
+        
+    with t_efektif:
+        st.caption("PETA KEMACETAN & DISTRIBUSI PENGIRIMAN (Medan Area)")
+        
+        # 1. Tombol Pintar ke Google Maps Asli (Mode Kemacetan / Traffic Layer AKTIF)
+        st.info("Gunakan tombol di bawah untuk memantau kemacetan, penutupan jalan, dan rute real-time di Google Maps.")
+        st.link_button(
+            "🗺️ Buka Live Traffic Google Maps (Full Fitur)", 
+            "https://www.google.com/maps/@3.5852867,98.6756689,13z/data=!5m1!1e1", 
+            type="primary", 
+            use_container_width=True
+        )
+        
+        st.markdown("---")
+        st.write("**Titik Sebaran Area Pengiriman Hari ini:**")
+        
+        # 2. Peta Bawaan Streamlit (Hanya untuk melihat gambaran titik sebaran toko)
+        df_lokasi = pd.DataFrame({
+            "lat": [3.595, 3.585, 3.600, 3.570],
+            "lon": [98.672, 98.660, 98.680, 98.650],
         })
-        st.dataframe(df_detail, use_container_width=True, hide_index=True)
+        st.map(df_lokasi, zoom=12)
+
+def ui_operasional_admin():
+    st.markdown("## 🏢 Panel Admin / Fakturis")
+    st.info("Buat Tanda Terima (TT) digital agar Kepala Gudang bisa mencocokkan dokumen fisik.")
+    
+    with st.container(border=True):
+        st.markdown("### 📝 Buat Tanda Terima Baru")
+        with st.form("form_buat_tt"):
+            col1, col2 = st.columns(2)
+            no_tt = col1.text_input("Nomor Tanda Terima (TT)", placeholder="Misal: TT-202607-001")
+            nama_sales = col2.selectbox("Nama Sales", ["WIRA", "HAMZAH", "FERI", "ADE", "RISKA", "DLL"])
+            
+            st.write("**Daftar Nomor Faktur yang diserahkan dalam TT ini:**")
+            daftar_faktur = st.text_area("Ketik / Scan Barcode Nomor Faktur (Pisahkan dengan koma atau Enter)", placeholder="INV-001\nINV-002\nINV-003", height=100)
+            
+            submitted = st.form_submit_button("📤 Upload & Serahkan ke Gudang", type="primary")
+            if submitted:
+                st.success(f"Tanda Terima {no_tt} berhasil dibuat! Status: Menunggu Konfirmasi Kepala Gudang.")
+                
+    st.divider()
+    st.markdown("### 📜 Riwayat Tanda Terima Hari Ini")
+    df_history = pd.DataFrame({
+        "Waktu": ["10:15 WIB", "09:30 WIB"],
+        "No. TT": ["TT-202607-002", "TT-202607-001"],
+        "Sales": ["ADE", "WIRA"],
+        "Jml Faktur": [5, 12],
+        "Status": ["Menunggu Gudang 🟡", "Diterima Gudang 🟢"]
+    })
+    st.dataframe(df_history, use_container_width=True, hide_index=True)
+    st.divider()
+    st.markdown("### 🏁 Finalisasi (Closing Faktur)")
+    st.caption("Faktur yang sudah kembali dari Gudang akan muncul di sini untuk di-Closing.")
+    
+    df_closing = pd.DataFrame({
+        "No. Faktur": ["INV-001", "INV-002"],
+        "Status": ["Kembali dari Gudang", "Kembali dari Gudang"],
+        "Aksi": [False, False]
+    })
+    
+    edited_closing = st.data_editor(df_closing, column_config={"Aksi": st.column_config.CheckboxColumn("Finalisasi/Arsip")}, hide_index=True)
+    
+    if st.button("🔒 Finalisasi & Arsipkan Faktur Terpilih"):
+        st.success("Faktur berhasil diarsipkan ke database permanen.")
 
 def ui_operasional_gudang():
-    st.markdown("## 🏭 Panel Gudang (Warehouse)")
-    st.info("Halo Tim Gudang! Berikut adalah daftar faktur yang perlu disiapkan/dipacking hari ini.")
-    st.metric("Menunggu Packing", "32 Faktur")
+    st.markdown("## 🏭 Panel Gudang & Checker (Dwi)")
     
-    st.write("**Daftar Antrean Packing:**")
-    df_gudang = pd.DataFrame({
-        "No. Faktur": ["INV-001", "INV-002", "INV-003"],
-        "Customer": ["Toko A", "Toko B", "Toko C"],
-        "Total Item": [12, 5, 45]
-    })
-    st.dataframe(df_gudang, use_container_width=True)
-    if st.button("Tandai Semua Selesai Packing (Lanjut Checker)"):
-        st.success("Berhasil! Faktur diteruskan ke tim Checker.")
+    # --- BAGIAN 1: PENERIMAAN DOKUMEN DARI ADMIN (Langkah 4) ---
+    st.markdown("### 📥 Penerimaan Dokumen Tanda Terima (TT)")
+    with st.container(border=True):
+        col_tt1, col_tt2 = st.columns([3, 1])
+        with col_tt1:
+            st.write("**No. TT: TT-202607-002** (Sales: ADE)")
+            st.code("INV-004\nINV-005\nINV-006\nINV-007\nINV-008")
+        with col_tt2:
+            st.write("\n\n")
+            if st.button("✅ Konfirmasi Terima Dokumen Fisik", use_container_width=True, type="primary"):
+                st.success("Terkonfirmasi! Faktur masuk ke Antrean Packing.")
+    
+    st.divider()
+    
+    # --- BAGIAN 2: ALUR PACKING & SERAH TERIMA (Langkah 5 - 9) ---
+    st.markdown("### 🔄 Alur Operasional (Packing ➡️ Checker ➡️ Delivery)")
+    t_packing, t_checker, t_serah = st.tabs([
+        "📦 Tahap 1: Packing", "🔍 Tahap 2: Checker (Dwi)", "🤝 Tahap 3: Serah Terima Kurir"
+    ])
+    
+    with t_packing:
+        st.info("GUDANG: Centang kotak jika barang sudah siap dan masuk kardus.")
+        df_packing = pd.DataFrame({
+            "Selesai Packing": [False, False],
+            "Waktu Tunggu": ["30 Menit 🟢", "10 Menit 🟢"],
+            "No. Faktur": ["INV-001", "INV-002"],
+            "Customer": ["Toko SinarKos", "Be Luv Cosmetic"]
+        })
+        st.data_editor(df_packing, column_config={"Selesai Packing": st.column_config.CheckboxColumn("Selesai Packing", default=False)}, hide_index=True, use_container_width=True, key="pack_edit")
+        st.button("Teruskan ke Checker", key="btn_to_check")
+
+    with t_checker:
+        st.info("CHECKER (DWI): Cek kembali kesesuaian fisik barang dengan faktur.")
+        df_checker = pd.DataFrame({
+            "Barang Sesuai": [False],
+            "No. Faktur": ["INV-003"],
+            "Customer": ["Queen Store"],
+            "Total Item": [15]
+        })
+        st.data_editor(df_checker, column_config={"Barang Sesuai": st.column_config.CheckboxColumn("Barang Sesuai", default=False)}, hide_index=True, use_container_width=True, key="check_edit")
+        if st.button("✅ Konfirmasi Sudah Dipacking & Sesuai", type="primary", key="btn_checked"):
+            st.success("Terkonfirmasi! Status berubah menjadi 'Siap Dipacking / Menunggu Delivery'.")
+
+    with t_serah:
+        st.info("KEPALA GUDANG: Pilih faktur dan serahkan fisik barangnya ke Kurir.")
+        df_serah = pd.DataFrame({
+            "Pilih": [True, False],
+            "No. Faktur": ["INV-004", "INV-005"],
+            "Customer": ["Rumah Kosmetik", "Toko Cantik"],
+            "Pilih Kurir": ["BIMA", "JONATHAN"]
+        })
+        st.data_editor(df_serah, column_config={"Pilih": st.column_config.CheckboxColumn("Pilih", default=False), "Pilih Kurir": st.column_config.SelectboxColumn("Pilih Kurir", options=["BIMA", "JONATHAN", "TOMI"])}, hide_index=True, use_container_width=True, key="serah_edit")
+        if st.button("🤝 Serahkan ke Delivery", type="primary"):
+            st.success("Berhasil diserahkan! Faktur & Barang kini otomatis masuk ke aplikasi HP kurir (Status: Dibawa).")
+    st.divider()
+    st.markdown("### 📥 Serah Terima Balik dari Kurir")
+    st.info("Kepala Gudang: Jika kurir sudah kembali, terima dokumen & barang retur (jika ada).")
+    # Tabel untuk mengecek barang balik
+    df_balik = pd.DataFrame({"No. Faktur": ["INV-004"], "Status Fisik": ["OK"], "Keterangan": ["Barang Kembali"]})
+    st.dataframe(df_balik, use_container_width=True)
+    if st.button("🔄 Terima Faktur & Barang Kembali dari Kurir", type="primary"):
+        st.success("Dokumen diterima kembali. Faktur diteruskan ke Admin untuk Closing.")
 
 def ui_operasional_driver():
     st.markdown("""
     <div style='background:#0f172a; padding:15px; border-radius:10px; color:white; text-align:center;'>
-        <h2>🛵 Panel Kurir</h2>
+        <h2>🛵 Panel Kurir (Mobile Mode)</h2>
         <p>Halo, BIMA!</p>
     </div>
     <br>
@@ -1114,16 +1387,41 @@ def ui_operasional_driver():
     
     st.divider()
     st.write("**Tugas Pengiriman Anda Hari Ini:**")
+    st.caption("Data di bawah ini otomatis muncul setelah Kepala Gudang menyerahkan faktur kepada Anda.")
     
-    for i in range(1, 3):
-        with st.container(border=True):
-            st.write(f"**Toko Sinar Kosmetik {i}**")
-            st.caption(f"Faktur: INV-2026-00{i} | Nilai: Rp 1.500.000")
-            st.write("📍 Jl. Merdeka No. 123, Medan")
-            col_a, col_b = st.columns(2)
-            col_a.button("✅ Selesai Antar", key=f"btn_ok_{i}", use_container_width=True, type="primary")
-            col_b.button("🔙 Retur", key=f"btn_retur_{i}", use_container_width=True)
-# =========================================================================
+    with st.container(border=True):
+        # Indikator Status Dibawa
+        st.markdown("<div style='background:#dbeafe; padding:5px; border-radius:5px; margin-bottom:10px; text-align:center;'><b style='color:#1e3a8a;'>Status: Dibawa 📦</b></div>", unsafe_allow_html=True)
+        
+        st.write("### Toko Rumah Kosmetik")
+        st.caption("Faktur: INV-004 | Nilai: Rp 2.706.315")
+        st.write("📍 Jl. Karya Wisata No. 12, Medan")
+        
+        col_m1, col_m2 = st.columns(2)
+        col_m1.link_button("🗺️ Buka Google Maps", "https://maps.google.com/?q=3.585,98.660", use_container_width=True)
+        col_m2.link_button("💬 Chat Toko", "https://wa.me/628111222333", use_container_width=True)
+        
+        st.markdown("---")
+        st.write("**Upload Bukti Pengiriman (PoD):**")
+        foto_pod = st.camera_input("Ambil Foto Toko / Penerima", key="cam_1")
+        
+        if foto_pod:
+            st.success("📸 Foto berhasil ditangkap! Siap diunggah.")
+            
+        col_a, col_b = st.columns(2)
+        col_a.button("✅ Konfirmasi Selesai Antar", key="btn_ok_1", use_container_width=True, type="primary")
+        col_b.button("🔙 Laporkan Retur", key="btn_retur_1", use_container_width=True)
+        # Tombol Retur dengan input alasan manual
+        if st.button("🔙 Laporkan Retur", key="btn_retur_open"):
+            st.session_state['show_retur_form'] = True
+            
+        if st.session_state.get('show_retur_form', False):
+            st.warning("⚠️ Laporan Retur (Isi alasan di bawah):")
+            alasan_retur = st.text_area("Alasan Retur / Tidak Terantar:", placeholder="Contoh: Toko tutup, pemilik sedang keluar kota...")
+            catatan_tambahan = st.text_input("Catatan Tambahan:")
+            if st.button("Kirim Laporan Retur"):
+                st.success("Laporan retur berhasil dikirim ke Gudang.")
+                st.session_state['show_retur_form'] = False
 
 def main_dashboard():
     def get_color_achv(val):
@@ -1166,7 +1464,7 @@ def main_dashboard():
         if st.session_state['role'] in ['manager', 'direktur']:
             st.markdown("---")
             st.write("### 🔀 Modul Aplikasi")
-            app_mode = st.radio("Pilih Modul:", ["Dashboard Sales 📊", "Dashboard Operasional 🚚"])
+            app_mode = st.radio("Pilih Modul:", ["Dashboard Sales 📊", "Dashboard Operasional 🚚", "Panel Admin / Fakturis 🏢"])
         elif st.session_state['role'] == 'gudang':
             app_mode = "Gudang"
         elif st.session_state['role'] == 'driver':
@@ -1247,7 +1545,10 @@ def main_dashboard():
         # --- PENCEGAT (INTERCEPT) UNTUK MENAMPILKAN UI OPERASIONAL ---
     if app_mode == "Dashboard Operasional 🚚":
         ui_operasional_manager()
-        return  # Hentikan proses, jangan load dashboard sales
+        return  
+    elif app_mode == "Panel Admin / Fakturis 🏢":
+        ui_operasional_admin()
+        return
     elif app_mode == "Gudang":
         ui_operasional_gudang()
         return
@@ -2537,3 +2838,5 @@ def main_dashboard():
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if st.session_state['logged_in']: main_dashboard()
 else: login_page()
+
+
