@@ -1005,14 +1005,6 @@ def main_dashboard():
                     st.success("Tersinkronisasi!")
                     time.sleep(1)
                     st.rerun()
-
-                if st.button("🔄 Force Sync Database", use_container_width=True):
-                    st.cache_data.clear() 
-                    if os.path.exists("master_database_penjualan.parquet"):
-                        os.remove("master_database_penjualan.parquet") 
-                    st.success("Tersinkronisasi!")
-                    time.sleep(1)
-                    st.rerun()
                     
                 # ==========================================
                 # TAMBAHAN: FITUR BACA AUDIT LOG (LOGIN/LOGOUT)
@@ -1045,7 +1037,7 @@ def main_dashboard():
                 else:
                     st.caption("Belum ada data aktivitas di sistem.")
                 # ==========================================
-            
+        
         if st.button("🚪 Logout", use_container_width=True):
             log_activity(st.session_state['sales_name'], "LOGOUT")
             st.session_state['logged_in'] = False
