@@ -1567,7 +1567,7 @@ def main_dashboard():
     with t4:
         st.subheader("📋 Data Rincian & Analisis Spesifik")
 
-        tab_pivot, tab_sku, tab_growth, tab_ba, tab_ai = st.tabs(["📊 Pivot Data Customer", "🛒 Detail SKU per Toko", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA", "🤖 AI Assistant (Gemini)"])
+        tab_pivot, tab_sku, tab_growth, tab_ba = st.tabs(["📊 Pivot Data Customer", "🛒 Detail SKU per Toko", "📈 Rekap Growth Brand", "🎯 Pencapaian Target BA"])
         
         with tab_pivot:
             render_pivot_fragment(df_scope_all, role)
@@ -2369,71 +2369,6 @@ def main_dashboard():
                 
                 # Render Tabel 2 dengan AgGrid Corporate
                 render_ba_aggrid(df_achv, total_dict_ba=total_dict_ba2, file_prefix=f"Achv_BA_{selected_month_ba}", brand_name=selected_ba_brand)
-
-        with tab_ai:
-            st.markdown("### 🤖 Asisten AI Gemini (Enterprise Secure Mode)")
-            st.info("🔒 Keamanan Aktif: Sistem HANYA mengirimkan ringkasan angka statistik ke AI. Data mentah dan nama toko rahasia Anda tetap berada di dalam server ini.")
-            
-            try:
-                import google.generativeai as genai
-                GENAI_AVAILABLE = True
-            except ImportError:
-                GENAI_AVAILABLE = False
-                
-            if not GENAI_AVAILABLE:
-                st.error("⚠️ Library AI belum terinstal di Server. Pastikan Anda telah menambahkan 'google-generativeai' ke dalam file requirements.txt di Github Anda.")
-            else:
-                api_key_input = st.text_input("🔑 Masukkan API Key Gemini Anda:", type="password", help="Dapatkan API Key gratis di aistudio.google.com")
-                
-                if api_key_input:
-                    try:
-                        genai.configure(api_key=api_key_input)
-                        user_question = st.text_area("Tanya AI tentang performa data yang sedang Anda filter:", placeholder="Contoh: Berdasarkan data ini, apa evaluasi untuk tim sales?")
-                        
-                        if st.button("💡 Analisis Sekarang"):
-                            with st.spinner("AI sedang membaca ringkasan data Anda..."):
-                                
-                                summary_brand = df_active.groupby('Merk')['Jumlah'].sum().nlargest(5).reset_index()
-                                summary_sales = df_active.groupby('Penjualan')['Jumlah'].sum().nlargest(5).reset_index()
-                                top_produk = df_active.groupby('Nama Barang')['Jumlah'].sum().nlargest(3).reset_index()
-                                
-                                context = f"""
-                                TOTAL OMSET SAAT INI: Rp {current_omset_total:,.0f}
-                                JUMLAH TRANSAKSI: {transaksi_count}
-                                
-                                TOP 5 BRAND:
-                                {summary_brand.to_string()}
-                                
-                                TOP 5 SALESMAN:
-                                {summary_sales.to_string()}
-                                
-                                TOP 3 PRODUK PALING LAKU:
-                                {top_produk.to_string()}
-                                """
-                                
-                                final_prompt = f"Anda adalah Konsultan Bisnis Ahli. Berikut adalah ringkasan data penjualan perusahaan bulan ini:\n{context}\n\nPertanyaan User: {user_question}\nBerikan jawaban yang taktis, cerdas, profesional, dan berbahasa Indonesia."
-                                
-                                models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-pro']
-                                response = None
-                                success_model = ""
-                                
-                                for m_name in models_to_try:
-                                    try:
-                                        model = genai.GenerativeModel(m_name)
-                                        response = model.generate_content(final_prompt)
-                                        success_model = m_name
-                                        break
-                                    except Exception:
-                                        continue 
-                                
-                                if response:
-                                    st.success(f"Analisis Selesai! (Powered by {success_model})")
-                                    st.write(response.text)
-                                else:
-                                    st.error("Gagal! API Key Anda tidak memiliki akses ke versi Gemini apa pun. Silakan buat API Key baru di aistudio.google.com")
-                                        
-                    except Exception as e:
-                        st.error(f"Koneksi gagal. Detail: {e}")
 
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
