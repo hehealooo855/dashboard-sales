@@ -1094,9 +1094,21 @@ def main_dashboard():
     st.title("🚀 Executive Dashboard")
     st.markdown("---")
 
-    st.markdown("### 👤 User")
-    list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
-    selected_ijl = st.selectbox("Pilih User Dashboard:", list_ijl, index=0)
+    # =========================================================
+    # HIERARKI RUANG LINGKUP (UI & BACKGROUND LOGIC)
+    # =========================================================
+    # Cek apakah user adalah Direktur atau Supervisor
+    is_authorized_to_select = (role.lower() == 'direktur') or is_supervisor_account
+
+    if is_authorized_to_select:
+        st.markdown("### 👤 User")
+        list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
+        selected_ijl = st.selectbox("Pilih User Dashboard:", list_ijl, index=0)
+    else:
+        # Untuk Sales/Staff biasa, sembunyikan dropdown dan atur otomatis ke "IJL"
+        # (atau bisa disesuaikan ke my_name_key jika ingin default ke tim mereka)
+        selected_ijl = "IJL" 
+    # =========================================================
         
     st.sidebar.markdown("### ⚙️ Panel Filter Executive")
     with st.sidebar.form("main_filter_form"):
