@@ -1005,6 +1005,46 @@ def main_dashboard():
                     st.success("Tersinkronisasi!")
                     time.sleep(1)
                     st.rerun()
+
+                if st.button("🔄 Force Sync Database", use_container_width=True):
+                    st.cache_data.clear() 
+                    if os.path.exists("master_database_penjualan.parquet"):
+                        os.remove("master_database_penjualan.parquet") 
+                    st.success("Tersinkronisasi!")
+                    time.sleep(1)
+                    st.rerun()
+                    
+                # ==========================================
+                # TAMBAHAN: FITUR BACA AUDIT LOG (LOGIN/LOGOUT)
+                # ==========================================
+                st.markdown("---")
+                st.write("🕵️ **Riwayat Login & Logout**")
+                
+                if os.path.isfile('audit_log.csv'):
+                    try:
+                        # Baca data log yang sudah dicatat oleh sistem
+                        df_log = pd.read_csv('audit_log.csv')
+                        
+                        # Urutkan dari waktu terbaru (Z ke A)
+                        df_log = df_log.sort_values(by='Timestamp', ascending=False)
+                        
+                        # Tampilkan preview 5 aktivitas terakhir agar sidebar tidak kepanjangan
+                        st.dataframe(df_log.head(5), use_container_width=True, hide_index=True)
+                        
+                        # Buat tombol download untuk menarik data penuh
+                        csv_log = df_log.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Download Full Log (CSV)",
+                            data=csv_log,
+                            file_name=f"Audit_Log_Aktivitas_{datetime.date.today()}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.caption("⚠️ File log sedang digunakan atau tidak dapat dibaca.")
+                else:
+                    st.caption("Belum ada data aktivitas di sistem.")
+                # ==========================================
             
         if st.button("🚪 Logout", use_container_width=True):
             log_activity(st.session_state['sales_name'], "LOGOUT")
