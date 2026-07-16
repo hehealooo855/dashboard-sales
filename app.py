@@ -1058,21 +1058,18 @@ def main_dashboard():
     
     is_supervisor_account = my_name_key in TARGET_DATABASE
     
-    if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah':
-        sales_list = ["SEMUA"] + sorted(list(df['Penjualan'].dropna().astype(str).unique()))
-        brands_list = sorted(df['Merk'].dropna().astype(str).unique())
-        outlets_list = sorted(df['Nama Outlet'].dropna().astype(str).unique())
-    elif is_supervisor_account:
-        my_brands = TARGET_DATABASE[my_name_key].keys()
-        df_spv_raw = df[df['Merk'].isin(my_brands)]
-        sales_list = ["SEMUA"] + sorted(list(df_spv_raw['Penjualan'].dropna().astype(str).unique()))
-        brands_list = sorted(df_spv_raw['Merk'].dropna().astype(str).unique())
-        outlets_list = sorted(df_spv_raw['Nama Outlet'].dropna().astype(str).unique())
-    else:
-        sales_list = [my_name]
-        df_sales_raw = df[df['Penjualan'] == my_name]
-        brands_list = sorted(df_sales_raw['Merk'].dropna().astype(str).unique())
-        outlets_list = sorted(df_sales_raw['Nama Outlet'].dropna().astype(str).unique())
+    # =========================================================
+    # 🛡️ ROW-LEVEL SECURITY (RLS) - PROTEKSI AKSES MUTLAK
+    # =========================================================
+    if role not in ['manager', 'direktur'] and my_name.lower() != 'fauziah':
+        if is_supervisor_account:
+            # Supervisor HANYA menerima data dari Brand yang dikelolanya
+            allowed_brands = list(TARGET_DATABASE[my_name_key].keys())
+            df = df[df['Merk'].isin(allowed_brands)]
+        else:
+            # Salesman biasa HANYA menerima data transaksinya sendiri
+            df = df[df['Penjualan'] == my_name_key]
+    # =========================================================
 
     today = datetime.date.today()
     if 'start_date' not in st.session_state:
