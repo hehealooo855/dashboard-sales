@@ -1139,7 +1139,7 @@ def main_dashboard():
     # --- 3. RENDER UI METRIC KE LAYAR ---
     c1, c2, c3 = st.columns(3)
     
-    # Render Omset (HTML Custom)
+    # 1. Render Omset
     delta_str = format_idr(abs(delta_val))
     if delta_val < 0: delta_html = f"<span style='color: #f39c12; font-weight: bold; font-size: 14px;'>▼ - {delta_str} ({delta_label})</span>"
     elif delta_val > 0: delta_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_str} ({delta_label})</span>"
@@ -1150,6 +1150,32 @@ def main_dashboard():
         <p style="margin:0; font-size: 18px; font-weight: 600; color: inherit; padding-bottom: 0.25rem;">💰 Total Omset (Periode)</p>
         <div style="font-size: 36px; font-weight: bold; color: inherit; line-height: 1.2;">{format_idr(current_omset_total)}</div>
         {delta_html}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. Render Outlet Aktif
+    if delta_outlet < 0: delta_outlet_html = f"<span style='color: #f39c12; font-weight: bold; font-size: 14px;'>▼ {delta_outlet} ({delta_label})</span>"
+    elif delta_outlet > 0: delta_outlet_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_outlet} ({delta_label})</span>"
+    else: delta_outlet_html = f"<span style='color: #95a5a6; font-weight: bold; font-size: 14px;'>▬ {delta_outlet} ({delta_label})</span>"
+    
+    c2.markdown(f"""
+    <div style="padding: 0px 0px;">
+        <p style="margin:0; font-size: 18px; font-weight: 600; color: inherit; padding-bottom: 0.25rem;">🏪 Outlet Aktif</p>
+        <div style="font-size: 36px; font-weight: bold; color: inherit; line-height: 1.2;">{outlet_current}</div>
+        {delta_outlet_html}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 3. Render Transaksi
+    if delta_transaksi < 0: delta_trx_html = f"<span style='color: #f39c12; font-weight: bold; font-size: 14px;'>▼ {delta_transaksi} ({delta_label})</span>"
+    elif delta_transaksi > 0: delta_trx_html = f"<span style='color: #2ecc71; font-weight: bold; font-size: 14px;'>▲ + {delta_transaksi} ({delta_label})</span>"
+    else: delta_trx_html = f"<span style='color: #95a5a6; font-weight: bold; font-size: 14px;'>▬ {delta_transaksi} ({delta_label})</span>"
+    
+    c3.markdown(f"""
+    <div style="padding: 0px 0px;">
+        <p style="margin:0; font-size: 18px; font-weight: 600; color: inherit; padding-bottom: 0.25rem;">🧾 Transaksi</p>
+        <div style="font-size: 36px; font-weight: bold; color: inherit; line-height: 1.2;">{transaksi_current}</div>
+        {delta_trx_html}
     </div>
     """, unsafe_allow_html=True)
     
