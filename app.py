@@ -211,7 +211,7 @@ BRAND_ALIASES = {
     "Saviosa": ["SAVIOSA"], "The Face": ["THE FACE", "THEFACE"], "Yu Chun Mei": ["YU CHUN MEI", "YCM"],
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
-    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG", "SBG"]
+    "Everpure": ["EVERPURE"], "COSLINE": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong":["SOMBONG", "SBG"], "Nurilab":["NURILAB"]
 }
 
 SALES_MAPPING = {
@@ -1439,7 +1439,7 @@ def main_dashboard():
                             "Omset Hari ini": format_idr(omset_hari_ini), # <--- KOLOM BARU DISISIPKAN DI SINI
                             "Omset H-1": format_idr(omset_h1),
                             "Toko H-1": toko_h1, 
-                            "Total Toko MTD": total_toko_mtd,
+                            "AO MTD": total_toko_mtd,
                             "_real": real_sales, "_target": t_pribadi
                         })
                         total_brand_sales += real_sales; total_brand_target += t_pribadi
