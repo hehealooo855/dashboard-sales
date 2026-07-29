@@ -1099,13 +1099,21 @@ def main_dashboard():
     # =========================================================
     # HIERARKI RUANG LINGKUP (UI & BACKGROUND LOGIC)
     # =========================================================
-    # Cek apakah user adalah Direktur, Manager, Fauziah, atau Supervisor
-    is_authorized_to_select = (role.lower() in ['direktur', 'manager']) or (my_name.lower() == 'fauziah') or is_supervisor_account
+    # 1. Cek apakah user adalah Direktur, Manager, atau Fauziah (Akses Penuh)
+    is_full_access = (role.lower() in ['direktur', 'manager']) or (my_name.lower() == 'fauziah')
 
-    if is_authorized_to_select:
+    if is_full_access:
         st.markdown("### 👤 User")
         list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
         selected_ijl = st.selectbox("Pilih User Dashboard:", list_ijl, index=0)
+        
+    # 2. Jika user adalah Supervisor, kunci menu hanya untuk namanya sendiri
+    elif is_supervisor_account:
+        st.markdown("### 👤 User")
+        # st.selectbox dikunci (disabled=True) agar tidak bisa diklik
+        selected_ijl = st.selectbox("Pilih User Dashboard:", [my_name_key], disabled=True)
+        
+    # 3. Untuk Sales biasa, jalankan default
     else:
         selected_ijl = "IJL" 
     # =========================================================
