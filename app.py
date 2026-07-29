@@ -84,32 +84,30 @@ st.markdown("""
        TARGET SUPER AGRESIF UNTUK WARNA TAB BIRU CORPORATE 
        ========================================================== */
        
-    /* 1. Efek Hover (Saat kursor menyentuh tab) - Paksa semua elemen teks di dalamnya */
-    .stTabs button[role="tab"]:hover, 
-    .stTabs button[role="tab"]:hover p, 
-    .stTabs button[role="tab"]:hover div, 
-    .stTabs button[role="tab"]:hover span {
+    /* 1. Efek Active (Saat tab sedang diklik/dibuka) - Paksa teks menjadi biru */
+    div[data-testid="stTabs"] button[aria-selected="true"] p,
+    div[data-testid="stTabs"] button[aria-selected="true"] span,
+    div[data-testid="stTabs"] button[aria-selected="true"] div {
         color: #2980b9 !important;
+        font-weight: 700 !important;
     }
-    
-    /* 2. Efek Active (Saat tab sedang diklik/dibuka) - Paksa semua elemen teks */
-    .stTabs button[role="tab"][aria-selected="true"], 
-    .stTabs button[role="tab"][aria-selected="true"] p, 
-    .stTabs button[role="tab"][aria-selected="true"] div, 
-    .stTabs button[role="tab"][aria-selected="true"] span {
-        color: #2980b9 !important;
+
+    /* 2. Efek Hover (Saat kursor menyentuh tab) */
+    div[data-testid="stTabs"] button[role="tab"]:hover p,
+    div[data-testid="stTabs"] button[role="tab"]:hover span {
+        color: #3498db !important;
     }
-    
+
     /* 3. Garis bawah tab yang aktif */
-    .stTabs div[data-baseweb="tab-highlight"] {
+    div[data-testid="stTabs"] div[data-baseweb="tab-highlight"] {
         background-color: #2980b9 !important;
     }
     
-    /* 4. Mencegah Streamlit menimpa border-bottom secara default */
-    .stTabs button[role="tab"][aria-selected="true"] {
-        border-bottom-color: #2980b9 !important;
+    /* 4. Sembunyikan border bawaan Streamlit agar garis biru terlihat rapi */
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        border-bottom-color: transparent !important;
     }
-</style>
+    
 """, unsafe_allow_html=True)
 
 # ==========================================
