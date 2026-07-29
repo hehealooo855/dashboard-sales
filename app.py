@@ -63,6 +63,17 @@ st.markdown("""
     }
     
     /* MENYEMBUNYIKAN WATERMARK & TOMBOL MANAGE APP STREAMLIT */
+    /* ==========================================================
+       MEMBLOKIR TOOLBAR BAWAAN STREAMLIT (DOWNLOAD, SEARCH, DLL)
+       ========================================================== */
+    [data-testid="stElementToolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    [data-testid="stElementToolbarButton"] {
+        display: none !important;
+    }
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     .stDeployButton {display: none !important;}
