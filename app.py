@@ -775,7 +775,7 @@ def render_pivot_fragment(df_scope_all, role):
         else: st.info("Data Kosong setelah difilter.")
             
         user_role_lower = role.lower()
-        if user_role_lower in ['direktur', 'manager', 'supervisor']:
+        if user_role_lower == 'direktur':
             output = io.BytesIO()
             has_data_to_export = 'df_display_export' in locals() and not df_display_export.empty
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -976,7 +976,7 @@ def main_dashboard():
             </script>
             """, height=0, width=0)
 
-        if st.session_state['role'] in ['manager', 'direktur']:
+        if st.session_state['role'] in ['manager', 'direktur'] or st.session_state.get('sales_name', '').lower() == 'fauziah':
             st.markdown("---")
             with st.expander("🔐 Admin Zone", expanded=False):
                 token_hari_ini = generate_daily_token()
@@ -1023,14 +1023,17 @@ def main_dashboard():
                         st.dataframe(df_log.head(5), use_container_width=True, hide_index=True)
                         
                         # Buat tombol download untuk menarik data penuh
-                        csv_log = df_log.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            label="📥 Download Full Log (CSV)",
-                            data=csv_log,
-                            file_name=f"Audit_Log_Aktivitas_{datetime.date.today()}.csv",
-                            mime="text/csv",
-                            use_container_width=True
-                        )
+                        if st.session_state['role'] == 'direktur':
+                            csv_log = df_log.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                label="📥 Download Full Log (CSV)",
+                                data=csv_log,
+                                file_name=f"Audit_Log_Aktivitas_{datetime.date.today()}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("🔒 Hak akses Download Log hanya untuk Direktur.")
                     except Exception as e:
                         st.caption("⚠️ File log sedang digunakan atau tidak dapat dibaca.")
                 else:
@@ -1096,16 +1099,14 @@ def main_dashboard():
     # =========================================================
     # HIERARKI RUANG LINGKUP (UI & BACKGROUND LOGIC)
     # =========================================================
-    # Cek apakah user adalah Direktur atau Supervisor
-    is_authorized_to_select = (role.lower() == 'direktur') or is_supervisor_account
+    # Cek apakah user adalah Direktur, Manager, Fauziah, atau Supervisor
+    is_authorized_to_select = (role.lower() in ['direktur', 'manager']) or (my_name.lower() == 'fauziah') or is_supervisor_account
 
     if is_authorized_to_select:
         st.markdown("### 👤 User")
         list_ijl = ["IJL", "LISMAN", "AKBAR", "MADONG"]
         selected_ijl = st.selectbox("Pilih User Dashboard:", list_ijl, index=0)
     else:
-        # Untuk Sales/Staff biasa, sembunyikan dropdown dan atur otomatis ke "IJL"
-        # (atau bisa disesuaikan ke my_name_key jika ingin default ke tim mereka)
         selected_ijl = "IJL" 
     # =========================================================
         
@@ -1899,7 +1900,7 @@ def main_dashboard():
                     st.error("Library st_aggrid belum terpasang. Fitur Smart Filter tidak bisa ditampilkan.")
                 
                 user_role_lower = role.lower()
-                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                if user_role_lower == 'direktur':
                     output_sku = io.BytesIO()
                     has_sku_data = 'df_display_sku_export' in locals() and not df_display_sku_export.empty
                     with pd.ExcelWriter(output_sku, engine='xlsxwriter') as writer:
@@ -2041,7 +2042,7 @@ def main_dashboard():
 
                 # --- EXCEL EXPORT BUTTON ---
                 user_role_lower = st.session_state.get('role', 'staff').lower()
-                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                if user_role_lower == 'direktur':
                     df_export = pd.concat([df_growth, pd.DataFrame([total_dict_growth])], ignore_index=True) if total_dict_growth else df_growth.copy()
                     
                     output = io.BytesIO()
@@ -2338,7 +2339,7 @@ def main_dashboard():
 
                 # --- EXCEL EXPORT BUTTON ---
                 user_role_lower = st.session_state.get('role', 'staff').lower()
-                if user_role_lower in ['direktur', 'manager', 'supervisor']:
+                if user_role_lower == 'direktur':
                     df_export = pd.concat([df_ba, pd.DataFrame([total_dict_ba])], ignore_index=True) if total_dict_ba else df_ba.copy()
                     
                     output = io.BytesIO()
