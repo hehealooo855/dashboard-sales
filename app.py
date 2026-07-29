@@ -107,7 +107,7 @@ st.markdown("""
     div[data-testid="stTabs"] button[aria-selected="true"] {
         border-bottom-color: transparent !important;
     }
-    
+
 """, unsafe_allow_html=True)
 
 # ==========================================
@@ -859,9 +859,9 @@ def login_page():
                                     
             elif st.session_state['login_step'] == '2fa_check':
                 user_data = st.session_state['temp_user_data']
-                secret = user_data.get('secret_key', None)
                 username_2fa = user_data['username']
                 
+                # Cek apakah akun sedang terkunci akibat gagal berkali-kali
                 if username_2fa in st.session_state.get('lockout_until', {}):
                     if time.time() < st.session_state['lockout_until'][username_2fa]:
                         remaining = int((st.session_state['lockout_until'][username_2fa] - time.time()) / 60)
@@ -871,36 +871,37 @@ def login_page():
                             st.rerun()
                         return
                 
-                if pd.isna(secret) or secret == "" or secret is None:
-                    st.error("⛔ Akun Anda belum diaktivasi 2FA.")
-                    st.info("Silakan hubungi Direktur/Manager untuk mendapatkan QR Code Aktivasi akun Anda.")
-                    if st.button("Kembali"):
-                         st.session_state['login_step'] = 'credentials'
-                         st.rerun()
-                else:
-                    st.write(f"Halo, {user_data['sales_name']} 👋")
-                    st.caption("Buka Google Authenticator di HP Anda.")
-                    code_input = st.text_input("Masukkan Kode 6 Digit:", max_chars=6)
+                # Tampilan Antarmuka Pengisian Token
+                st.write(f"Halo, **{user_data['sales_name']}** 👋")
+                st.caption("Silakan masukkan Token Master Harian untuk masuk ke dalam dasbor.")
+                
+                code_input = st.text_input("🔑 Masukkan Token (4 Digit):", max_chars=4)
+                
+                if st.button("Masuk", use_container_width=True):
+                    # Panggil fungsi Token Master untuk dicocokkan
+                    token_hari_ini = generate_daily_token()
                     
-                    if st.button("Masuk"):
-                        totp = pyotp.TOTP(secret)
-                        if totp.verify(code_input):
-                            st.session_state['failed_attempts'][username_2fa] = 0
-                            st.session_state['logged_in'] = True
-                            st.session_state['role'] = user_data['role']
-                            st.session_state['sales_name'] = user_data['sales_name']
-                            log_activity(user_data['sales_name'], "LOGIN SUCCESS (2FA)")
-                            st.rerun()
-                        else:
-                            st.error("Kode OTP Salah!")
-                            log_activity(user_data['sales_name'], "FAILED LOGIN - WRONG OTP")
-                            st.session_state['failed_attempts'][username_2fa] = st.session_state['failed_attempts'].get(username_2fa, 0) + 1
-                            if st.session_state['failed_attempts'][username_2fa] >= 3:
-                                st.session_state['lockout_until'][username_2fa] = time.time() + 600
-                                st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
-                    if st.button("Kembali"):
-                        st.session_state['login_step'] = 'credentials'
+                    if code_input == token_hari_ini:
+                        st.session_state['failed_attempts'][username_2fa] = 0
+                        st.session_state['logged_in'] = True
+                        st.session_state['role'] = user_data['role']
+                        st.session_state['sales_name'] = user_data['sales_name']
+                        log_activity(user_data['sales_name'], "LOGIN SUCCESS (TOKEN MASTER)")
                         st.rerun()
+                    else:
+                        st.error("❌ Token Salah atau Kadaluarsa!")
+                        log_activity(user_data['sales_name'], "FAILED LOGIN - WRONG TOKEN")
+                        st.session_state['failed_attempts'][username_2fa] = st.session_state['failed_attempts'].get(username_2fa, 0) + 1
+                        
+                        # Kunci akun jika gagal 3 kali
+                        if st.session_state['failed_attempts'][username_2fa] >= 3:
+                            st.session_state['lockout_until'][username_2fa] = time.time() + 600
+                            st.error("🔒 Akun dikunci selama 10 menit karena 3x percobaan gagal.")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Kembali"):
+                    st.session_state['login_step'] = 'credentials'
+                    st.rerun()
 
 def main_dashboard():
     def get_color_achv(val):
