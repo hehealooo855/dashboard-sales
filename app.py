@@ -33,6 +33,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- MENGAKTIFKAN FITUR ZOOM DI HP (MOBILE RESPONSIVE) ---
+components.html("""
+<script>
+    // Memaksa browser HP untuk mengizinkan zoom hingga 5x lipat
+    var viewportMeta = window.parent.document.querySelector('meta[name="viewport"]');
+    if (viewportMeta) {
+        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+    } else {
+        var meta = window.parent.document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes";
+        window.parent.document.head.appendChild(meta);
+    }
+</script>
+""", height=0, width=0)
+
 # --- INIT SESSION STATE UNTUK KEAMANAN (ANTI BRUTE-FORCE) ---
 if 'failed_attempts' not in st.session_state:
     st.session_state['failed_attempts'] = {}
@@ -51,6 +67,33 @@ st.session_state['last_activity'] = time.time()
 # Custom CSS & Tema Corporate Blue
 st.markdown("""
 <style>
+    /* ==========================================================
+       OPTIMALISASI KHUSUS LAYAR HP (MOBILE RESPONSIVE TWEAKS)
+       ========================================================== */
+    @media screen and (max-width: 768px) {
+        /* 1. Perkecil font tabel bawaan Streamlit di HP agar muat banyak */
+        div[data-testid="stDataFrame"] {
+            font-size: 11px !important;
+        }
+        
+        /* 2. Pastikan tabel bisa digeser ke kanan-kiri dengan mulus (Horizontal Scroll) */
+        div[data-testid="stDataFrame"] > div {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important; /* Efek geser mulus di iPhone/Android */
+        }
+
+        /* 3. Perkecil ukuran font pada Angka Metrik agar tidak berantakan */
+        [data-testid="stMetricValue"] div {
+            font-size: 24px !important; 
+        }
+        
+        /* 4. Kurangi padding di pinggir layar agar ruang data lebih lega */
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+    }
+
     .metric-card {
         border: 1px solid #e6e6e6; padding: 20px; border-radius: 10px;
         background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
