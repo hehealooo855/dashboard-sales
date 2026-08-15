@@ -350,14 +350,7 @@ def render_custom_progress(title, current, target):
 def load_data_from_url():
     
     urls = [
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSaGwT-qw0iz6kKhkwep4R5b-TWlegy8rHdBU3HcY_veP8KEsiLmKpCemC-D1VA2STstlCjA2VLUM-Q/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4rlPNXu3jTQcwv2CIvyXCZvXKV3ilOtsuhhlXRB01qk3zMBGchNvdQRypOcUDnFsObK3bUov5nG72/pub?gid=0&single=true&output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT6KbuunLLoGQRSanRK_A8e5jgXcJ-FCZCEb8dr611HdJQi40dFr_HNMItnodJEwD7dKk7woC7Ud-DG/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQUM6CmuRm7AgBMeWLk5dmK14M0VY3eyMLcAZghfLujGefU2e4cEOMHMNlkEfUXu6BlRuixLECMrVCw/pub?output=csv"
+        
     ]
     
     def fetch_url(url):
@@ -1106,6 +1099,21 @@ def main_dashboard():
         st.error("⚠️ Gagal memuat data! Periksa koneksi internet atau Link CSV Google Sheet Anda.")
         return
 
+    # =========================================================
+    # ⏳ TIME-LEVEL SECURITY (TLS) - PEMOTONGAN DATA HISTORIS
+    # =========================================================
+    # Otomatis mendeteksi tahun berjalan berdasarkan jam server.
+    # (Catatan: Jika Anda ingin tes manual, Anda bisa ganti menjadi: tahun_sekarang = 2026)
+    tahun_sekarang = datetime.date.today().year
+    
+    # Cek apakah akun yang login memiliki role 'direktur'
+    is_direktur = st.session_state.get('role', '').lower() == 'direktur'
+    
+    # Jika BUKAN direktur, buang semua transaksi di bawah tahun berjalan dari memori
+    if not is_direktur:
+        df = df[df['Tanggal'].dt.year >= tahun_sekarang]
+    # =========================================================
+
     user_role = st.session_state['role']
     user_name = st.session_state['sales_name']
     role = user_role
@@ -1174,7 +1182,18 @@ def main_dashboard():
         
     st.sidebar.markdown("### ⚙️ Panel Filter Executive")
     with st.sidebar.form("main_filter_form"):
-        date_range = st.date_input("Rentang Waktu", [st.session_state['start_date'], st.session_state['end_date']])
+        
+        # Mengunci batas kalender agar menyesuaikan dengan data yang tersedia di memori
+        # (Jika Supervisor, kalender tidak akan bisa digeser mundur melewati 1 Januari tahun ini)
+        min_kalender = df['Tanggal'].min().date() if not df.empty else today
+        max_kalender = df['Tanggal'].max().date() if not df.empty else today
+        
+        date_range = st.date_input(
+            "Rentang Waktu", 
+            [st.session_state['start_date'], st.session_state['end_date']],
+            min_value=min_kalender,
+            max_value=max_kalender
+        )
         
         target_sales_filter = st.selectbox("Pantau Kinerja Sales / Tim:", sales_list)
         pilih_merk = st.multiselect("Filter Spesifik Merk:", brands_list)
@@ -1604,9 +1623,33 @@ def main_dashboard():
         else: st.success("Semua toko langganan sudah order di periode ini.")
 
         st.divider()
+        
+        # =========================================================
+        # 🎯 FILTER CEPAT CROSS-SELLING (INDEPENDEN)
+        # =========================================================
+        st.write("#### 🎯 Filter Cepat Analisis Cross-Selling")
+        
+        list_bulan_indo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        opsi_filter_cs = ["All Time", "Bulan Ini"] + list_bulan_indo
+        
+        pilihan_waktu_cs = st.selectbox("Rentang Waktu:", opsi_filter_cs, key="filter_cs_cepat")
+        
+        # Logika pemotongan data berdasarkan tahun berjalan
+        df_cs_filtered = df_scope_all.copy()
+        tahun_berjalan = datetime.date.today().year
+        bulan_berjalan = datetime.date.today().month
+        
+        if pilihan_waktu_cs == "Bulan Ini":
+            df_cs_filtered = df_cs_filtered[(df_cs_filtered['Tanggal'].dt.year == tahun_berjalan) & (df_cs_filtered['Tanggal'].dt.month == bulan_berjalan)]
+        elif pilihan_waktu_cs in list_bulan_indo:
+            bulan_angka = list_bulan_indo.index(pilihan_waktu_cs) + 1
+            df_cs_filtered = df_cs_filtered[(df_cs_filtered['Tanggal'].dt.year == tahun_berjalan) & (df_cs_filtered['Tanggal'].dt.month == bulan_angka)]
+        # =========================================================
+
+        st.markdown("<br>", unsafe_allow_html=True)
         st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
-        relevant_brands = df_active_tab['Merk'].dropna().astype(str).unique()
+        relevant_brands = df_cs_filtered['Merk'].dropna().astype(str).unique()
         
         if len(relevant_brands) > 1:
             col_cs1, col_cs2 = st.columns(2)
@@ -1615,28 +1658,28 @@ def main_dashboard():
                 target_options = [b for b in relevant_brands if b != brand_acuan]
                 brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None)
             if brand_target:
-                outlets_buy_acuan = df_active_tab[df_active_tab['Merk'] == brand_acuan]['Nama Outlet'].unique()
+                outlets_buy_acuan = df_cs_filtered[df_cs_filtered['Merk'] == brand_acuan]['Nama Outlet'].unique()
                 opportunities = []
                 for outlet in outlets_buy_acuan:
-                    check = df_active_tab[(df_active_tab['Nama Outlet'] == outlet) & (df_active_tab['Merk'] == brand_target)]
+                    check = df_cs_filtered[(df_cs_filtered['Nama Outlet'] == outlet) & (df_cs_filtered['Merk'] == brand_target)]
                     if check.empty:
-                        sales_name = df_active_tab[df_active_tab['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                        sales_name = df_cs_filtered[df_cs_filtered['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
                         opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {brand_target}"})
                 if opportunities:
-                    st.info(f"Ditemukan {len(opportunities)} Toko yang beli {brand_acuan} tapi belum beli {brand_target}.")
+                    st.info(f"Ditemukan {len(opportunities)} Toko yang beli {brand_acuan} tapi belum beli {brand_target} (Filter: {pilihan_waktu_cs}).")
                     st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
                 else: st.success(f"Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
-        else: st.info("Data tidak cukup untuk analisa cross-selling (perlu minimal 2 brand aktif).")
+        else: st.info(f"Data tidak cukup untuk analisa cross-selling pada {pilihan_waktu_cs} (perlu minimal 2 brand aktif).")
         
         st.divider()
         st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (Berdasarkan Pola Transaksi)")
-        st.caption("AI menganalisa pola pembelian dari ribuan transaksi untuk menemukan rekomendasi tersembunyi.")
-        recs_df = get_cross_sell_recommendations(df_scope_all)
+        st.caption(f"AI menganalisa pola pembelian secara spesifik berdasarkan data {pilihan_waktu_cs}.")
+        recs_df = get_cross_sell_recommendations(df_cs_filtered)
         if recs_df is not None and not recs_df.empty:
-            st.success(f"Ditemukan {len(recs_df)} rekomendasi cerdas berdasarkan pola pembelian.")
+            st.success(f"Ditemukan {len(recs_df)} rekomendasi cerdas berdasarkan pola pembelian pada rentang {pilihan_waktu_cs}.")
             st.dataframe(recs_df, use_container_width=True)
         elif recs_df is None: st.warning("Kolom 'No Faktur' atau 'Nama Barang' tidak ditemukan. Tidak bisa menghitung pola.")
-        else: st.info("Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%). Perlu lebih banyak data transaksi.")
+        else: st.info(f"Tidak ada rekomendasi cerdas yang memenuhi threshold (confidence > 50%) pada {pilihan_waktu_cs}.")
         
         st.divider()
         st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
