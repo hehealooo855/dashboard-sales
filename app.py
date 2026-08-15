@@ -1665,29 +1665,44 @@ def main_dashboard():
         # =========================================================
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
         
-        relevant_brands = df_cs_filtered['Merk'].dropna().astype(str).unique()
-        
-        if len(relevant_brands) > 1:
-            col_cs1, col_cs2 = st.columns(2)
-            with col_cs1: brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0)
-            with col_cs2:
-                target_options = [b for b in relevant_brands if b != brand_acuan]
-                brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None)
-            if brand_target:
-                outlets_buy_acuan = df_cs_filtered[df_cs_filtered['Merk'] == brand_acuan]['Nama Outlet'].unique()
-                opportunities = []
-                for outlet in outlets_buy_acuan:
-                    check = df_cs_filtered[(df_cs_filtered['Nama Outlet'] == outlet) & (df_cs_filtered['Merk'] == brand_target)]
-                    if check.empty:
-                        sales_name = df_cs_filtered[df_cs_filtered['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
-                        opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {brand_target}"})
-                if opportunities:
-                    st.info(f"Ditemukan {len(opportunities)} Toko yang beli {brand_acuan} tapi belum beli {brand_target}.")
-                    st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
-                else: st.success(f"Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
-        else: st.info(f"Data tidak cukup untuk analisa cross-selling. Silakan perluas rentang waktu filter.")
+        # =========================================================
+        # 💎 FRAGMENT CROSS-SELLING (BEBAS LAG / FULL RELOAD)
+        # =========================================================
+        @st.fragment
+        def render_peluang_cross_selling(df_sumber):
+            st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
+            
+            relevant_brands = df_sumber['Merk'].dropna().astype(str).unique()
+            
+            if len(relevant_brands) > 1:
+                col_cs1, col_cs2 = st.columns(2)
+                with col_cs1: 
+                    brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", sorted(relevant_brands), index=0, key="cs_acuan")
+                with col_cs2:
+                    # Pilihan target otomatis menyesuaikan (menghilangkan brand acuan) tanpa me-reload dasbor utama
+                    target_options = [b for b in relevant_brands if b != brand_acuan]
+                    brand_target = st.selectbox("Tapi BELUM beli Brand:", sorted(target_options), index=0 if target_options else None, key="cs_target")
+                
+                if brand_target:
+                    outlets_buy_acuan = df_sumber[df_sumber['Merk'] == brand_acuan]['Nama Outlet'].unique()
+                    opportunities = []
+                    for outlet in outlets_buy_acuan:
+                        check = df_sumber[(df_sumber['Nama Outlet'] == outlet) & (df_sumber['Merk'] == brand_target)]
+                        if check.empty:
+                            sales_name = df_sumber[df_sumber['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                            opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {brand_target}"})
+                    if opportunities:
+                        st.info(f"Ditemukan {len(opportunities)} Toko yang beli {brand_acuan} tapi belum beli {brand_target}.")
+                        st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                    else: 
+                        st.success(f"Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target}.")
+            else: 
+                st.info("Data tidak cukup untuk analisa cross-selling. Silakan perluas rentang waktu di Filter atas.")
+
+        # Panggil fungsi fragment ke layar
+        render_peluang_cross_selling(df_cs_filtered)
+        # =========================================================
         
         st.divider()
         st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (Berdasarkan Pola Transaksi)")
