@@ -205,7 +205,7 @@ def map_city_to_province(city_name):
 
 TARGET_DATABASE = {
     "MADONG": { "Somethinc": 1_100_000_000, "SYB": 200_000_000, "Sekawan": 200_000_000, "Avione": 100_000_000, "Honor": 150_000_000, "Vlagio": 50_000_000, "Ren & R & L": 0, "Mad For Make Up": 50_000_000, "Satto": 525_000_000, "Mykonos": 0, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 20_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 70_000_000, "Sombong": 200_000_000, "Summer":30_000_000},
-    "LISMAN": { "Javinci": 1_100_000_000, "Careso": 250_000_000, "Newlab": 200_000_000, "Gloow & Be": 180_000_000, "Dorskin": 50_000_000, "Whitelab": 80_000_000, "Bonavie": 30_000_000, "Goute": 30_000_000, "Mlen": 350_000_000, "Artist Inc": 130_000_000, "Cosline": 0, "Birth Beyond": 50_000_000, "Everpure": 10_000_000, "Nurilab":80_000_000},
+    "LISMAN": { "Javinci": 1_100_000_000, "Careso": 250_000_000, "Newlab": 200_000_000, "Gloow & Be": 180_000_000, "Dorskin": 50_000_000, "Whitelab": 80_000_000, "Bonavie": 30_000_000, "Goute": 30_000_000, "Mlen": 350_000_000, "Artist Inc": 130_000_000, "Cosline": 0, "Birth Beyond": 50_000_000, "Everpure": 10_000_000, "Nurilab":80_000_000, "Barsten": 0},
     "AKBAR": { "Sociolla": 700_000_000, "Skin1004":200_000_000, "Thai": 350_000_000, "Inesia": 50_000_000, "Y2000": 300_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 0, "Clinelle": 50_000_000,"Beautica": 50_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 350_000_000, "Elvicto": 50_000_000, "Onix": 50_000_000}
 }
 
@@ -234,12 +234,12 @@ INDIVIDUAL_TARGETS = {
     "DINA": {"OtwooO": 75_000_000, "Sociolla": 125_000_000, "Skin1004": 125_000_000, "Beautica": 18_000_000, "Claresta": 350_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000 },
     "RISKA": { "Javinci": 36_403_000, "Sociolla": 125_000_000, "Skin1004": 45_000_000 ,"Thai": 45_000_000, "Inesia": 7_000_000 },
     "DWI": { "Whitelab": 60_000_000, "Bonavie": 15_000_000, "Goute": 15_000_000 },
-    "SANTI": { "Goute": 25_000_000, "Bonavie": 25_000_000, "Whitelab": 75_000_000 },
+    "SANTI": { "Y2000": 100_000_000, "Diosys": 250_000_000 },
     "ASWIN": { "Artist Inc": 130_000_000 },
     "DEVI": { "The Face": 360_000_000, "Yu Chun Mei": 240_000_000 },
     "GANI": { "The Face": 240_000_000, "Yu Chun Mei": 160_000_000, "Sociolla": 125_000_000, "Skin1004": 30_000_000, "Thai": 65_000_000, "Inesia": 11_000_000, "Walnutt": 7_500_000, "Elizabeth Rose": 17_500_000, "OtwooO": 75_000_000, "Beautica": 16_000_000, "Elvicto": 16_000_000, "Onix": 16_000_000, "Masami": 25_000_000 },
-    "BASTIAN": { "Sociolla": 325_000_000, "Skin1004": 80_000_000 ,"Thai": 55_000_000, "Inesia": 11_000_000, "Y2000": 65_000_000, "Diosys": 175_000_000, "OtwooO": 200_000_000, "Beautica": 16_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000, "Masami": 25_000_000 },
-    "BAYU": { "Y2000": 50_000_000, "Diosys": 170_000_000 },
+    "BASTIAN": { "Sociolla": 325_000_000, "Skin1004": 80_000_000 ,"Thai": 55_000_000, "Inesia": 11_000_000, "Y2000": 100_000_000, "Diosys": 175_000_000, "OtwooO": 200_000_000, "Beautica": 16_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000, "Masami": 25_000_000 },
+    "BAYU": { "Y2000": 100_000_000, "Diosys": 175_000_000 },
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
     "LYDIA": { "Birth Beyond": 120_000_000 },
     "MITHA": { "Maskit": 30_000_000, "Rose All Day": 30_000_000, "OtwooO": 200_000_000, "Claresta": 350_000_000 }
@@ -265,7 +265,7 @@ BRAND_ALIASES = {
     "Milano": ["MILANO"], "Remar": ["REMAR"], "Beautica": ["BEAUTICA"], "Maskit": ["MASKIT"],
     "Claresta": ["CLARESTA"], "Birth Beyond": ["BIRTH"], "Rose All Day": ["ROSE ALL DAY"],
     "Everpure": ["EVERPURE"], "Cosline": ["COSLINE"], "NAMA": ["NAMA"], "Rosanna": ["ROSANNA"], "Summer": ["SUMMER"], "Sombong": ["SOMBONG", "SBG"], "Nurilab": ["NURILAB"],
-    "Elvicto": ["ELVICTO"], "Onix": ["ONIX"], "Felaufee": ["FELAUFEE"]
+    "Elvicto": ["ELVICTO"], "Onix": ["ONIX"], "Felaufee": ["FELAUFEE"], "Barsten": {"BARS"}
 }
 
 SALES_MAPPING = {
