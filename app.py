@@ -514,7 +514,34 @@ def load_data_from_url():
         if p_raw in ['NAN', '-', 'NONE', '0']: p_raw = ""
         if c_raw in ['NAN', '-', 'NONE', '0']: c_raw = ""
         if o_raw in ['NAN', '-', 'NONE', '0']: o_raw = ""
+
+        # 1. JALAN PINTAS (DICTIONARY KHUSUS DARI NAMA OUTLET/KOTA)
+        # Sangat ampuh untuk menindaklanjuti data "LAIN-LAIN"
+        shortcut_map = {
+            "USU": "SUMATERA UTARA", "MARELAN": "SUMATERA UTARA", "TEMBUNG": "SUMATERA UTARA",
+            "BELAWAN": "SUMATERA UTARA", "KRAKATAU": "SUMATERA UTARA", "DOLOK SANGGUL": "SUMATERA UTARA",
+            "PENYABUNGAN": "SUMATERA UTARA", "CIKAMPAK": "SUMATERA UTARA", "R.PRAPAT": "SUMATERA UTARA",
+            "MENCIRIM": "SUMATERA UTARA", "SAMBAS": "SUMATERA UTARA", "LINTONG LINTA": "SUMATERA UTARA",
+            "K. TANJUNG": "SUMATERA UTARA", "K.TANJUNG": "SUMATERA UTARA", "INDRAPURA": "SUMATERA UTARA",
+            "P. PASAR": "SUMATERA UTARA", "P.BESI": "SUMATERA UTARA", "P. BESI": "SUMATERA UTARA",
+            "TEBING": "SUMATERA UTARA", "LHOKSUKON": "ACEH", "CALANG": "ACEH", "LANGSA": "ACEH", 
+            "BANDA ACEH": "ACEH", "BIREUEN": "ACEH", "BAGAN BATU": "SUMATERA UTARA", "B.BATU": "SUMATERA UTARA"
+        }
         
+        for key, prov in shortcut_map.items():
+            if f" {key} " in f" {o_raw} " or f" {key} " in f" {c_raw} " or o_raw.endswith(f"({key})") or o_raw.endswith(f"( {key} )"):
+                return prov
+
+        # 2. CITY-FIRST OVERRIDE (Paksa Kota menjadi Patokan Mutlak)
+        if c_raw:
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                if c_raw in cities: return prov_name
+            for prov_name, cities in PROVINCE_MAPPING.items():
+                for city in cities:
+                    if f" {city} " in f" {c_raw} " or c_raw.startswith(f"{city} ") or c_raw.endswith(f" {city}"):
+                        return prov_name
+
+        # 3. CEK PROVINSI (Hanya jika Kota tidak valid)
         if p_raw:
             if p_raw in valid_provinces: return p_raw
             if p_raw in abbreviations: return abbreviations[p_raw]
@@ -524,25 +551,14 @@ def load_data_from_url():
                 if matches: return matches[0]
             except: pass
 
-        teks_lokasi = f"{p_raw} {c_raw}".strip()
-        if teks_lokasi:
-            for prov_name, cities in PROVINCE_MAPPING.items():
-                for city in cities:
-                    if city == teks_lokasi or f" {city} " in f" {teks_lokasi} ": return prov_name
-            try:
-                import difflib
-                semua_kota = [ct for cities in PROVINCE_MAPPING.values() for ct in cities]
-                map_kota_prov = {ct: p_name for p_name, cities in PROVINCE_MAPPING.items() for ct in cities}
-                matches_kota = difflib.get_close_matches(teks_lokasi, semua_kota, n=1, cutoff=0.85)
-                if matches_kota: return map_kota_prov[matches_kota[0]]
-            except: pass
-
+        # 4. TEROPONG NAMA OUTLET (Fallback Terakhir)
         if o_raw:
             for prov_name, cities in PROVINCE_MAPPING.items():
                 for city in cities:
                     if len(city) >= 4: 
                         if f" {city} " in f" {o_raw} " or o_raw.endswith(f" {city}") or o_raw.startswith(f"{city} "):
                             return prov_name
+                            
         return "LAIN-LAIN"
 
     df['Provinsi'] = df.apply(determine_province, axis=1)
@@ -551,11 +567,13 @@ def load_data_from_url():
     df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
     df['Kunci_Kode'] = list(zip(df['Nama_Pencocokan'], df['Merk']))
     
-    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].first()
+    # MENGGUNAKAN .last() AGAR SISTEM MENJADIKAN DATA ENTRY TERBARU SEBAGAI KIBLAT KEBENARAN
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].last()
     df['Kode_Global'] = df['Kunci_Kode'].map(valid_kodes).fillna(df['Kode_Global'])
     
-    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
-    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
+    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].last()
+    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].last()
+    
     df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
     df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
     
