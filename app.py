@@ -464,7 +464,7 @@ def load_data_from_url():
         
         # Auto-Healing: Tambal transaksi kosong berdasarkan nama toko menggunakan data entry TERBARU
         df_valid = df[df['Penjualan'] != 'Non-Sales']
-        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].last().to_dict()
+        outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
         
         mask_non = df['Penjualan'] == 'Non-Sales'
         df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
@@ -577,12 +577,12 @@ def load_data_from_url():
     df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
     df['Kunci_Kode'] = list(zip(df['Nama_Pencocokan'], df['Merk']))
     
-    # MENGGUNAKAN .last() AGAR SISTEM MENJADIKAN DATA ENTRY TERBARU SEBAGAI KIBLAT KEBENARAN
-    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].last()
+    # KEMBALI MENGGUNAKAN .first() KARENA DATA TERBARU ADA DI BARIS PALING ATAS
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].first()
     df['Kode_Global'] = df['Kunci_Kode'].map(valid_kodes).fillna(df['Kode_Global'])
     
-    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].last()
-    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].last()
+    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
+    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
     
     df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
     df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
@@ -1524,7 +1524,7 @@ def main_dashboard():
                 dict_toko_mtd = df_brand_active.groupby('Penjualan')['Nama Outlet'].nunique().to_dict()
                 
                 # --- TAMBAHAN: Tarik data omset murni hari ini (Sistem Komputer) ---
-                today_sys_date = datetime.date.today()
+                today_sys_date = end_date
                 df_brand_today = df_scope_all[(df_scope_all['Tanggal'].dt.date == today_sys_date) & (df_scope_all['Merk'] == selected_brand_detail)]
                 dict_sales_today = df_brand_today.groupby('Penjualan')['Jumlah'].sum().to_dict()
                 
