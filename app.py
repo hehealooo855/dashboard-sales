@@ -241,7 +241,6 @@ INDIVIDUAL_TARGETS = {
     "BASTIAN": { "Sociolla": 325_000_000, "Skin1004": 80_000_000 ,"Thai": 55_000_000, "Inesia": 11_000_000, "Y2000": 100_000_000, "Diosys": 175_000_000, "OtwooO": 200_000_000, "Beautica": 16_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000, "Masami": 25_000_000 },
     "BAYU": { "Y2000": 100_000_000, "Diosys": 175_000_000 },
     "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
-    "LYDIA": { "Birth Beyond": 120_000_000 },
     "MITHA": { "Maskit": 30_000_000, "Rose All Day": 30_000_000, "OtwooO": 200_000_000, "Claresta": 350_000_000 }
 }
 
@@ -1660,90 +1659,109 @@ def main_dashboard():
 
         st.divider()
         
-        # =========================================================
-        # 🎯 FORM FILTER TERPUSAT (WAKTU, WHITE SPACE, & AI)
-        # =========================================================
-        st.write("#### 🎯 Filter Analisis Cross-Selling & AI")
-        
-        list_bulan_indo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-        opsi_filter_cs = ["All Time", "Bulan Ini"] + list_bulan_indo
-        
-        list_tahun_cs = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
-        relevant_brands_all = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
-        
-        with st.form(key='cs_main_filter_form'):
-            st.write("**1. Pengaturan Rentang Waktu**")
-            col_cs_t1, col_cs_t2 = st.columns(2)
-            with col_cs_t1:
-                pilihan_tahun_cs = st.multiselect("🗓️ Pilih Tahun:", list_tahun_cs, default=list_tahun_cs)
-            with col_cs_t2:
-                pilihan_waktu_cs = st.selectbox("⏳ Rentang Bulan:", opsi_filter_cs, index=0)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.write("**2. Pengaturan Brand**")
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                brand_acuan = st.selectbox("Jika Toko sudah beli Brand:", relevant_brands_all, index=0)
-            with col_b2:
-                # Menyiapkan indeks 1 sebagai default jika brand lebih dari 1 agar acuan & target berbeda di awal
-                default_target_idx = 1 if len(relevant_brands_all) > 1 else 0
-                brand_target = st.selectbox("Tapi BELUM beli Brand:", relevant_brands_all, index=default_target_idx)
+        # --- FUNGSI HELPER PEMOTONG WAKTU (Digunakan oleh White Space & AI) ---
+        def filter_waktu_cs(df_source, pilihan_tahun, pilihan_bulan):
+            df_res = df_source.copy()
+            if pilihan_tahun:
+                df_res = df_res[df_res['Tanggal'].dt.year.isin(pilihan_tahun)]
                 
-            submit_cs = st.form_submit_button("🚀 Terapkan Filter & Analisis", use_container_width=True)
+            thn_now = datetime.date.today().year
+            bln_now = datetime.date.today().month
+            list_bln = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+            
+            if pilihan_bulan == "Bulan Ini":
+                df_res = df_res[(df_res['Tanggal'].dt.year == thn_now) & (df_res['Tanggal'].dt.month == bln_now)]
+            elif pilihan_bulan in list_bln:
+                bln_angka = list_bln.index(pilihan_bulan) + 1
+                df_res = df_res[df_res['Tanggal'].dt.month == bln_angka]
+            return df_res
 
-        # --- LOGIKA PEMOTONGAN DATA WAKTU ---
-        df_cs_filtered = df_scope_all.copy()
-        
-        if pilihan_tahun_cs:
-            df_cs_filtered = df_cs_filtered[df_cs_filtered['Tanggal'].dt.year.isin(pilihan_tahun_cs)]
-            
-        tahun_berjalan = datetime.date.today().year
-        bulan_berjalan = datetime.date.today().month
-        
-        if pilihan_waktu_cs == "Bulan Ini":
-            df_cs_filtered = df_cs_filtered[(df_cs_filtered['Tanggal'].dt.year == tahun_berjalan) & (df_cs_filtered['Tanggal'].dt.month == bulan_berjalan)]
-        elif pilihan_waktu_cs in list_bulan_indo:
-            bulan_angka = list_bulan_indo.index(pilihan_waktu_cs) + 1
-            df_cs_filtered = df_cs_filtered[df_cs_filtered['Tanggal'].dt.month == bulan_angka]
+        list_bulan_indo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        opsi_filter_waktu = ["All Time", "Bulan Ini"] + list_bulan_indo
+        list_tahun_tersedia = sorted(df_scope_all['Tanggal'].dt.year.dropna().unique(), reverse=True)
+        relevant_brands_all = sorted(df_scope_all['Merk'].dropna().astype(str).unique())
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        # =========================================================
+        # 💎 PELUANG CROSS-SELLING (WHITE SPACE DUAL-TIME)
+        # =========================================================
+        st.write("#### 💎 Peluang Cross-Selling (White Space Analysis)")
+        st.caption("Bandingkan histori pembelian Brand Acuan dengan target konversi Brand Target pada rentang waktu yang berbeda.")
         
-        # --- LOGIKA WHITE SPACE & AI ---
-        if brand_acuan == brand_target:
-            st.warning("⚠️ Brand Acuan dan Brand Target tidak boleh sama. Silakan ubah filter di atas.")
-        else:
-            st.write(f"#### 💎 Peluang Cross-Selling: {brand_acuan} ➔ {brand_target}")
+        with st.form(key='white_space_form'):
+            col_ws_kiri, col_ws_kanan = st.columns(2)
             
-            outlets_buy_acuan = df_cs_filtered[df_cs_filtered['Merk'] == brand_acuan]['Nama Outlet'].unique()
-            opportunities = []
-            for outlet in outlets_buy_acuan:
-                check = df_cs_filtered[(df_cs_filtered['Nama Outlet'] == outlet) & (df_cs_filtered['Merk'] == brand_target)]
-                if check.empty:
-                    sales_name = df_cs_filtered[df_cs_filtered['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
-                    opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {brand_target}"})
+            with col_ws_kiri:
+                st.markdown("**🔍 SUMBER (Toko yang sudah beli...)**")
+                ws_brand_acuan = st.selectbox("Pilih Brand Acuan:", relevant_brands_all, index=0)
+                ws_tahun_acuan = st.multiselect("🗓️ Tahun Acuan:", list_tahun_tersedia, default=list_tahun_tersedia, key="ws_thn_acuan")
+                ws_bulan_acuan = st.selectbox("⏳ Bulan Acuan:", opsi_filter_waktu, index=0, key="ws_bln_acuan")
+                
+            with col_ws_kanan:
+                st.markdown("**🎯 TARGET (...tapi BELUM beli)**")
+                default_target_idx = 1 if len(relevant_brands_all) > 1 else 0
+                ws_brand_target = st.selectbox("Pilih Brand Target:", relevant_brands_all, index=default_target_idx)
+                ws_tahun_target = st.multiselect("🗓️ Tahun Target:", list_tahun_tersedia, default=list_tahun_tersedia, key="ws_thn_target")
+                
+                # Mengatur index default menjadi "Bulan Ini" (index ke-1 di array) untuk Target
+                ws_bulan_target = st.selectbox("⏳ Bulan Target:", opsi_filter_waktu, index=1, key="ws_bln_target") 
+                
+            submit_ws = st.form_submit_button("🚀 Analisis Peluang Cross-Selling", use_container_width=True)
+
+        # Proses White Space jika form disubmit
+        if submit_ws:
+            if ws_brand_acuan == ws_brand_target:
+                st.warning("⚠️ Brand Acuan dan Brand Target tidak boleh sama.")
+            else:
+                # Membelah DataFrame menjadi dua himpunan waktu yang berbeda
+                df_acuan_filtered = filter_waktu_cs(df_scope_all[df_scope_all['Merk'] == ws_brand_acuan], ws_tahun_acuan, ws_bulan_acuan)
+                df_target_filtered = filter_waktu_cs(df_scope_all[df_scope_all['Merk'] == ws_brand_target], ws_tahun_target, ws_bulan_target)
+                
+                outlets_buy_acuan = df_acuan_filtered['Nama Outlet'].unique()
+                
+                # Gunakan Set() agar proses pencarian 10x lebih cepat
+                outlets_buy_target = set(df_target_filtered['Nama Outlet'].unique())
+                
+                opportunities = []
+                for outlet in outlets_buy_acuan:
+                    if outlet not in outlets_buy_target:
+                        # Tarik nama sales dari data acuan
+                        sales_name = df_acuan_filtered[df_acuan_filtered['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                        opportunities.append({"Nama Toko": outlet, "Salesman": sales_name, "Potensi": f"Tawarkan {ws_brand_target}"})
+                
+                if opportunities:
+                    st.info(f"Ditemukan {len(opportunities)} Toko yang beli {ws_brand_acuan} ({ws_bulan_acuan}) tapi belum beli {ws_brand_target} ({ws_bulan_target}).")
+                    st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                else: 
+                    st.success(f"Hebat! Semua toko dari data acuan sudah membeli {ws_brand_target} pada periode target yang ditentukan.")
+        
+        st.divider()
+        
+        # =========================================================
+        # 🧠 REKOMENDASI CERDAS AI (TERPISAH & INDEPENDEN)
+        # =========================================================
+        st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (AI)")
+        st.caption("AI mencari pola keranjang belanja dari seluruh transaksi secara independen (Terpisah dari filter di atas).")
+        
+        with st.form(key='ai_filter_form'):
+            col_ai1, col_ai2 = st.columns(2)
+            with col_ai1:
+                ai_tahun = st.multiselect("🗓️ Pilih Tahun:", list_tahun_tersedia, default=list_tahun_tersedia, key="ai_thn")
+            with col_ai2:
+                ai_bulan = st.selectbox("⏳ Rentang Bulan:", opsi_filter_waktu, index=0, key="ai_bln")
             
-            if opportunities:
-                st.info(f"Ditemukan {len(opportunities)} Toko yang beli {brand_acuan} tapi belum beli {brand_target} pada periode ({pilihan_waktu_cs}).")
-                st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
-            else: 
-                st.success(f"Semua toko yang beli {brand_acuan} juga sudah membeli {brand_target} pada periode ini.")
+            submit_ai = st.form_submit_button("🤖 Jalankan Analisis AI", use_container_width=True)
             
-            st.divider()
-            st.write(f"#### 🧠 Rekomendasi Cross-Selling Cerdas ({brand_acuan} & {brand_target})")
-            st.caption(f"AI menganalisa keranjang belanja yang mengandung SKU dari {brand_acuan} atau {brand_target} pada rentang waktu {pilihan_waktu_cs}.")
-            
-            # Memotong data murni hanya untuk 2 brand terpilih agar AI sangat fokus dan cepat
-            df_ai = df_cs_filtered[df_cs_filtered['Merk'].isin([brand_acuan, brand_target])]
-            
-            recs_df = get_cross_sell_recommendations(df_ai)
+        if submit_ai:
+            df_ai_filtered = filter_waktu_cs(df_scope_all, ai_tahun, ai_bulan)
+            recs_df = get_cross_sell_recommendations(df_ai_filtered)
             
             if recs_df is not None and not recs_df.empty:
-                st.success(f"Ditemukan {len(recs_df)} rekomendasi kombinasi barang (Confidence > 50%).")
+                st.success(f"Ditemukan {len(recs_df)} rekomendasi kombinasi barang (Confidence > 50%) pada periode {ai_bulan}.")
                 st.dataframe(recs_df, use_container_width=True)
             elif recs_df is None: 
                 st.warning("Data transaksi belum cukup detail (Membutuhkan No Faktur & Nama Barang).")
             else: 
-                st.info(f"Belum ada pola pembelian silang yang kuat antara {brand_acuan} dan {brand_target} pada periode ini.")
+                st.info(f"Belum ada pola pembelian silang yang kuat pada periode {ai_bulan} ini.")
         
         st.divider()
         st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
