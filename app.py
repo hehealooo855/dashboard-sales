@@ -2865,14 +2865,16 @@ def main_dashboard():
                                 c_aud1, c_aud2 = st.columns([3, 1])
                                 c_aud1.error(f"🚨 ALERT: Menampilkan {len(df_consolidated)} faktur bermasalah setelah konsolidasi!")
                                 
-                                csv_audit = df_consolidated.to_csv(index=False).encode('utf-8')
-                                c_aud2.download_button(
-                                    label="📥 Download Berkas Bukti (CSV)",
-                                    data=csv_audit,
-                                    file_name=f"Audit_Fakturis_{datetime.date.today()}.csv",
-                                    mime="text/csv",
-                                    use_container_width=True
-                                )
+                                # Logika pembatasan akses download khusus untuk direktur
+                                if st.session_state.get('username') == 'direktur':
+                                    csv_audit = df_consolidated.to_csv(index=False).encode('utf-8')
+                                    c_aud2.download_button(
+                                        label="📥 Download Berkas Bukti (CSV)",
+                                        data=csv_audit,
+                                        file_name=f"Audit_Fakturis_{datetime.date.today()}.csv",
+                                        mime="text/csv",
+                                        use_container_width=True
+                                    )
 
                                 def style_audit(r): return ['background-color: #ffe6e6; color: black;' for _ in r]
                                 
