@@ -240,8 +240,6 @@ INDIVIDUAL_TARGETS = {
     "GANI": { "The Face": 240_000_000, "Yu Chun Mei": 160_000_000, "Sociolla": 125_000_000, "Skin1004": 30_000_000, "Thai": 65_000_000, "Inesia": 11_000_000, "Walnutt": 7_500_000, "Elizabeth Rose": 17_500_000, "OtwooO": 75_000_000, "Beautica": 16_000_000, "Elvicto": 16_000_000, "Onix": 16_000_000, "Masami": 25_000_000 },
     "BASTIAN": { "Sociolla": 325_000_000, "Skin1004": 80_000_000 ,"Thai": 55_000_000, "Inesia": 11_000_000, "Y2000": 100_000_000, "Diosys": 175_000_000, "OtwooO": 200_000_000, "Beautica": 16_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000, "Masami": 25_000_000 },
     "BAYU": { "Y2000": 100_000_000, "Diosys": 175_000_000 },
-    "YOGI": { "The Face": 400_000_000, "Yu Chun Mei": 275_000_000, "Milano": 30_000_000 },
-    "MITHA": { "Maskit": 30_000_000, "Rose All Day": 30_000_000, "OtwooO": 200_000_000, "Claresta": 350_000_000 }
 }
 
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
