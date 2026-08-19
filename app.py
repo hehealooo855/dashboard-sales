@@ -2730,31 +2730,85 @@ def main_dashboard():
 
                 with t_audit:
                     st.subheader("⚠️ Mesin Audit Input Fakturis")
-                    st.caption("Cross-Validation Matrix: Mendeteksi kelalaian input, salah rute toko, dan pelanggaran merk (Telah dikonsolidasi per Faktur).")
+                    st.caption("Cross-Validation Matrix: Mendeteksi kelalaian input, salah rute toko, dan pelanggaran merk (Bebas dari kalender samping).")
                     
                     @st.fragment
                     def render_audit_fragment():
-                        if not df_active_tab.empty:
-                            # --- 1. MAPPING OTORITAS BRAND & HISTORICAL VOTING ---
-                            otoritas_brand = {}
-                            for spv, brands_dict in TARGET_DATABASE.items():
-                                otoritas_brand[spv] = list(brands_dict.keys())
-                            for sales, targets in INDIVIDUAL_TARGETS.items():
-                                if sales not in otoritas_brand: otoritas_brand[sales] = []
-                                otoritas_brand[sales].extend(list(targets.keys()))
-                                
-                            df_hist_valid = df_scope_all[df_scope_all['Penjualan'] != 'Non-Sales']
-                            hist_counts = df_hist_valid.groupby(['Nama Outlet', 'Merk', 'Penjualan']).size().reset_index(name='count')
-                            hist_counts = hist_counts.sort_values('count', ascending=False).drop_duplicates(['Nama Outlet', 'Merk'])
-                            hist_owner_dict = hist_counts.set_index(['Nama Outlet', 'Merk'])['Penjualan'].to_dict()
+                        # 1. PENGGUNAAN DATA MURNI (Hanya Terpengaruh RLS / Hak Akses SPV)
+                        df_audit_base = df.copy()
+                        
+                        if df_audit_base.empty:
+                            st.info("Tidak ada data dasar untuk diaudit.")
+                            return
 
-                            # --- 2. KUMPULKAN ANOMALI MENTAH ---
+                        # --- 2. PEMETAAN OTORITAS BRAND & HISTORICAL VOTING ---
+                        otoritas_brand = {}
+                        for spv, brands_dict in TARGET_DATABASE.items():
+                            otoritas_brand[spv] = list(brands_dict.keys())
+                        for sales, targets in INDIVIDUAL_TARGETS.items():
+                            if sales not in otoritas_brand: otoritas_brand[sales] = []
+                            otoritas_brand[sales].extend(list(targets.keys()))
+                            
+                        df_hist_valid = df_audit_base[df_audit_base['Penjualan'] != 'Non-Sales']
+                        hist_counts = df_hist_valid.groupby(['Nama Outlet', 'Merk', 'Penjualan']).size().reset_index(name='count')
+                        hist_counts = hist_counts.sort_values('count', ascending=False).drop_duplicates(['Nama Outlet', 'Merk'])
+                        hist_owner_dict = hist_counts.set_index(['Nama Outlet', 'Merk'])['Penjualan'].to_dict()
+
+                        # --- 3. UI FILTER AUDIT CEPAT (Merdeka dari Sidebar) ---
+                        st.markdown("#### 🔎 Filter Audit Cepat")
+                        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                        
+                        # Persiapan Tahun dan Bulan
+                        list_tahun = sorted(df_audit_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
+                        list_bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+                        
+                        # Set default ke Waktu Berjalan (Misal: 2026, Agustus)
+                        thn_now = datetime.date.today().year
+                        bln_now_idx = datetime.date.today().month - 1
+                        
+                        default_thn = thn_now if thn_now in list_tahun else (list_tahun[0] if list_tahun else thn_now)
+                        default_thn_idx = list_tahun.index(default_thn) if default_thn in list_tahun else 0
+
+                        with col_f1: 
+                            f_tahun = st.selectbox("🗓️ Tahun:", ["SEMUA"] + list(list_tahun), index=default_thn_idx + 1 if list_tahun else 0)
+                        
+                        with col_f2:
+                            # index ditambah 1 karena ada opsi "SEMUA" di urutan pertama
+                            f_bulan = st.selectbox("⏳ Bulan:", ["SEMUA"] + list_bulan, index=bln_now_idx + 1)
+                        
+                        with col_f3:
+                            list_merk = sorted(df_audit_base['Merk'].astype(str).unique())
+                            f_merk = st.selectbox("📦 Merk:", ["SEMUA"] + list_merk)
+                        
+                        with col_f4:
+                            list_sales = sorted(df_audit_base['Penjualan'].astype(str).unique())
+                            f_sales = st.selectbox("👤 Sales (Pemilik Sah):", ["SEMUA"] + list_sales)
+
+                        # --- 4. POTONG DATA DULU SEBELUM DIAUDIT (Agar Super Cepat & Ringan) ---
+                        df_to_audit = df_audit_base.copy()
+                        if f_tahun != "SEMUA":
+                            df_to_audit = df_to_audit[df_to_audit['Tanggal'].dt.year == f_tahun]
+                        if f_bulan != "SEMUA":
+                            bln_angka = list_bulan.index(f_bulan) + 1
+                            df_to_audit = df_to_audit[df_to_audit['Tanggal'].dt.month == bln_angka]
+                        if f_merk != "SEMUA":
+                            df_to_audit = df_to_audit[df_to_audit['Merk'] == f_merk]
+                        if f_sales != "SEMUA":
+                            df_to_audit = df_to_audit[df_to_audit['Penjualan'] == f_sales]
+
+                        # --- 5. EKSEKUSI PEMERIKSAAN BARIS PER BARIS ---
+                        if not df_to_audit.empty:
                             anomali_data = []
-                            for _, row in df_active_tab.iterrows():
+                            for _, row in df_to_audit.iterrows():
                                 kasus = []
                                 toko = row['Nama Outlet']
                                 merk = row['Merk']
-                                sales_asli = str(row.get('Sales_Asli_Fakturis', '-'))
+                                
+                                # Tambahan visual agar tulisan '-' diganti dengan kalimat yang jelas
+                                sales_asli = str(row.get('Sales_Asli_Fakturis', '-')).strip()
+                                if sales_asli.lower() in ['nan', 'none', '', '-']:
+                                    sales_asli = 'Kosong (Belum Diinput)'
+                                    
                                 sales_clean = row['Penjualan']
                                 status_awal = row.get('Status_Awal_Mesin', 'Non-Sales')
                                 tanggal_val = row['Tanggal']
@@ -2776,7 +2830,7 @@ def main_dashboard():
                                         kasus.append(f"⚠️ Anomali Rute: Milik {hist_owner}, difakturkan ke {sales_clean}")
                                         
                                 if kasus:
-                                    # Kunci Konsolidasi: Jika No Faktur kosong, gabungkan berdasarkan Toko + Tanggal
+                                    # Kunci Konsolidasi: Jika No Faktur kosong, gabung berdasarkan Toko + Tanggal
                                     inv_key = f"{toko}_{tanggal_val.strftime('%Y%m%d')}" if no_faktur in ['-', '', 'nan', 'None'] else no_faktur
                                     
                                     anomali_data.append({
@@ -2791,76 +2845,41 @@ def main_dashboard():
                                         'Omset': row['Jumlah'],
                                         'Analisis Pelanggaran': " | ".join(kasus)
                                     })
-                            
+
                             if anomali_data:
                                 df_anomali_raw = pd.DataFrame(anomali_data)
                                 
-                                # --- 3. FILTER CEPAT (UI INTERAKTIF) ---
-                                st.markdown("#### 🔎 Filter Audit Cepat")
-                                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+                                # --- 6. KONSOLIDASI OTO-SUM ---
+                                cols_group = ['Tanggal', 'No Faktur', 'Nama Toko', 'Merk', 'Ketik Fakturis (Asli)', 'Pemilik Sah (Sistem)', 'Analisis Pelanggaran', 'Invoice_Key']
+                                df_consolidated = df_anomali_raw.groupby(cols_group, as_index=False)['Omset'].sum()
                                 
-                                list_tahun = sorted(df_anomali_raw['Tanggal_Raw'].dt.year.dropna().unique(), reverse=True)
-                                with col_f1: 
-                                    f_tahun = st.selectbox("🗓️ Tahun:", ["SEMUA"] + list(list_tahun))
+                                # Rapikan Kolom & Urutkan
+                                df_consolidated = df_consolidated.drop(columns=['Invoice_Key'])
+                                df_consolidated = df_consolidated.sort_values(by='Omset', ascending=False)
                                 
-                                with col_f2:
-                                    list_bulan = ["SEMUA", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-                                    f_bulan = st.selectbox("⏳ Bulan:", list_bulan)
+                                # --- 7. RENDER KE LAYAR ---
+                                c_aud1, c_aud2 = st.columns([3, 1])
+                                c_aud1.error(f"🚨 ALERT: Menampilkan {len(df_consolidated)} faktur bermasalah setelah konsolidasi!")
                                 
-                                with col_f3:
-                                    list_merk = sorted(df_anomali_raw['Merk'].astype(str).unique())
-                                    f_merk = st.selectbox("📦 Merk:", ["SEMUA"] + list_merk)
-                                
-                                with col_f4:
-                                    list_sales = sorted(df_anomali_raw['Pemilik Sah (Sistem)'].astype(str).unique())
-                                    f_sales = st.selectbox("👤 Sales (Pemilik Sah):", ["SEMUA"] + list_sales)
-                                    
-                                # Eksekusi Filter
-                                df_filtered = df_anomali_raw.copy()
-                                if f_tahun != "SEMUA":
-                                    df_filtered = df_filtered[df_filtered['Tanggal_Raw'].dt.year == f_tahun]
-                                if f_bulan != "SEMUA":
-                                    bln_angka = list_bulan.index(f_bulan) 
-                                    df_filtered = df_filtered[df_filtered['Tanggal_Raw'].dt.month == bln_angka]
-                                if f_merk != "SEMUA":
-                                    df_filtered = df_filtered[df_filtered['Merk'] == f_merk]
-                                if f_sales != "SEMUA":
-                                    df_filtered = df_filtered[df_filtered['Pemilik Sah (Sistem)'] == f_sales]
-                                    
-                                if not df_filtered.empty:
-                                    # --- 4. KONSOLIDASI OTO-SUM (MENGGABUNGKAN BARIS FAKTUR) ---
-                                    cols_group = ['Tanggal', 'No Faktur', 'Nama Toko', 'Merk', 'Ketik Fakturis (Asli)', 'Pemilik Sah (Sistem)', 'Analisis Pelanggaran', 'Invoice_Key']
-                                    df_consolidated = df_filtered.groupby(cols_group, as_index=False)['Omset'].sum()
-                                    
-                                    # Rapikan Kolom Akhir & Urutkan dari Omset Terbesar
-                                    df_consolidated = df_consolidated.drop(columns=['Invoice_Key'])
-                                    df_consolidated = df_consolidated.sort_values(by='Omset', ascending=False)
-                                    
-                                    # --- 5. RENDER KE LAYAR ---
-                                    c_aud1, c_aud2 = st.columns([3, 1])
-                                    c_aud1.error(f"🚨 ALERT: Menampilkan {len(df_consolidated)} faktur bermasalah setelah konsolidasi!")
-                                    
-                                    csv_audit = df_consolidated.to_csv(index=False).encode('utf-8')
-                                    c_aud2.download_button(
-                                        label="📥 Download Berkas Bukti (CSV)",
-                                        data=csv_audit,
-                                        file_name=f"Audit_Fakturis_{datetime.date.today()}.csv",
-                                        mime="text/csv",
-                                        use_container_width=True
-                                    )
+                                csv_audit = df_consolidated.to_csv(index=False).encode('utf-8')
+                                c_aud2.download_button(
+                                    label="📥 Download Berkas Bukti (CSV)",
+                                    data=csv_audit,
+                                    file_name=f"Audit_Fakturis_{datetime.date.today()}.csv",
+                                    mime="text/csv",
+                                    use_container_width=True
+                                )
 
-                                    def style_audit(r): return ['background-color: #ffe6e6; color: black;' for _ in r]
-                                    
-                                    st.dataframe(
-                                        df_consolidated.style.apply(style_audit, axis=1).format({'Omset': 'Rp {:,.0f}'}),
-                                        use_container_width=True, hide_index=True
-                                    )
-                                else:
-                                    st.success("✅ Tidak ada faktur bermasalah yang sesuai dengan kriteria filter Anda.")
+                                def style_audit(r): return ['background-color: #ffe6e6; color: black;' for _ in r]
+                                
+                                st.dataframe(
+                                    df_consolidated.style.apply(style_audit, axis=1).format({'Omset': 'Rp {:,.0f}'}),
+                                    use_container_width=True, hide_index=True
+                                )
                             else:
-                                st.success("🎉 Sempurna! Tidak ada kesalahan input, pelanggaran merk, atau perebutan rute pada periode ini.")
+                                st.success("✅ Tidak ada faktur bermasalah yang sesuai dengan kriteria filter Anda.")
                         else:
-                            st.info("Tidak ada data transaksi pada rentang tanggal yang Anda pilih.")
+                            st.info("Tidak ada data transaksi pada rentang filter yang Anda pilih.")
                             
                     # Panggil fragment ke layar
                     render_audit_fragment()
