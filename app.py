@@ -220,8 +220,8 @@ ESTIMASI_TARGET_BULANAN = {
 }
 
 INDIVIDUAL_TARGETS = {
-    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 82_500_000, "Vlagio": 25_000_000, "Elizabeth Rose": 17_500_000, "Walnutt": 7_500_000, "Sekawan": 25_000_000, "Sombong": 25_000_000, "Avione": 10_000_000 },
-    "HAMZAH": { "Somethinc": 440_000_000, "SYB": 75_000_000, "Sekawan": 37_500_000, "Avione": 25_000_000, "Honor": 67_500_000, "Vlagio": 25_000_000, "Sombong":62_500_000 },
+    "WIRA": { "Somethinc": 660_000_000, "SYB": 75_000_000, "Honor": 75_000_000, "Vlagio": 25_000_000, "Elizabeth Rose": 17_500_000, "Walnutt": 7_500_000, "Sekawan": 25_000_000, "Sombong": 25_000_000, "Avione": 10_000_000 },
+    "HAMZAH": { "Somethinc": 440_000_000, "SYB": 75_000_000, "Sekawan": 37_500_000, "Avione": 25_000_000, "Honor": 52_500_000, "Vlagio": 17_500_000, "Sombong":62_500_000 },
     "ROZY": { "Sekawan": 87_500_000, "Avione": 15_000_000, "Sombong": 50_000_000 },
     "RAPI": { "Sekawan": 75_000_000, "Avione": 35_000_000, "Sombong": 87_500_000 },
     "SRI RAMADHANI": { "Sekawan": 25_000_000, "Avione": 15_000_000, "Sombong": 25_000_000 },
@@ -232,11 +232,11 @@ INDIVIDUAL_TARGETS = {
     "ADE": { "Javinci": 80_275_000, "Careso": 20_000_000, "Newlab": 70_000_000, "Gloow & Be": 120_000_000, "Dorskin": 40_000_000, "Mlen": 50_000_000 },
     "FANDI": { "Javinci": 99_695_000, "Careso": 250_000_000, "Newlab": 130_000_000, "Gloow & Be": 60_000_000, "Dorskin": 10_000_000, "Whitelab": 20_000_000, "Goute": 15_000_000, "Bonavie": 15_000_000, "Mlen": 350_000_000, "Nurilab":80_000_000 },
     "DINA": {"OtwooO": 75_000_000, "Sociolla": 125_000_000, "Skin1004": 125_000_000, "Beautica": 18_000_000, "Claresta": 350_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000 },
-    "RISKA": { "Javinci": 36_403_000, "Sociolla": 125_000_000, "Skin1004": 45_000_000 ,"Thai": 45_000_000, "Inesia": 7_000_000 },
+    "RISKA": { "Javinci": 36_403_000, "Sociolla": 125_000_000, "Skin1004": 45_000_000 ,"Thai": 45_000_000, "Inesia": 7_000_000, "Honor": 22_500_000, "Vlagio": 7_500_000, "The Face": 30_000_000 },
     "DWI": { "Whitelab": 60_000_000, "Bonavie": 15_000_000, "Goute": 15_000_000 },
     "SANTI": { "Y2000": 100_000_000, "Diosys": 250_000_000 },
     "ASWIN": { "Artist Inc": 130_000_000 },
-    "DEVI": { "The Face": 360_000_000, "Yu Chun Mei": 240_000_000 },
+    "DEVI": { "The Face": 330_000_000, "Yu Chun Mei": 240_000_000 },
     "GANI": { "The Face": 240_000_000, "Yu Chun Mei": 160_000_000, "Sociolla": 125_000_000, "Skin1004": 30_000_000, "Thai": 65_000_000, "Inesia": 11_000_000, "Walnutt": 7_500_000, "Elizabeth Rose": 17_500_000, "OtwooO": 75_000_000, "Beautica": 16_000_000, "Elvicto": 16_000_000, "Onix": 16_000_000, "Masami": 25_000_000 },
     "BASTIAN": { "Sociolla": 325_000_000, "Skin1004": 80_000_000 ,"Thai": 55_000_000, "Inesia": 11_000_000, "Y2000": 100_000_000, "Diosys": 175_000_000, "OtwooO": 200_000_000, "Beautica": 16_000_000, "Elvicto": 17_000_000, "Onix": 17_000_000, "Masami": 25_000_000 },
     "BAYU": { "Y2000": 100_000_000, "Diosys": 175_000_000 },
