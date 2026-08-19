@@ -1737,31 +1737,83 @@ def main_dashboard():
         st.divider()
         
         # =========================================================
-        # 🧠 REKOMENDASI CERDAS AI (TERPISAH & INDEPENDEN)
+        # FRAGMENT AI DAN SKU CROSS-SELLING 
         # =========================================================
-        st.write("#### 🧠 Rekomendasi Cross-Selling Cerdas (AI)")
-        st.caption("AI mencari pola keranjang belanja dari seluruh transaksi secara independen (Terpisah dari filter di atas).")
-        
-        with st.form(key='ai_filter_form'):
-            col_ai1, col_ai2 = st.columns(2)
-            with col_ai1:
-                ai_tahun = st.multiselect("🗓️ Pilih Tahun:", list_tahun_tersedia, default=list_tahun_tersedia, key="ai_thn")
-            with col_ai2:
-                ai_bulan = st.selectbox("⏳ Rentang Bulan:", opsi_filter_waktu, index=0, key="ai_bln")
+        @st.fragment
+        def render_cross_sell_sku_ai(df_sumber):
+            st.write("#### 🧠 Analisis Cross-Selling Detail (Brand & SKU)")
+            st.caption("Eksplorasi cerdas hingga level barang tanpa memuat ulang dasbor utama.")
+
+            col_w1, col_w2 = st.columns(2)
+            with col_w1:
+                list_tahun_ai = sorted(df_sumber['Tanggal'].dt.year.dropna().unique(), reverse=True)
+                ai_tahun = st.multiselect("🗓️ Pilih Tahun:", list_tahun_ai, default=list_tahun_ai, key="ai_sk_thn")
+            with col_w2:
+                list_bulan_indo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+                opsi_bulan = ["All Time", "Bulan Ini"] + list_bulan_indo
+                ai_bulan = st.selectbox("⏳ Rentang Bulan:", opsi_bulan, index=0, key="ai_sk_bln")
+
+            df_ai_filtered = filter_waktu_cs(df_sumber, ai_tahun, ai_bulan)
+
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                list_brand = ["Semua Brand"] + sorted(df_ai_filtered['Merk'].dropna().astype(str).unique().tolist())
+                pilih_brand = st.selectbox("Pilih Brand:", list_brand, index=0, key="ai_sk_brand")
             
-            submit_ai = st.form_submit_button("🤖 Jalankan Analisis AI", use_container_width=True)
-            
-        if submit_ai:
-            df_ai_filtered = filter_waktu_cs(df_scope_all, ai_tahun, ai_bulan)
-            recs_df = get_cross_sell_recommendations(df_ai_filtered)
-            
-            if recs_df is not None and not recs_df.empty:
-                st.success(f"Ditemukan {len(recs_df)} rekomendasi kombinasi barang (Confidence > 50%) pada periode {ai_bulan}.")
-                st.dataframe(recs_df, use_container_width=True)
-            elif recs_df is None: 
-                st.warning("Data transaksi belum cukup detail (Membutuhkan No Faktur & Nama Barang).")
-            else: 
-                st.info(f"Belum ada pola pembelian silang yang kuat pada periode {ai_bulan} ini.")
+            with col_f2:
+                if pilih_brand != "Semua Brand":
+                    list_sku = ["Semua SKU"] + sorted(df_ai_filtered[df_ai_filtered['Merk'] == pilih_brand]['Nama Barang'].dropna().astype(str).unique().tolist())
+                else:
+                    list_sku = ["Semua SKU"] + sorted(df_ai_filtered['Nama Barang'].dropna().astype(str).unique().tolist())
+                
+                pilih_sku = st.selectbox("Pilih Barang (SKU):", list_sku, index=0, key="ai_sk_sku")
+
+            if st.button("🚀 Jalankan Analisis SKU & Brand", use_container_width=True):
+                if pilih_brand == "Semua Brand" and pilih_sku == "Semua SKU":
+                    recs_df = get_cross_sell_recommendations(df_ai_filtered)
+                    if recs_df is not None and not recs_df.empty:
+                        st.success(f"Ditemukan {len(recs_df)} rekomendasi kombinasi barang secara umum.")
+                        st.dataframe(recs_df, use_container_width=True)
+                    else:
+                        st.info("Belum ada pola pembelian yang kuat pada periode ini.")
+                
+                elif pilih_brand != "Semua Brand" and pilih_sku == "Semua SKU":
+                    df_brand_only = df_ai_filtered[df_ai_filtered['Merk'] == pilih_brand]
+                    recs_df = get_cross_sell_recommendations(df_brand_only)
+                    if recs_df is not None and not recs_df.empty:
+                        st.success(f"Ditemukan {len(recs_df)} rekomendasi silang khusus untuk produk {pilih_brand}.")
+                        st.dataframe(recs_df, use_container_width=True)
+                    else:
+                        st.info(f"Belum ada pola cross-selling internal yang kuat untuk {pilih_brand}.")
+                
+                else:
+                    merk_acuan = pilih_brand
+                    if merk_acuan == "Semua Brand":
+                        merk_search = df_ai_filtered[df_ai_filtered['Nama Barang'] == pilih_sku]['Merk'].iloc[0]
+                        merk_acuan = merk_search
+                    
+                    toko_beli_brand = df_ai_filtered[df_ai_filtered['Merk'] == merk_acuan]['Nama Outlet'].unique()
+                    
+                    toko_beli_sku = set(df_ai_filtered[df_ai_filtered['Nama Barang'] == pilih_sku]['Nama Outlet'].unique())
+                    
+                    opportunities = []
+                    for outlet in toko_beli_brand:
+                        if outlet not in toko_beli_sku:
+                            sales_name = df_ai_filtered[df_ai_filtered['Nama Outlet'] == outlet]['Penjualan'].iloc[0]
+                            opportunities.append({
+                                "Nama Toko": outlet, 
+                                "Salesman": sales_name, 
+                                "Potensi Tembakan": f"Tawarkan {pilih_sku}"
+                            })
+                    
+                    if opportunities:
+                        st.info(f"Ditemukan {len(opportunities)} Toko yang berlangganan merk {merk_acuan} tapi BELUM pernah mengambil {pilih_sku}.")
+                        st.dataframe(pd.DataFrame(opportunities), use_container_width=True)
+                    else:
+                        st.success(f"Luar biasa! Semua toko pelanggan {merk_acuan} sudah rutin mengambil {pilih_sku}.")
+
+        # Memanggil fungsi ke layar
+        render_cross_sell_sku_ai(df_scope_all)
         
         st.divider()
         st.write("#### 🗺️ Master Visit Plan (Fokus 80/20 Customer Priority)")
