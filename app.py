@@ -1486,7 +1486,12 @@ def main_dashboard():
             daily = df_active_tab.groupby('Tanggal')['Jumlah'].sum().reset_index()
             fig_line = px.line(daily, x='Tanggal', y='Jumlah', markers=True)
             fig_line.update_traces(line_color='#2980b9', line_width=3)
-            st.plotly_chart(fig_line, use_container_width=True)
+            
+            # Kunci sumbu agar tidak ter-zoom di HP
+            fig_line.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True))
+            
+            # Matikan toolbar bawaan Plotly
+            st.plotly_chart(fig_line, use_container_width=True, config={'displayModeBar': False})
 
     with t_detail_sales:
         st.subheader("👥 Detail Sales Team per Brand")
@@ -1611,14 +1616,14 @@ def main_dashboard():
             st.subheader("📦 Top 10 Produk")
             top_prod = grouped_barang.head(10).copy() if not grouped_barang.empty else pd.DataFrame(columns=['Nama Barang', 'Jumlah'])
             fig_bar = px.bar(top_prod, x='Jumlah', y='Nama Barang', orientation='h', text_auto='.2s')
-            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_bar, use_container_width=True)
+            fig_bar.update_layout(yaxis={'categoryorder':'total ascending', 'fixedrange': True}, xaxis={'fixedrange': True})
+            st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
         with c2:
             st.subheader("🏪 Top 10 Outlet")
             top_out = df_t3.groupby('Nama Outlet')['Jumlah'].sum().nlargest(10).reset_index()
             fig_out = px.bar(top_out, x='Jumlah', y='Nama Outlet', orientation='h', text_auto='.2s', color_discrete_sequence=['#2980b9'])
-            fig_out.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_out, use_container_width=True)
+            fig_out.update_layout(yaxis={'categoryorder':'total ascending', 'fixedrange': True}, xaxis={'fixedrange': True})
+            st.plotly_chart(fig_out, use_container_width=True, config={'displayModeBar': False})
             
     with t5:
         st.subheader("🚀 Kejar Omset (Actionable Insights)")
@@ -1906,8 +1911,16 @@ def main_dashboard():
             df_combined = pd.concat([df_history, df_future])
             
             fig_forecast = px.line(df_combined, x='Tanggal', y='Jumlah', color='Type', line_dash='Type', color_discrete_map={'Historis': '#2980b9', 'Prediksi': '#e74c3c'})
-            fig_forecast.update_layout(title="Proyeksi Omset 30 Hari Kedepan", xaxis_title="Tanggal", yaxis_title="Omset")
-            st.plotly_chart(fig_forecast, use_container_width=True)
+            fig_forecast.update_layout(
+                title="Proyeksi Omset 30 Hari Kedepan", 
+                xaxis_title="Tanggal", 
+                yaxis_title="Omset",
+                xaxis=dict(fixedrange=True), # Kunci sumbu X
+                yaxis=dict(fixedrange=True)  # Kunci sumbu Y
+            )
+            
+            # Matikan toolbar bawaan Plotly
+            st.plotly_chart(fig_forecast, use_container_width=True, config={'displayModeBar': False})
             trend = "NAIK 📈" if z[0] > 0 else "TURUN 📉"
             st.write(f"Analisa Tren: Berdasarkan data historis, tren penjualan terlihat {trend}.")
         else: st.warning("Data belum cukup untuk melakukan prediksi (minimal 10 hari transaksi).")
