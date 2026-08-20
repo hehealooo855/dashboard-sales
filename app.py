@@ -204,7 +204,7 @@ def map_city_to_province(city_name):
     return "LAIN-LAIN"
 
 TARGET_DATABASE = {
-    "MADONG": { "Somethinc": 1_100_000_000, "SYB": 200_000_000, "Sekawan": 200_000_000, "Avione": 100_000_000, "Honor": 150_000_000, "Vlagio": 50_000_000, "Ren & R & L": 0, "Mad For Make Up": 50_000_000, "Satto": 525_000_000, "Mykonos": 0, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 20_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 70_000_000, "Sombong": 200_000_000, "Summer":30_000_000},
+    "MADONG": { "Somethinc": 1_100_000_000, "SYB": 200_000_000, "Sekawan": 200_000_000, "Avione": 100_000_000, "Honor": 150_000_000, "Vlagio": 50_000_000, "Ren & R & L": 0, "Mad For Make Up": 50_000_000, "Satto": 525_000_000, "Mykonos": 0, "The Face": 600_000_000, "Yu Chun Mei": 400_000_000, "Milano": 50_000_000, "Remar": 20_000_000, "Walnutt": 30_000_000, "Elizabeth Rose": 70_000_000, "Sombong": 200_000_000, "Summer":30_000_000, "Felaufee": 0},
     "LISMAN": { "Javinci": 1_100_000_000, "Careso": 250_000_000, "Newlab": 200_000_000, "Gloow & Be": 180_000_000, "Dorskin": 50_000_000, "Whitelab": 80_000_000, "Bonavie": 30_000_000, "Goute": 30_000_000, "Mlen": 350_000_000, "Artist Inc": 130_000_000, "Cosline": 0, "Birth Beyond": 50_000_000, "Everpure": 10_000_000, "Nurilab":80_000_000, "Barsten": 0},
     "AKBAR": { "Sociolla": 700_000_000, "Skin1004":200_000_000, "Thai": 350_000_000, "Inesia": 50_000_000, "Y2000": 300_000_000, "Diosys": 600_000_000, "Masami": 50_000_000, "Cassandra": 0, "Clinelle": 50_000_000,"Beautica": 50_000_000, "Claresta": 350_000_000, "Rose All Day": 50_000_000, "OtwooO": 350_000_000, "Elvicto": 50_000_000, "Onix": 50_000_000}
 }
