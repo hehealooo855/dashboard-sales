@@ -1218,14 +1218,6 @@ def main_dashboard():
         min_kalender = df['Tanggal'].min().date() if not df.empty else today
         max_kalender = df['Tanggal'].max().date() if not df.empty else today
         
-        # --- KATUP PENYELARAS MEMORI (MENCEGAH ERROR OUT-OF-BOUNDS) ---
-        if st.session_state['start_date'] < min_kalender:
-            st.session_state['start_date'] = min_kalender
-        if st.session_state['end_date'] > max_kalender:
-            st.session_state['end_date'] = max_kalender
-        if st.session_state['start_date'] > st.session_state['end_date']:
-            st.session_state['start_date'] = min_kalender
-            
         date_range = st.date_input(
             "Rentang Waktu", 
             [st.session_state['start_date'], st.session_state['end_date']],
