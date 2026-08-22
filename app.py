@@ -1756,7 +1756,8 @@ def main_dashboard():
             </div>
             '''
             
-            st.markdown(final_html, unsafe_allow_html=True)
+            # --- MENGGUNAKAN COMPONENTS.HTML AGAR RENDER TABEL 100% AMAN ---
+            components.html(final_html, height=800, scrolling=True)
             
         # Eksekusi fragment ke layar
         render_detail_sales_harian()
