@@ -242,6 +242,13 @@ INDIVIDUAL_TARGETS = {
     "BAYU": { "Y2000": 100_000_000, "Diosys": 175_000_000 },
 }
 
+TARGET_EC_HARIAN = {
+    "Somethinc": 15,
+    "Javinci": 15,
+    "Whitelab": 15,
+    "Default": 15 # Nilai patokan jika brand tidak ditulis di sini
+}
+
 SUPERVISOR_TOTAL_TARGETS = {k: sum(v.values()) for k, v in TARGET_DATABASE.items()}
 TARGET_NASIONAL_VAL = sum(SUPERVISOR_TOTAL_TARGETS.values())
 
@@ -1370,7 +1377,7 @@ def main_dashboard():
              render_custom_progress(f"👤 Target Tim {spv_name}", df_active['Jumlah'].sum(), target_pribadi)
         st.markdown("---")
 
-    t1, t2, t_detail_sales, t3, t5, t_forecast, t4, t_audit = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian", "⚠️ Audit Fakturis"])
+    t1, t2, t_detail_sales, t_detail_harian, t3, t5, t_forecast, t4, t_audit = st.tabs(["📊 Rapor Brand", "📈 Tren Harian", "👥 Detail Tim", "📝 Detail Sales", "🏆 Top Produk", "🚀 Kejar Omset", "🔮 Prediksi Omset", "📋 Data Rincian", "⚠️ Audit Fakturis"])
     
     with t1:
         if role in ['manager', 'direktur'] or my_name.lower() == 'fauziah': loop_source = TARGET_DATABASE.items()
@@ -1577,6 +1584,182 @@ def main_dashboard():
                     m3.metric("Total Ach %", f"{ach_total:.1f}%")
                 else: st.info(f"Belum ada data target sales individu untuk brand {selected_brand_detail}")
         else: st.info("Menu ini khusus untuk melihat detail tim sales per brand.")
+
+    with t_detail_harian:
+        st.subheader("📝 Monitoring Salesman Harian")
+        st.caption("Rekapitulasi pencapaian target harian, EC, dan rincian orderan per toko layaknya Excel.")
+        
+        @st.fragment
+        def render_detail_sales_harian():
+            # Kita gunakan data mentah murni agar bebas filter kalender sidebar
+            df_base_harian = df.copy()
+            
+            if df_base_harian.empty:
+                st.info("Tidak ada data dasar.")
+                return
+                
+            # --- 1. UI FILTER CEPAT ---
+            col_h1, col_h2 = st.columns(2)
+            with col_h1:
+                f_tanggal = st.date_input("🗓️ Pilih Tanggal:", value=datetime.date.today())
+            with col_h2:
+                list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
+                list_sales = [s for s in list_sales if s != 'Non-Sales']
+                f_sales = st.selectbox("👤 Pilih Salesman:", list_sales)
+                
+            if not f_sales:
+                st.info("Pilih salesman untuk melihat data.")
+                return
+                
+            # --- 2. LOGIKA PEMOTONGAN DATA (SISA HARI KERJA) ---
+            df_day = df_base_harian[(df_base_harian['Tanggal'].dt.date == f_tanggal) & (df_base_harian['Penjualan'] == f_sales)]
+            
+            start_of_month = f_tanggal.replace(day=1)
+            df_mtd = df_base_harian[(df_base_harian['Tanggal'].dt.date >= start_of_month) & (df_base_harian['Tanggal'].dt.date < f_tanggal) & (df_base_harian['Penjualan'] == f_sales)]
+            
+            # Hitung sisa hari kerja bulan ini
+            last_day_of_month = calendar.monthrange(f_tanggal.year, f_tanggal.month)[1]
+            remaining_workdays = 0
+            for day_int in range(f_tanggal.day, last_day_of_month + 1):
+                c_date = datetime.date(f_tanggal.year, f_tanggal.month, day_int)
+                if c_date.weekday() != 6 and c_date.strftime('%Y-%m-%d') not in HOLIDAYS_2026:
+                    remaining_workdays += 1
+            safe_rem_days = remaining_workdays if remaining_workdays > 0 else 1
+            
+            # --- 3. PEMBENTUKAN DATA TABEL ---
+            sales_targets = INDIVIDUAL_TARGETS.get(f_sales, {})
+            brands_sold_today = df_day[df_day['Jumlah'] > 0]['Merk'].unique()
+            brands_with_target = list(sales_targets.keys())
+            
+            # Gabungkan brand yang punya target dan brand yang kebetulan laku hari ini
+            brands_to_show = sorted(list(set(list(brands_sold_today) + brands_with_target)))
+            
+            table_data = []
+            for brand in brands_to_show:
+                target_bulanan = sales_targets.get(brand, 0)
+                omset_mtd_h1 = df_mtd[df_mtd['Merk'] == brand]['Jumlah'].sum()
+                
+                # Gap Target
+                gap = target_bulanan - omset_mtd_h1
+                if gap < 0: gap = 0
+                target_harian = gap / safe_rem_days if target_bulanan > 0 else 0
+                
+                # Omset dan Toko Hari Ini
+                df_brand_day = df_day[df_day['Merk'] == brand]
+                omset_today = df_brand_day['Jumlah'].sum()
+                
+                outlets = df_brand_day.groupby('Nama Outlet')['Jumlah'].sum().reset_index()
+                outlets = outlets[outlets['Jumlah'] > 0].sort_values('Jumlah', ascending=False)
+                
+                ec = len(outlets)
+                target_ec = TARGET_EC_HARIAN.get(brand, TARGET_EC_HARIAN.get("Default", 15))
+                achiev = (omset_today / target_harian) * 100 if target_harian > 0 else 0
+                
+                # Tampilkan jika ada target harian atau ada jualan
+                if target_bulanan > 0 or omset_today > 0:
+                    table_data.append({
+                        'Brand': brand, 'Target EC': target_ec, 'EC': ec, 'Target Harian': target_harian,
+                        'Omset Today': omset_today, 'Achiev': achiev, 'Outlets': outlets.to_dict('records')
+                    })
+                    
+            if not table_data:
+                st.warning(f"Belum ada target atau transaksi untuk {f_sales} pada tanggal tersebut.")
+                return
+                
+            # --- 4. RENDER HTML / CSS SUPER MIRIP EXCEL ---
+            html_rows = ""
+            tot_target_harian = 0
+            tot_omset = 0
+            
+            for idx, data in enumerate(table_data, 1):
+                brand = data['Brand']
+                # Rowspan menyesuaikan jumlah toko. Jika 0, set 2 agar baris kosong tetap terbentuk.
+                rowspan = len(data['Outlets']) + 1 if len(data['Outlets']) > 0 else 2 
+                
+                tot_target_harian += data['Target Harian']
+                tot_omset += data['Omset Today']
+                
+                # Baris Induk (Kuning)
+                html_rows += f'''
+                <tr>
+                    <td class="bg-blue" rowspan="{rowspan}"><b>{idx}</b></td>
+                    <td class="bg-blue" rowspan="{rowspan}"><b>{brand}</b></td>
+                    <td class="bg-yellow"><b>{data['Target EC']}</b></td>
+                    <td class="bg-yellow"><b>{data['EC']}</b></td>
+                    <td class="bg-yellow" rowspan="{rowspan}"><b>{format_idr(data['Target Harian'])}</b></td>
+                    <td class="bg-yellow text-right"><b>{format_idr(data['Omset Today'])}</b></td>
+                    <td class="bg-pink" rowspan="{rowspan}">{data['Achiev']:.0f}%</td>
+                </tr>
+                '''
+                # Baris Anak/Toko (Biru)
+                if len(data['Outlets']) > 0:
+                    for out in data['Outlets']:
+                        html_rows += f'''
+                        <tr>
+                            <td class="bg-blue text-left" colspan="2">{out['Nama Outlet']}</td>
+                            <td class="bg-blue text-right">{format_idr(out['Jumlah'])}</td>
+                        </tr>
+                        '''
+                else: # Jika tidak ada EC hari itu
+                    html_rows += f'''
+                        <tr>
+                            <td class="bg-blue text-left" colspan="2">-</td>
+                            <td class="bg-blue text-right">Rp 0</td>
+                        </tr>
+                        '''
+                        
+            tot_achiev = (tot_omset / tot_target_harian) * 100 if tot_target_harian > 0 else 0
+            
+            final_html = f'''
+            <style>
+            .sales-table {{ width: 100%; border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 15px; margin-top: 10px; }}
+            .sales-table th, .sales-table td {{ border: 1px solid #000; padding: 6px 10px; text-align: center; vertical-align: middle; }}
+            .sales-table th {{ background-color: #f2f2f2; font-weight: bold; }}
+            .bg-yellow {{ background-color: #ffff00 !important; color: black !important; }}
+            .bg-blue {{ background-color: #bdd7ee !important; color: black !important; }}
+            .bg-pink {{ background-color: #f8cbad !important; font-weight: bold !important; color: #c00000 !important; }}
+            .text-left {{ text-align: left !important; }}
+            .text-right {{ text-align: right !important; }}
+            </style>
+            
+            <div style="background-color: white; padding: 20px; border-radius: 10px; overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="margin-bottom: 20px; color: black; font-family: Calibri, sans-serif;">
+                    <table style="border: none; font-size: 15px; text-align: left; width: 300px;">
+                        <tr><td colspan="2" style="padding-bottom: 10px; font-size: 16px;">Monitoring Salesman Harian</td></tr>
+                        <tr><td width="35%">Tanggal</td><td><b>{f_tanggal.strftime('%d/%m/%Y')}</b></td></tr>
+                        <tr><td>Salesman</td><td><b>{f_sales}</b></td></tr>
+                    </table>
+                </div>
+                
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">No</th>
+                            <th width="15%">Brand</th>
+                            <th width="10%">Target EC</th>
+                            <th width="12%">Effective Call</th>
+                            <th width="20%">Target Sales Harian</th>
+                            <th width="20%">Nominal Orderan</th>
+                            <th width="8%">Achiev</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {html_rows}
+                        <tr>
+                            <td class="bg-yellow" colspan="4"><b>Total</b></td>
+                            <td class="bg-yellow text-right"><b>{format_idr(tot_target_harian)}</b></td>
+                            <td class="bg-yellow text-right"><b>{format_idr(tot_omset)}</b></td>
+                            <td class="bg-pink">{tot_achiev:.0f}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            '''
+            
+            st.markdown(final_html, unsafe_allow_html=True)
+            
+        # Eksekusi fragment ke layar
+        render_detail_sales_harian()
 
     with t3:
         st.subheader("📊 Pareto Analysis (80/20 Rule)")
