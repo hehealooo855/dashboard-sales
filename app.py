@@ -1631,34 +1631,49 @@ def main_dashboard():
             brands_sold_today = df_day[df_day['Jumlah'] > 0]['Merk'].unique()
             brands_with_target = list(sales_targets.keys())
             
-            # Gabungkan brand yang punya target dan brand yang kebetulan laku hari ini
             brands_to_show = sorted(list(set(list(brands_sold_today) + brands_with_target)))
             
             table_data = []
             for brand in brands_to_show:
+                # ==========================================
+                # A. LOGIKA TARGET SALES & OMSET
+                # ==========================================
                 target_bulanan = sales_targets.get(brand, 0)
                 omset_mtd_h1 = df_mtd[df_mtd['Merk'] == brand]['Jumlah'].sum()
                 
-                # Gap Target
                 gap = target_bulanan - omset_mtd_h1
                 if gap < 0: gap = 0
                 target_harian = gap / safe_rem_days if target_bulanan > 0 else 0
                 
-                # Omset dan Toko Hari Ini
                 df_brand_day = df_day[df_day['Merk'] == brand]
                 omset_today = df_brand_day['Jumlah'].sum()
                 
                 outlets = df_brand_day.groupby('Nama Outlet')['Jumlah'].sum().reset_index()
                 outlets = outlets[outlets['Jumlah'] > 0].sort_values('Jumlah', ascending=False)
-                
                 ec = len(outlets)
-                target_ec = TARGET_EC_HARIAN.get(brand, TARGET_EC_HARIAN.get("Default", 15))
                 achiev = (omset_today / target_harian) * 100 if target_harian > 0 else 0
+
+                # ==========================================
+                # B. LOGIKA TARGET EC (RO x 60% / Sisa Hari Kerja)
+                # ==========================================
+                # 1. Total RO (Histori toko unik brand ini oleh sales ini s.d tanggal filter)
+                df_hist_brand = df_base_harian[(df_base_harian['Penjualan'] == f_sales) & (df_base_harian['Merk'] == brand) & (df_base_harian['Tanggal'].dt.date <= f_tanggal)]
+                total_ro = df_hist_brand['Nama Outlet'].nunique()
                 
-                # Tampilkan jika ada target harian atau ada jualan
-                if target_bulanan > 0 or omset_today > 0:
+                # 2. Target EC Bulanan (60% dari RO)
+                target_ec_bulanan = total_ro * 0.60
+                
+                # 3. Gap EC (Dikurangi EC yang sudah dicapai bulan ini sebelum tanggal filter)
+                ec_mtd_h1 = df_mtd[df_mtd['Merk'] == brand]['Nama Outlet'].nunique()
+                gap_ec = target_ec_bulanan - ec_mtd_h1
+                if gap_ec < 0: gap_ec = 0
+                
+                # 4. Target EC Harian (Gap EC dibagi sisa hari kerja, dibulatkan ke atas)
+                target_ec_harian = int(np.ceil(gap_ec / safe_rem_days)) if target_ec_bulanan > 0 else 0
+                
+                if target_bulanan > 0 or omset_today > 0 or target_ec_harian > 0:
                     table_data.append({
-                        'Brand': brand, 'Target EC': target_ec, 'EC': ec, 'Target Harian': target_harian,
+                        'Brand': brand, 'Target EC': target_ec_harian, 'EC': ec, 'Target Harian': target_harian,
                         'Omset Today': omset_today, 'Achiev': achiev, 'Outlets': outlets.to_dict('records')
                     })
                     
