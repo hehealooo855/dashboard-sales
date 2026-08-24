@@ -1612,11 +1612,14 @@ def main_dashboard():
                 return
                 
             # --- 2. LOGIKA PEMOTONGAN DATA (SISA HARI KERJA) ---
-            df_day = df_base_harian[(df_base_harian['Tanggal'].dt.date == f_tanggal) & (df_base_harian['Penjualan'] == f_sales)]
-            
+            # Menggunakan string comparison untuk mengunci zona waktu (Timezone-Proof)
+            f_tanggal_str = f_tanggal.strftime('%Y-%m-%d')
             start_of_month = f_tanggal.replace(day=1)
-            df_mtd = df_base_harian[(df_base_harian['Tanggal'].dt.date >= start_of_month) & (df_base_harian['Tanggal'].dt.date < f_tanggal) & (df_base_harian['Penjualan'] == f_sales)]
+            start_str = start_of_month.strftime('%Y-%m-%d')
             
+            df_day = df_base_harian[(df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') == f_tanggal_str) & (df_base_harian['Penjualan'] == f_sales)]
+            
+            df_mtd = df_base_harian[(df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') >= start_str) & (df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') < f_tanggal_str) & (df_base_harian['Penjualan'] == f_sales)]
             # Hitung sisa hari kerja bulan ini
             last_day_of_month = calendar.monthrange(f_tanggal.year, f_tanggal.month)[1]
             remaining_workdays = 0
@@ -1657,7 +1660,7 @@ def main_dashboard():
                 # B. LOGIKA TARGET EC (RO x 60% / Sisa Hari Kerja)
                 # ==========================================
                 # 1. Total RO (Histori toko unik brand ini oleh sales ini s.d tanggal filter)
-                df_hist_brand = df_base_harian[(df_base_harian['Penjualan'] == f_sales) & (df_base_harian['Merk'] == brand) & (df_base_harian['Tanggal'].dt.date <= f_tanggal)]
+                df_hist_brand = df_base_harian[(df_base_harian['Penjualan'] == f_sales) & (df_base_harian['Merk'] == brand) & (df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') <= f_tanggal_str)]
                 total_ro = df_hist_brand['Nama Outlet'].nunique()
                 
                 # 2. Target EC Bulanan (60% dari RO)
