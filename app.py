@@ -1598,17 +1598,23 @@ def main_dashboard():
                 st.info("Tidak ada data dasar.")
                 return
                 
-            # --- 1. UI FILTER CEPAT ---
-            col_h1, col_h2 = st.columns(2)
-            with col_h1:
-                f_tanggal = st.date_input("🗓️ Pilih Tanggal:", value=datetime.date.today())
-            with col_h2:
-                list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
-                list_sales = [s for s in list_sales if s != 'Non-Sales']
-                f_sales = st.selectbox("👤 Pilih Salesman:", list_sales)
+            # --- 1. UI FILTER CEPAT (BEBAS RELOAD BERULANG) ---
+            list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
+            list_sales = [s for s in list_sales if s != 'Non-Sales']
+            
+            # Membungkus filter di dalam Form agar layar tidak berkedip sebelum disubmit
+            with st.form(key="form_filter_harian"):
+                col_h1, col_h2 = st.columns(2)
+                with col_h1:
+                    f_tanggal = st.date_input("🗓️ Pilih Tanggal:", value=datetime.date.today())
+                with col_h2:
+                    f_sales = st.selectbox("👤 Pilih Salesman:", list_sales)
+                    
+                # Tombol sakti penahan reload
+                submit_harian = st.form_submit_button("🔍 Tampilkan Detail")
                 
             if not f_sales:
-                st.info("Pilih salesman untuk melihat data.")
+                st.info("Pilih salesman dan klik 'Tampilkan Detail' untuk mulai memantau.")
                 return
                 
             # --- 2. LOGIKA PEMOTONGAN DATA (SISA HARI KERJA) ---
