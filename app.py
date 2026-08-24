@@ -1597,20 +1597,34 @@ def main_dashboard():
                 st.info("Tidak ada data dasar.")
                 return
                 
-            # 1. UI FILTER RENTANG WAKTU & MULTI SALESMAN
+            # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI & BRAND
             list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
             list_sales = [s for s in list_sales if s != 'Non-Sales']
+            
+            # (Pastikan nama kolom 'Provinsi' dan 'Kota' sesuai dengan yang ada di Google Sheets Anda. 
+            # Jika namanya beda, misal 'Kabupaten', silakan ganti teks 'Kota' di bawah ini)
+            list_provinsi = sorted(df_base_harian['Provinsi'].astype(str).dropna().unique()) if 'Provinsi' in df_base_harian.columns else []
+            list_kota = sorted(df_base_harian['Kota'].astype(str).dropna().unique()) if 'Kota' in df_base_harian.columns else []
+            list_brand = sorted(df_base_harian['Merk'].astype(str).dropna().unique())
             
             with st.form(key="form_filter_harian"):
                 col_h1, col_h2 = st.columns(2)
                 with col_h1:
-                    # Mengizinkan pilihan rentang tanggal
-                    f_tanggal = st.date_input("Pilih Rentang Tanggal:", value=(datetime.date.today(), datetime.date.today()))
+                    f_tanggal = st.date_input("🗓️ Pilih Rentang Tanggal:", value=(datetime.date.today(), datetime.date.today()))
                 with col_h2:
-                    # Multiselect untuk memanggil banyak sales sekaligus
-                    f_sales = st.multiselect("Pilih Salesman:", list_sales)
+                    f_sales = st.multiselect("👤 Pilih Salesman (Wajib):", list_sales)
+                
+                # Baris Filter Tambahan (Opsional)
+                st.markdown("<hr style='margin: 0.5em 0;'>", unsafe_allow_html=True)
+                col_f1, col_f2, col_f3 = st.columns(3)
+                with col_f1:
+                    f_prov = st.multiselect("🗺️ Provinsi (Kosong = Semua):", list_provinsi)
+                with col_f2:
+                    f_kota = st.multiselect("🏙️ Kota (Kosong = Semua):", list_kota)
+                with col_f3:
+                    f_brand = st.multiselect("📦 Brand (Kosong = Semua):", list_brand)
                     
-                submit_harian = st.form_submit_button("Tampilkan Detail")
+                submit_harian = st.form_submit_button("🔍 Tampilkan Detail")
                 
             if not f_sales or not submit_harian:
                 st.info("Silakan pilih rentang tanggal, nama salesman, lalu klik 'Tampilkan Detail'.")
@@ -1624,6 +1638,15 @@ def main_dashboard():
                     start_date = end_date = f_tanggal[0]
             else:
                 start_date = end_date = f_tanggal
+
+            # --- PENYARINGAN DATA MASTER SECARA GLOBAL (BERDASARKAN LOKASI & BRAND) ---
+            df_master_filtered = df_base_harian.copy()
+            if f_prov and 'Provinsi' in df_master_filtered.columns:
+                df_master_filtered = df_master_filtered[df_master_filtered['Provinsi'].isin(f_prov)]
+            if f_kota and 'Kota' in df_master_filtered.columns:
+                df_master_filtered = df_master_filtered[df_master_filtered['Kota'].isin(f_kota)]
+            if f_brand:
+                df_master_filtered = df_master_filtered[df_master_filtered['Merk'].isin(f_brand)]
 
             # 2. LOGIKA HARI KERJA PERIODE & SISA BULAN
             period_workdays = 0
@@ -1740,8 +1763,9 @@ def main_dashboard():
             individual_htmls = ""
             
             for sales in f_sales:
-                df_period = df_base_harian[(df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') >= start_str) & (df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') <= end_str) & (df_base_harian['Penjualan'] == sales)]
-                df_mtd = df_base_harian[(df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') >= month_str) & (df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') < start_str) & (df_base_harian['Penjualan'] == sales)]
+                # Menggunakan df_master_filtered agar omset dan RO terkunci sesuai filter lokasi
+                df_period = df_master_filtered[(df_master_filtered['Tanggal'].dt.strftime('%Y-%m-%d') >= start_str) & (df_master_filtered['Tanggal'].dt.strftime('%Y-%m-%d') <= end_str) & (df_master_filtered['Penjualan'] == sales)]
+                df_mtd = df_master_filtered[(df_master_filtered['Tanggal'].dt.strftime('%Y-%m-%d') >= month_str) & (df_master_filtered['Tanggal'].dt.strftime('%Y-%m-%d') < start_str) & (df_master_filtered['Penjualan'] == sales)]
                 
                 sales_targets = INDIVIDUAL_TARGETS.get(sales, {})
                 brands_sold_period = df_period[df_period['Jumlah'] > 0]['Merk'].unique()
@@ -1766,7 +1790,7 @@ def main_dashboard():
                     ec = len(outlets)
                     achiev = (omset_period / target_periode) * 100 if target_periode > 0 else 0
                     
-                    df_hist_brand = df_base_harian[(df_base_harian['Penjualan'] == sales) & (df_base_harian['Merk'] == brand) & (df_base_harian['Tanggal'].dt.strftime('%Y-%m-%d') <= end_str)]
+                    df_hist_brand = df_master_filtered[(df_master_filtered['Penjualan'] == sales) & (df_master_filtered['Merk'] == brand) & (df_master_filtered['Tanggal'].dt.strftime('%Y-%m-%d') <= end_str)]
                     total_ro = df_hist_brand['Nama Outlet'].nunique()
                     target_ec_bulanan = total_ro * 0.60
                     
