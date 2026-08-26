@@ -579,12 +579,12 @@ def load_data_from_url():
     df['Nama_Pencocokan'] = df['Nama Outlet'].astype(str).str.strip().str.upper()
     df['Kunci_Kode'] = list(zip(df['Nama_Pencocokan'], df['Merk']))
     
-    # KEMBALI MENGGUNAKAN .first() KARENA DATA TERBARU ADA DI BARIS PALING ATAS
-    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].first()
+    # MENGGUNAKAN .last() AGAR SISTEM MENJADIKAN DATA ENTRY TERBARU SEBAGAI KIBLAT KEBENARAN
+    valid_kodes = df[~df['Kode_Global'].isin(['-', '', 'NAN', 'NONE', '0.0', '0'])].groupby('Kunci_Kode')['Kode_Global'].last()
     df['Kode_Global'] = df['Kunci_Kode'].map(valid_kodes).fillna(df['Kode_Global'])
     
-    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].first()
-    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].first()
+    valid_provs = df[~df['Provinsi'].isin(['-', '', 'LAIN-LAIN', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Provinsi'].last()
+    valid_kotas = df[~df['Kota'].isin(['-', '', 'NAN', 'NONE'])].groupby('Nama_Pencocokan')['Kota'].last()
     
     df['Provinsi'] = df['Nama_Pencocokan'].map(valid_provs).fillna(df['Provinsi'])
     df['Kota'] = df['Nama_Pencocokan'].map(valid_kotas).fillna(df['Kota'])
