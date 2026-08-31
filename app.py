@@ -1448,6 +1448,9 @@ def main_dashboard():
                 cols = ['Rank'] + [c for c in df_summ.columns if c != 'Rank']
                 df_summ = df_summ[cols]
                 
+                # --- FIX PYARROW: Konversi paksa kolom Rank menjadi teks ---
+                df_summ['Rank'] = df_summ['Rank'].astype(str)
+                
                 def style_rows(row):
                     val = row['Progress (Detail %)']
                     bg_color = get_color_achv(val)
@@ -2032,7 +2035,10 @@ def main_dashboard():
                     last_trx.append({"Nama Toko": outlet, "Sales": sales_handler, "Terakhir Order": terakhir_order_str, "Hari Sejak Order Terakhir": hari_sejak})
                 
                 df_sleeping = pd.DataFrame(last_trx).sort_values("Hari Sejak Order Terakhir")
-                df_sleeping["Hari Sejak Order Terakhir"] = df_sleeping["Hari Sejak Order Terakhir"].replace(99999, "Baru/Master")
+                
+                # --- FIX PYARROW: Konversi seluruh kolom menjadi teks sebelum di-replace ---
+                df_sleeping["Hari Sejak Order Terakhir"] = df_sleeping["Hari Sejak Order Terakhir"].astype(str).replace("99999", "Baru/Master")
+                
                 st.dataframe(df_sleeping, use_container_width=True)
         else: st.success("Semua toko langganan sudah order di periode ini.")
 
