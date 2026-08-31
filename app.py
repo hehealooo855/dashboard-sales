@@ -1597,15 +1597,37 @@ def main_dashboard():
                 st.info("Tidak ada data dasar.")
                 return
                 
-            # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI & BRAND
+            # --- FUNGSI PEMETAAN AREA OTOMATIS ---
+            def tentukan_area(row):
+                sales = str(row['Penjualan']).upper().strip()
+                kota = str(row['Kota']).upper().strip() if 'Kota' in row else ''
+                
+                if 'SRI RAHMADHANI' in sales or 'SRI RAMADHANI' in sales:
+                    if 'SIANTAR' in kota or 'PEMATANGSIANTAR' in kota:
+                        return 'Area Siantar'
+                    return 'Area Lainnya'
+                    
+                if sales in ['BASTIAN']: return 'Area 3'
+                if sales in ['GANI', 'HAMZAH', 'FANDI', 'RIZKI']: return 'Area 2'
+                if sales in ['FERY', 'SANTI', 'DINA']: return 'Area 1'
+                if sales in ['RAPI', 'WIRA', 'DEVI', 'MAWAR', 'ADE', 'THERESYA', 'DWI']: return 'Area 1 & 3'
+                if sales in ['RISKA MT', 'ROZY MT']: return 'Area MT'
+                
+                # Bayu akan dilabeli dinamis, Anda bisa memfilternya bersamaan dengan filter Brand di UI
+                if sales == 'BAYU': return 'Area 2 & 3' 
+                
+                return 'Area Lainnya'
+
+            df_base_harian['Area'] = df_base_harian.apply(tentukan_area, axis=1)
+
+            # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI, BRAND & AREA
             list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
             list_sales = [s for s in list_sales if s != 'Non-Sales']
             
-            # (Pastikan nama kolom 'Provinsi' dan 'Kota' sesuai dengan yang ada di Google Sheets Anda. 
-            # Jika namanya beda, misal 'Kabupaten', silakan ganti teks 'Kota' di bawah ini)
             list_provinsi = sorted(df_base_harian['Provinsi'].astype(str).dropna().unique()) if 'Provinsi' in df_base_harian.columns else []
             list_kota = sorted(df_base_harian['Kota'].astype(str).dropna().unique()) if 'Kota' in df_base_harian.columns else []
             list_brand = sorted(df_base_harian['Merk'].astype(str).dropna().unique())
+            list_area = sorted(df_base_harian['Area'].astype(str).unique())
             
             with st.form(key="form_filter_harian"):
                 col_h1, col_h2 = st.columns(2)
@@ -1614,14 +1636,16 @@ def main_dashboard():
                 with col_h2:
                     f_sales = st.multiselect("👤 Pilih Salesman (Wajib):", list_sales)
                 
-                # Baris Filter Tambahan (Opsional)
                 st.markdown("<hr style='margin: 0.5em 0;'>", unsafe_allow_html=True)
-                col_f1, col_f2, col_f3 = st.columns(3)
+                # Membelah menjadi 4 kolom agar Area bisa masuk
+                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1:
-                    f_prov = st.multiselect("🗺️ Provinsi (Kosong = Semua):", list_provinsi)
+                    f_area = st.multiselect("📍 Area (Kosong = Semua):", list_area)
                 with col_f2:
-                    f_kota = st.multiselect("🏙️ Kota (Kosong = Semua):", list_kota)
+                    f_prov = st.multiselect("🗺️ Provinsi (Kosong = Semua):", list_provinsi)
                 with col_f3:
+                    f_kota = st.multiselect("🏙️ Kota (Kosong = Semua):", list_kota)
+                with col_f4:
                     f_brand = st.multiselect("📦 Brand (Kosong = Semua):", list_brand)
                     
                 submit_harian = st.form_submit_button("🔍 Tampilkan Detail")
@@ -1630,7 +1654,6 @@ def main_dashboard():
                 st.info("Silakan pilih rentang tanggal, nama salesman, lalu klik 'Tampilkan Detail'.")
                 return
                 
-            # Mengekstrak tanggal awal dan akhir dari input
             if isinstance(f_tanggal, tuple):
                 if len(f_tanggal) == 2:
                     start_date, end_date = f_tanggal
@@ -1639,8 +1662,12 @@ def main_dashboard():
             else:
                 start_date = end_date = f_tanggal
 
-            # --- PENYARINGAN DATA MASTER SECARA GLOBAL (BERDASARKAN LOKASI & BRAND) ---
+            # --- PENYARINGAN DATA MASTER SECARA GLOBAL ---
             df_master_filtered = df_base_harian.copy()
+            
+            # Eksekusi Filter Area
+            if f_area:
+                df_master_filtered = df_master_filtered[df_master_filtered['Area'].isin(f_area)]
             if f_prov and 'Provinsi' in df_master_filtered.columns:
                 df_master_filtered = df_master_filtered[df_master_filtered['Provinsi'].isin(f_prov)]
             if f_kota and 'Kota' in df_master_filtered.columns:
