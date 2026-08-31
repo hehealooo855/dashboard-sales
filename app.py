@@ -1620,90 +1620,7 @@ def main_dashboard():
 
             df_base_harian['Area'] = df_base_harian.apply(tentukan_area, axis=1)
 
-            # --- KAMUS SEMENTARA: DALAM & LUAR KOTA ---
-            # Anda bisa menambahkan nama toko lain ke dalam daftar ini ke depannya
-            DAFTAR_LUAR_KOTA = [
-                'HIJRAH STORE COSMETIK', 'BASRI ( TOKO TIA JAYA )', 'PT.SURIATAMA MAHKOTA KENCANA (LHOKSUMAWE)',
-                'TOKO BERKAT SYUKUR', 'TOKO JAKARTA KOSMETIK', 'TOKO RANGKARYA KOSMETIK', 'UD.TIARA', 
-                'APOTEK HM', 'OSAKA SWALAYAN', 'TOKO ARISMA', 'TOKO ASYIFA COSMETIK', 'TOKO DUTA COSMETIK ( BIREUEN )',
-                'TOKO UD.MURSAL', 'AYADEHA SHOP', 'PT.SURIATAMA MAHKOTA.K(BIREUEN)', 'TOKO ISTANA COSMETIC GROSIR BIREUN',
-                'TOKO BELANGI PELANGI', 'TOKO LA BELLA', 'TOKO RESTU', 'TOKO SERBA ADA SQUARE', 'TOKO SUSAN COSMETIK',
-                'TOKO TRB KANVAS', 'APOTIK LUPITA RIZQI', 'DIFZA MANDIRI MINI MARKE', 'HS JAYA OFFICIAL',
-                'TOKO HS JAYA OFFICIAL', 'JELITA STORE', 'MAARIFAT SWALAYAN', 'MAHLIL BARU SWALAYAN',
-                'TOKO MINI MARKET 68', 'TOKO NERDI SHOP', 'TOKO NR STORE', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - ACEH )',
-                'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - BATOH )', 'PT. PESONA ASIA GROUP ( GM STORE )',
-                'PT. SURIATAMA MAHKOTA KENCANA (SIMPANG LIMA BANDA ACEH )', 'PT.KOTTY CENTRAL NUSANTARA',
-                'PT.RADYSA DHARMA ABADI ( BANDA ACEH )', 'PT.SURIATAMA MAHKOTA.K ( SS MALL BANDA ACEH )',
-                'RIDHA SWALAYAN', 'SWALAYAN NADYA BATOH', 'SYAFRIZAL / TOKO TARI KOSMETIK', 'TOKO ABI NANDA',
-                'TOKO AL MALY', 'TOKO ALBARKI STORE', 'TOKO AMEL JAYA OLSHOP', 'TOKO APALEH SWALAYAN', 'TOKO ARAFAH BARU',
-                'TOKO ARYQA', 'TOKO AWANA MART', 'TOKO BIR ON MART', 'TOKO CEKMI SWALAYAN', 'TOKO DEA',
-                'TOKO EMHA LAM ATEUK', 'TOKO EMHA SIMPANG TUNGKOP', 'TOKO EVERLAND', 'TOKO FAILA COSMETICS',
-                'TOKO FAIRY COSMETICS', 'TOKO FAWRA MART', 'TOKO ICUT COSMETIK', 'TOKO INGIN JAYA SEMBAKO',
-                'TOKO KAJHU SWALAYAN', 'TOKO KALISA COSMETICS', 'TOKO KHAJU SWALAYAN', 'TOKO MARISSA', 'TOKO NATURAL',
-                'TOKO NURUL COSMETIK', 'TOKO PUTROE COSMETICS', 'TOKO RQA MENS GROOMING', 'TOKO SAFIR COSMETICS',
-                'TOKO YUSREZAIF COSMETICS', 'UD.ABRAR', 'UD.BALQIS', 'WIWW SHOP', 'YANA INDAH PERTIWI ( TOKO HAYANA )',
-                'TOKO ADI TOSERBA', 'TOKO ADI TOSERBA BEAUTY STORE', 'CUT NUN SWALAYAN', 'MAKMUR SWALAYAN ( IDI )',
-                'MAKMUR SWALAYAN 2', 'TOKO BERKAT COSMETIK', 'TOKO CITRA INDAH', 'TOKO FIDA COSMETIK',
-                'TOKO NASABA LAMA', 'TOKO POCUT', 'TOKO PRINCESS COSMETICS'
-            ]
-            
-            DAFTAR_DALAM_KOTA = [
-                'FRENKY', 'TOKO ENDANG ( BELAWAN )', 'TOKO ENDANG (BELAWAN)', 'TOKO TATA', 'TOKO IIS PONSEL',
-                'PT.MUTIARA NIRMALA CEMERLANG (ACHIN / EVI)', 'TOKO IVANA BEAUTY', 'TOKO LILY', 'UD. ROMAIDA',
-                'APOTIK BAHTERA FARMA', 'CHELSEA STORE', 'TOKO SINAR BARU ( MARTUBUNG )', 'CV.SINAR BARU ABADI',
-                'TOKO IDA (PUSPA)', 'AA SWALAYAN', 'LICOS BEAUTY ', 'TOKO VIVI (PETISAH)', 'TOKO ONE SHOP',
-                'TOKO SIANTURI I', 'TOKO LILI NAULI', 'TOKO OBAT ELSA', 'UD. HAMONANGAN', 'TOKO SIANTURI II',
-                'TOKO SERBU CITRA', 'TOKO DYSA KOSMETIK', 'TOKO DWIE KOSMETIK', 'TOKO RITA KOSMETIK', 'SHASA BEAUTY STORE',
-                'TOKO SAHATA', 'TOKO CITRA FANS', 'CUPIKA KOSMETIK', 'TOKO NEW ANUGERAH', 'TOKO LINDA',
-                'HABITAT ANUGRAH SENTOSA ( TK. LINDA )', 'TOKO LINDA ( PETISAH )', 'TOKO LINDA ( HIOCEK BAHAGIA )',
-                'TOKO LINDA ( SEI KAMBING )', 'TOKO LINDA COSMETIK', 'TOKO LINDA KARMILA', 'TOKO ISANI',
-                'TOKO ISANI ( LAU DENDANG )', 'TOKO BUDI AGUNG', 'TOKO WIEKER', 'TOKO WIWIN KOSMETIK', 'TOKO KURNIA',
-                'TOKO MAJU JAYA 1', 'APOTEK MAJU JAYA I', 'TOKO BUNDA KOSMETIK ( LAU DENDANG )', 'TOKO SAUDARA',
-                'TOKO SAUDARA ( BHAYANGKARA )', 'TOKO BLESS (MARELAN)', 'TOKO DEWA-DEWI KOSMETIK', 'TOKO DEWI ( S. KAMBING )',
-                'TOKO DEWI KOSMETIK', 'TOKO DEWI KOSMETIK ( SEI KAMBING) ', 'APOTIK NEW SAHABAT', 'APOTEK MAJU JAYA II',
-                'TOKO MAJU JAYA 2', 'TOKO INTAN COSMETIK ( NAGAN RAYA )', 'TOKO ARON', 'TOKO DEDI ( HIJAU ALAM JAYA )',
-                'TOKO HIJAU ALAM JAYA', 'TOKO NETA KOSMETIK', 'APOTIK RAYADO', 'TOKO UTAMA', 'IRAWANTI', 'TOKO AMEY',
-                'TOKO OLIN BEAUTY', 'APOTEK RAYA IV', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - MEDAN )',
-                'TOKO FENDI COSMETIC', 'TOKO FENDI COSMETIK', 'TOKO YOHANA', 'MURCEP SHOP', 'TOKO BELICAY',
-                'TOKO SERBU (ACEN)', 'TOKO SARI CAHAYA', 'TOKO MORA COSMETIK', 'TOKO MORA KOSMETIK', 'TOKO MOM ZIE',
-                'TOKO QUEEN KOSMETIK ( MARELAN )', 'TOKO MITHA ADYA', 'TOKO MITHA KOSMETIK', 'TOKO PERFECT 10',
-                'TOKO JEPRI', 'TOKO KAZANA', 'FENNA FANTINI ( TOKO FENS TITI PAPAN )', 'TOKO YUNDA COSMETIK',
-                'TOKO WM COSMETIK', 'TOKO WM COSMETIK ( MABAR )', 'PT. YUNIKUSHO PRIMA LESTARI', 'TOKO MADE BY CARAMEL',
-                'TOKO SAZIFA KOSMETIK', 'TOKO SAZIFA KOSMTEIK', 'TOKO DHIFA KOSMETIK', 'TOKO WP BEAUTY', 'TOKO SUN KADO',
-                'TOKO SUN KADO MABAR', 'NAZWA BEAUTY', 'BEAUTY CIPTA ABADI ( KOTTY - MEDAN )'
-            ]
-
-            # --- FUNGSI PEMETAAN OTOMATIS (AREA & KATEGORI) ---
-            def tentukan_area_dan_kategori(row):
-                sales = str(row['Penjualan']).upper().strip()
-                kota = str(row['Kota']).upper().strip() if 'Kota' in row else ''
-                toko = str(row['Nama Outlet']).upper().strip() if 'Nama Outlet' in row else ''
-                
-                # 1. Klasifikasi Area
-                area = 'Area Lainnya'
-                if 'SRI RAHMADHANI' in sales or 'SRI RAMADHANI' in sales:
-                    area = 'Area Siantar' if 'SIANTAR' in kota or 'PEMATANGSIANTAR' in kota else 'Area Lainnya'
-                elif sales in ['BASTIAN']: area = 'Area 3'
-                elif sales in ['GANI', 'HAMZAH', 'FANDI', 'RIZKI']: area = 'Area 2'
-                elif sales in ['FERY', 'SANTI', 'DINA']: area = 'Area 1'
-                elif sales in ['RAPI', 'WIRA', 'DEVI', 'MAWAR', 'ADE', 'THERESYA', 'DWI']: area = 'Area 1 & 3'
-                elif sales in ['RISKA MT', 'ROZY MT']: area = 'Area MT'
-                elif sales == 'BAYU': area = 'Area 2 & 3' 
-                
-                # 2. Klasifikasi Kategori (Dalam/Luar Kota)
-                kategori = 'Lainnya / Belum Terpetakan'
-                if area == 'Area MT':
-                    kategori = 'Semua MT' # MT dijadikan satu kesatuan sesuai instruksi Anda
-                elif toko in DAFTAR_DALAM_KOTA:
-                    kategori = 'Dalam Kota'
-                elif toko in DAFTAR_LUAR_KOTA:
-                    kategori = 'Luar Kota'
-                    
-                return pd.Series([area, kategori])
-
-            df_base_harian[['Area', 'Kategori Wilayah']] = df_base_harian.apply(tentukan_area_dan_kategori, axis=1)
-
-            # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI, BRAND & KATEGORI
+            # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI, BRAND & AREA
             list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
             list_sales = [s for s in list_sales if s != 'Non-Sales']
             
@@ -1717,33 +1634,24 @@ def main_dashboard():
                 with col_h1:
                     f_tanggal = st.date_input("🗓️ Pilih Rentang Tanggal:", value=(datetime.date.today(), datetime.date.today()))
                 with col_h2:
-                    # Menambahkan opsi Auto-Detect jika kolom ini dibiarkan kosong namun filter Area diisi
-                    f_sales = st.multiselect("👤 Pilih Salesman (Kosongkan jika ingin menarik dari Area):", list_sales)
+                    f_sales = st.multiselect("👤 Pilih Salesman (Wajib):", list_sales)
                 
                 st.markdown("<hr style='margin: 0.5em 0;'>", unsafe_allow_html=True)
-                
-                # Membelah menjadi 5 kolom agar Filter Kategori bisa masuk
-                col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
+                # Membelah menjadi 4 kolom agar Area bisa masuk
+                col_f1, col_f2, col_f3, col_f4 = st.columns(4)
                 with col_f1:
-                    f_area = st.multiselect("📍 Area:", list_area)
+                    f_area = st.multiselect("📍 Area (Kosong = Semua):", list_area)
                 with col_f2:
-                    f_kategori = st.selectbox("🏘️ Kategori:", ["Semua", "Dalam Kota", "Luar Kota"])
+                    f_prov = st.multiselect("🗺️ Provinsi (Kosong = Semua):", list_provinsi)
                 with col_f3:
-                    f_prov = st.multiselect("🗺️ Provinsi:", list_provinsi)
+                    f_kota = st.multiselect("🏙️ Kota (Kosong = Semua):", list_kota)
                 with col_f4:
-                    f_kota = st.multiselect("🏙️ Kota:", list_kota)
-                with col_f5:
-                    f_brand = st.multiselect("📦 Brand:", list_brand)
+                    f_brand = st.multiselect("📦 Brand (Kosong = Semua):", list_brand)
                     
                 submit_harian = st.form_submit_button("🔍 Tampilkan Detail")
                 
-            # --- LOGIKA AUTO-DETECT SALESMAN & VALIDASI ---
-            # Jika user memilih Area tapi mengosongkan Salesman, sistem akan otomatis mengambil semua sales di Area tersebut
-            if submit_harian and not f_sales and f_area:
-                f_sales = df_base_harian[df_base_harian['Area'].isin(f_area)]['Penjualan'].astype(str).unique().tolist()
-                
             if not f_sales or not submit_harian:
-                st.info("Silakan pilih rentang tanggal, nama salesman (atau pilih Area), lalu klik 'Tampilkan Detail'.")
+                st.info("Silakan pilih rentang tanggal, nama salesman, lalu klik 'Tampilkan Detail'.")
                 return
                 
             if isinstance(f_tanggal, tuple):
@@ -1757,11 +1665,9 @@ def main_dashboard():
             # --- PENYARINGAN DATA MASTER SECARA GLOBAL ---
             df_master_filtered = df_base_harian.copy()
             
-            # Eksekusi Seluruh Filter
+            # Eksekusi Filter Area
             if f_area:
                 df_master_filtered = df_master_filtered[df_master_filtered['Area'].isin(f_area)]
-            if f_kategori != "Semua":
-                df_master_filtered = df_master_filtered[df_master_filtered['Kategori Wilayah'] == f_kategori]
             if f_prov and 'Provinsi' in df_master_filtered.columns:
                 df_master_filtered = df_master_filtered[df_master_filtered['Provinsi'].isin(f_prov)]
             if f_kota and 'Kota' in df_master_filtered.columns:
