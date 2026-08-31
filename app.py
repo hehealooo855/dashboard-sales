@@ -443,31 +443,37 @@ def load_data_from_url():
         # --- KAMERA PENGINTAI AUDIT MENTAH ---
         df['Sales_Asli_Fakturis'] = df['Penjualan'].copy()
         
-        # 1. Ambil daftar sales resmi dari target & urutkan dari nama terpanjang
+        # 1. Ambil daftar sales resmi dari target
         valid_sales_names = list(INDIVIDUAL_TARGETS.keys()) + ["MADONG", "LISMAN", "AKBAR"]
         valid_sales_names_sorted = sorted(valid_sales_names, key=len, reverse=True)
         
-        # 2. Fungsi Mesin Pelacak Cerdas (Word Boundary Regex)
+        # 2. Fungsi Mesin Pelacak Cerdas
         def smart_sales_mapper(raw_val):
             raw_upper = str(raw_val).upper().strip()
-            if raw_upper in ['NAN', 'NONE', '', '-']: return 'Non-Sales'
+            # Hanya tangkap yang benar-benar kosong
+            if raw_upper in ['NAN', 'NONE', '', '-', '0', '0.0']: return 'Non-Sales'
             if raw_upper in SALES_MAPPING: raw_upper = SALES_MAPPING[raw_upper]
             for official_name in valid_sales_names_sorted:
                 pattern = r'\b' + re.escape(official_name) + r'\b'
                 if re.search(pattern, raw_upper): return official_name
-            return raw_upper
+            return raw_upper # Erni ST tetap akan keluar sebagai 'ERNI ST' di tahap ini
             
         df['Penjualan'] = df['Penjualan'].apply(smart_sales_mapper)
-        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
         
         # --- KAMERA PENGINTAI STATUS SEBELUM AUTO-HEALING ---
         df['Status_Awal_Mesin'] = df['Penjualan'].copy()
         
-        # Auto-Healing Cerdas
-        df_valid = df[df['Penjualan'] != 'Non-Sales']
+        # --- 3. AUTO-HEALING CERDAS DULUAN ---
+        # Hanya menyembuhkan baris yang murni kosong ('Non-Sales'), Erni ST aman karena belum dilabeli Non-Sales
+        df_valid = df[df['Penjualan'].isin(valid_sales_names)]
         outlet_to_sales = df_valid.groupby('Nama Outlet')['Penjualan'].first().to_dict()
         mask_non = df['Penjualan'] == 'Non-Sales'
         df.loc[mask_non, 'Penjualan'] = df.loc[mask_non, 'Nama Outlet'].map(outlet_to_sales).fillna('Non-Sales')
+        
+        # --- 4. SAPU BERSIH NAMA ASING ---
+        # Setelah penyembuhan selesai, buang Erni ST (dan nama di luar target lainnya) ke Non-Sales agar dasbor tetap bersih
+        df.loc[~df['Penjualan'].isin(valid_sales_names), 'Penjualan'] = 'Non-Sales'
+        
         df['Penjualan'] = df['Penjualan'].astype('category')
     else:
         df['Penjualan'] = 'Non-Sales'
