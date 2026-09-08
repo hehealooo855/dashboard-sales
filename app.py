@@ -346,8 +346,7 @@ def load_data_from_url():
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyEgQMxR75QW7HYKbJov4WtNuZmghPAhMHeH-cI5Wem_NwIMuC95sqa8QzXh2p1DX-HxQSJGptz_xy/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBTn4hKKl-e9BFITUW2dYBsKfMbTBc-zrdn3qweQxzL_tiTr3FMi4cGE-17IrixYwg9T-4YugLcQdq/pub?output=csv",
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVyv41klRlykXzW5wYo01y5a4HtplUEXVMpt05DzEO-ijxJ9T2Xk5Yiruv4uZW--QM0NIU3fnww_xX/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv",
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQUM6CmuRm7AgBMeWLk5dmK14M0VY3eyMLcAZghfLujGefU2e4cEOMHMNlkEfUXu6BlRuixLECMrVCw/pub?output=csv"
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_5jmQOnxI-9BwKolYKVhtdmlgQg4QNJ4SfqcB8evLvHFCdD-s6Gs73gW4uJoKJtapngxwJ4WVMXPs/pub?output=csv"
     ]
     
     def fetch_url(url):
@@ -1657,6 +1656,26 @@ def main_dashboard():
                 'TOKO WM COSMETIK', 'TOKO WM COSMETIK ( MABAR )', 'PT. YUNIKUSHO PRIMA LESTARI', 'TOKO MADE BY CARAMEL',
                 'TOKO SAZIFA KOSMETIK', 'TOKO SAZIFA KOSMTEIK', 'TOKO DHIFA KOSMETIK', 'TOKO WP BEAUTY', 'TOKO SUN KADO',
                 'TOKO SUN KADO MABAR', 'NAZWA BEAUTY', 'BEAUTY CIPTA ABADI ( KOTTY - MEDAN )'
+            ]
+
+            DAFTAR_MT = [
+                'PT. SMARCO MANDIRI SUKSES', 'MARTIN / OKE SWALAYAN (JAMIN)', 'SINURAYA SWALAYAN', 
+                'LIORA MART', 'CHYKES MINI MARKET', 'IDO SWALAYAN I', 'MARTIN / OKE SUPERMARKET ( TANJUNG MORAWA )', 
+                'REPA SWALAYAN', 'PT. SURIATAMA MAHKOTA KENCANA ( TAMORA )', 'BEBIE SUSANTO (IRIAN TJ.MORAWA)', 
+                'AMPLAS SWALAYAN', 'PT.JAYA ANUGRAH S.A(BRAST.G)', 'PT.JAYA ANUGRAH S.A (BRAST.G)', 
+                'PT.TAHTA SUKSES ABADI/BRASTAGI TIARA', 'PT.JAYA ANUGRAH S.A(BRAST.C)', 'PT.JAYA ANUGRAH S.A (BRAST.C)', 
+                'PT.JAYA ANUGRAH SUKSES ABADI/BRASTAGI MANHATTAN', 'PT.JAYA ANUGRAH SUKSES ABADI/ BRASTAGI MANHATTAN', 
+                'PT. MITRA BELANJA ANDA ( BRASTAGI CEMARA )', 'CV. BIMA MART', 'CV.IRAMA HOUSEWARE INDONESIA', 
+                'SANDY TURANGAN (DIAMOND CITRA WISATA)', 'PT. DIAMOND SUKSES WIRAUSAHA', 'BINA JOHOR SWALAYAN', 
+                'TOKO JAYA BARU', 'CV.SURYA MENTARI ( SUN SUPERMARKET )', 'PT.MUSTIKA MITRA ABADI ( ROYAL MART )', 
+                'PT.SURIATAMA MAHKOTA.K(KP. BARU)', 'PT.SURIATAMA MAHKOTA.K (MEDAN JOHOR)', 'WILLOW MART', 
+                'V- MART COFFEE', 'SAIGON SWALAYAN', 'PT.TIGA SAUDARA ASIA', 'CV. GRIYA MANDIRI SEJAHTERA ( MANDIRI SWALAYAN )', 
+                'SUN KADO MABAR', 'PT. JIMART SUKSES ABADI', 'PT.JIMART SUKSES ABADI', 'FUIMI HARSO ( S24 MINI MARKET )', 
+                'PT.CEMARA ASRI PASAR BUAH', 'PT.KEMANG INDAH PASAR BUAH', 'PT. PLANGKARAYA SEMI MART', 
+                'IDO SWALAYAN II', 'SEMBADA SWALAYAN', 'ANGGI MINI MARKET', 'BAHAGIA 2 SWALAYAN', 'MINI MARKET SITABAR', 
+                'RR SWALAYAN', 'AA SWALAYAN', 'LUCKY JAYA SWALAYAN/TITI PAPAN', 'LUCKY JAYA SWALAYAN (VETERAN)', 
+                'PT.SURIATAMA MAHKOTA.K(MARELAN)', 'CV. IRIAN BAHAGIA BERSAMA (HM.J)', 'PT. IRIAN UNTUNG BERSAMA(AKSARA)', 
+                'CV. IRIAN SEJAHTERA BERSAMA (IRIAN TEMBUNG)', 'UCI MARKET'
             ]
 
            # --- MESIN TURBO: PEMETAAN OTOMATIS (VECTORIZATION PANDAS) ---
