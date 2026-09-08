@@ -1658,6 +1658,7 @@ def main_dashboard():
                 'TOKO SUN KADO MABAR', 'NAZWA BEAUTY', 'BEAUTY CIPTA ABADI ( KOTTY - MEDAN )'
             ]
 
+            # --- KAMUS MASTER MODERN TRADE (MT) ---
             DAFTAR_MT = [
                 'PT. SMARCO MANDIRI SUKSES', 'MARTIN / OKE SWALAYAN (JAMIN)', 'SINURAYA SWALAYAN', 
                 'LIORA MART', 'CHYKES MINI MARKET', 'IDO SWALAYAN I', 'MARTIN / OKE SUPERMARKET ( TANJUNG MORAWA )', 
@@ -1678,41 +1679,59 @@ def main_dashboard():
                 'CV. IRIAN SEJAHTERA BERSAMA (IRIAN TEMBUNG)', 'UCI MARKET'
             ]
 
-           # --- MESIN TURBO: PEMETAAN OTOMATIS (VECTORIZATION PANDAS) ---
+            # --- KAMUS ALIAS / KATA KUNCI (UNTUK MENGATASI KASUS KAZANA & SUZUYA) ---
+            # Jika fakturis mengetik nama singkatan atau berbeda, mesin akan menerjemahkannya di sini
+            STORE_ALIASES = {
+                'SUZUYA LHOKSEUMAWE': 'PT.SURIATAMA MAHKOTA KENCANA (LHOKSUMAWE)',
+                'SUZUYA BIREUEN': 'PT.SURIATAMA MAHKOTA.K(BIREUEN)',
+                'KAZANA': 'TOKO KAZANA',
+                # Anda bisa menambah nama anomali lainnya di sini ke depannya
+                # 'NAMA SINGKAT': 'NAMA RESMI DI GOOGLE SHEETS',
+            }
+
+            # --- MESIN TURBO: PEMETAAN OTOMATIS (VECTORIZATION PANDAS) ---
             # Jauh lebih cepat (0.05 detik) karena tidak menggunakan loop baris per baris
             
             # 1. Standardisasi teks untuk pencocokan cepat
             s_col = df_base_harian['Penjualan'].astype(str).str.upper().str.strip()
             k_col = df_base_harian['Kota'].astype(str).str.upper().str.strip()
             t_col = df_base_harian['Nama Outlet'].astype(str).str.upper().str.strip()
+
+            # Normalisasi nama toko berdasarkan Kamus Alias secara instan
+            for alias, target_name in STORE_ALIASES.items():
+                t_col = t_col.str.replace(alias, target_name, regex=False)
             
             # 2. Inisialisasi Nilai Default
             df_base_harian['Area'] = 'Area Lainnya'
             df_base_harian['Kategori Wilayah'] = 'Lainnya / Belum Terpetakan'
             
-            # 3. Eksekusi Stempel Area Secara Masif (Vectorized)
+            # --- LAYER 1: PRIORITAS UTAMA (MODERN TRADE / MT) ---
+            set_mt = set(DAFTAR_MT)
+            mask_mt = t_col.isin(set_mt) | s_col.isin(['RISKA MT', 'ROZY MT'])
+
+            df_base_harian.loc[mask_mt, 'Area'] = 'Area MT'
+            df_base_harian.loc[mask_mt, 'Kategori Wilayah'] = 'Semua MT'
+            
+            # --- LAYER 2: WILAYAH SALESMAN & AREA REGULER (NON-MT) ---
+            # Hanya memproses toko yang TIDAK masuk keranjang MT
+            non_mt_mask = ~mask_mt
+
             mask_sri = s_col.str.contains('SRI RAHMADHANI') | s_col.str.contains('SRI RAMADHANI')
             mask_siantar = k_col.str.contains('SIANTAR') | k_col.str.contains('PEMATANGSIANTAR')
             
-            df_base_harian.loc[mask_sri & mask_siantar, 'Area'] = 'Area Siantar'
-            df_base_harian.loc[s_col.isin(['BASTIAN']), 'Area'] = 'Area 3'
-            df_base_harian.loc[s_col.isin(['GANI', 'HAMZAH', 'FANDI', 'RIZKI']), 'Area'] = 'Area 2'
-            df_base_harian.loc[s_col.isin(['FERY', 'SANTI', 'DINA']), 'Area'] = 'Area 1'
-            df_base_harian.loc[s_col.isin(['RAPI', 'WIRA', 'DEVI', 'MAWAR', 'ADE', 'THERESYA', 'DWI']), 'Area'] = 'Area 1 & 3'
-            df_base_harian.loc[s_col.isin(['RISKA MT', 'ROZY MT']), 'Area'] = 'Area MT'
-            df_base_harian.loc[s_col == 'BAYU', 'Area'] = 'Area 2 & 3'
+            df_base_harian.loc[non_mt_mask & mask_sri & mask_siantar, 'Area'] = 'Area Siantar'
+            df_base_harian.loc[non_mt_mask & s_col.isin(['BASTIAN']), 'Area'] = 'Area 3'
+            df_base_harian.loc[non_mt_mask & s_col.isin(['GANI', 'HAMZAH', 'FANDI', 'RIZKI']), 'Area'] = 'Area 2'
+            df_base_harian.loc[non_mt_mask & s_col.isin(['FERY', 'SANTI', 'DINA']), 'Area'] = 'Area 1'
+            df_base_harian.loc[non_mt_mask & s_col.isin(['RAPI', 'WIRA', 'DEVI', 'MAWAR', 'ADE', 'THERESYA', 'DWI']), 'Area'] = 'Area 1 & 3'
+            df_base_harian.loc[non_mt_mask & (s_col == 'BAYU'), 'Area'] = 'Area 2 & 3'
             
-            # 4. Eksekusi Stempel Kategori Menggunakan Himpunan (Set Indexing)
+            # --- LAYER 3: KLASIFIKASI DALAM / LUAR KOTA (UNTUK AREA REGULER) ---
             set_dalam = set(DAFTAR_DALAM_KOTA)
             set_luar = set(DAFTAR_LUAR_KOTA)
             
-            mask_mt = df_base_harian['Area'] == 'Area MT'
-            mask_dalam = t_col.isin(set_dalam)
-            mask_luar = t_col.isin(set_luar)
-            
-            df_base_harian.loc[mask_mt, 'Kategori Wilayah'] = 'Semua MT'
-            df_base_harian.loc[~mask_mt & mask_dalam, 'Kategori Wilayah'] = 'Dalam Kota'
-            df_base_harian.loc[~mask_mt & mask_luar, 'Kategori Wilayah'] = 'Luar Kota'
+            df_base_harian.loc[non_mt_mask & t_col.isin(set_dalam), 'Kategori Wilayah'] = 'Dalam Kota'
+            df_base_harian.loc[non_mt_mask & t_col.isin(set_luar), 'Kategori Wilayah'] = 'Luar Kota'
 
             # 1. UI FILTER RENTANG WAKTU, MULTI SALESMAN, LOKASI, BRAND & KATEGORI
             list_sales = sorted(df_base_harian['Penjualan'].astype(str).unique())
