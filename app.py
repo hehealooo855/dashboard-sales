@@ -3234,20 +3234,48 @@ def main_dashboard():
                             st.info("Tidak ada data dasar untuk diaudit.")
                             return
 
-                        # --- 1. PEMETAAN OTORITAS BRAND & HISTORICAL VOTING ---
+                        # ==========================================
+                        # 1. DATABASE TERITORIAL ABSOLUT
+                        # ==========================================
+                        SET_AREA_1 = set([
+                            'HIJRAH STORE COSMETIK', 'BASRI ( TOKO TIA JAYA )', 'PT.SURIATAMA MAHKOTA KENCANA (LHOKSUMAWE)', 'TOKO BERKAT SYUKUR', 'TOKO JAKARTA KOSMETIK', 'TOKO RANGKARYA KOSMETIK', 'UD.TIARA', 'APOTEK HM', 'OSAKA SWALAYAN', 'TOKO ARISMA', 'TOKO ASYIFA COSMETIK', 'TOKO DUTA COSMETIK ( BIREUEN )', 'TOKO UD.MURSAL', 'AYADEHA SHOP', 'PT.SURIATAMA MAHKOTA.K(BIREUEN)', 'TOKO ISTANA COSMETIC GROSIR BIREUN', 'TOKO BELANGI PELANGI', 'TOKO LA BELLA', 'TOKO RESTU', 'TOKO SERBA ADA SQUARE', 'TOKO SUSAN COSMETIK', 'TOKO TRB KANVAS', 'APOTIK LUPITA RIZQI', 'DIFZA MANDIRI MINI MARKE', 'HS JAYA OFFICIAL', 'TOKO HS JAYA OFFICIAL', 'JELITA STORE', 'MAARIFAT SWALAYAN', 'MAHLIL BARU SWALAYAN', 'TOKO MINI MARKET 68', 'TOKO NERDI SHOP', 'TOKO NR STORE', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - ACEH )', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - BATOH )', 'PT. PESONA ASIA GROUP ( GM STORE )', 'PT. SURIATAMA MAHKOTA KENCANA (SIMPANG LIMA BANDA ACEH )', 'PT.KOTTY CENTRAL NUSANTARA', 'PT.RADYSA DHARMA ABADI ( BANDA ACEH )', 'PT.SURIATAMA MAHKOTA.K ( SS MALL BANDA ACEH )', 'RIDHA SWALAYAN', 'SWALAYAN NADYA BATOH', 'SYAFRIZAL / TOKO TARI KOSMETIK', 'TOKO ABI NANDA', 'TOKO AL MALY', 'TOKO ALBARKI STORE', 'TOKO AMEL JAYA OLSHOP', 'TOKO APALEH SWALAYAN', 'TOKO ARAFAH BARU', 'TOKO ARYQA', 'TOKO AWANA MART', 'TOKO BIR ON MART', 'TOKO CEKMI SWALAYAN', 'TOKO DEA', 'TOKO EMHA LAM ATEUK', 'TOKO EMHA SIMPANG TUNGKOP', 'TOKO EVERLAND', 'TOKO FAILA COSMETICS', 'TOKO FAIRY COSMETICS', 'TOKO FAWRA MART', 'TOKO ICUT COSMETIK', 'TOKO INGIN JAYA SEMBAKO', 'TOKO KAJHU SWALAYAN', 'TOKO KALISA COSMETICS', 'TOKO KHAJU SWALAYAN', 'TOKO MARISSA', 'TOKO NATURAL', 'TOKO NURUL COSMETIK', 'TOKO PUTROE COSMETICS', 'TOKO RQA MENS GROOMING', 'TOKO SAFIR COSMETICS', 'TOKO YUSREZAIF COSMETICS', 'UD.ABRAR', 'UD.BALQIS', 'WIWW SHOP', 'YANA INDAH PERTIWI ( TOKO HAYANA )', 'TOKO ADI TOSERBA', 'TOKO ADI TOSERBA BEAUTY STORE', 'CUT NUN SWALAYAN', 'MAKMUR SWALAYAN ( IDI )', 'MAKMUR SWALAYAN 2', 'TOKO BERKAT COSMETIK', 'TOKO CITRA INDAH', 'TOKO FIDA COSMETIK', 'TOKO NASABA LAMA', 'TOKO POCUT', 'TOKO PRINCESS COSMETICS',
+                            'FRENKY', 'TOKO ENDANG ( BELAWAN )', 'TOKO ENDANG (BELAWAN)', 'TOKO TATA', 'TOKO IIS PONSEL', 'PT.MUTIARA NIRMALA CEMERLANG (ACHIN / EVI)', 'TOKO IVANA BEAUTY', 'TOKO LILY', 'UD. ROMAIDA', 'APOTIK BAHTERA FARMA', 'CHELSEA STORE', 'TOKO SINAR BARU ( MARTUBUNG )', 'CV.SINAR BARU ABADI', 'TOKO IDA (PUSPA)', 'AA SWALAYAN', 'LICOS BEAUTY ', 'TOKO VIVI (PETISAH)', 'TOKO ONE SHOP', 'TOKO SIANTURI I', 'TOKO LILI NAULI', 'TOKO OBAT ELSA', 'UD. HAMONANGAN', 'TOKO SIANTURI II', 'TOKO SERBU CITRA', 'TOKO DYSA KOSMETIK', 'TOKO DWIE KOSMETIK', 'TOKO RITA KOSMETIK', 'SHASA BEAUTY STORE', 'TOKO SAHATA', 'TOKO CITRA FANS', 'CUPIKA KOSMETIK', 'TOKO NEW ANUGERAH', 'TOKO LINDA', 'HABITAT ANUGRAH SENTOSA ( TK. LINDA )', 'TOKO LINDA ( PETISAH )', 'TOKO LINDA ( HIOCEK BAHAGIA )', 'TOKO LINDA ( SEI KAMBING )', 'TOKO LINDA COSMETIK', 'TOKO LINDA KARMILA', 'TOKO ISANI', 'TOKO ISANI ( LAU DENDANG )', 'TOKO BUDI AGUNG', 'TOKO WIEKER', 'TOKO WIWIN KOSMETIK', 'TOKO KURNIA', 'TOKO MAJU JAYA 1', 'APOTEK MAJU JAYA I', 'TOKO BUNDA KOSMETIK ( LAU DENDANG )', 'TOKO SAUDARA', 'TOKO SAUDARA ( BHAYANGKARA )', 'TOKO BLESS (MARELAN)', 'TOKO DEWA-DEWI KOSMETIK', 'TOKO DEWI ( S. KAMBING )', 'TOKO DEWI KOSMETIK', 'TOKO DEWI KOSMETIK ( SEI KAMBING) ', 'APOTIK NEW SAHABAT', 'APOTEK MAJU JAYA II', 'TOKO MAJU JAYA 2', 'TOKO INTAN COSMETIK ( NAGAN RAYA )', 'TOKO ARON', 'TOKO DEDI ( HIJAU ALAM JAYA )', 'TOKO HIJAU ALAM JAYA', 'TOKO NETA KOSMETIK', 'APOTIK RAYADO', 'TOKO UTAMA', 'IRAWANTI', 'TOKO AMEY', 'TOKO OLIN BEAUTY', 'APOTEK RAYA IV', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - MEDAN )', 'TOKO FENDI COSMETIC', 'TOKO FENDI COSMETIK', 'TOKO YOHANA', 'MURCEP SHOP', 'TOKO BELICAY', 'TOKO SERBU (ACEN)', 'TOKO SARI CAHAYA', 'TOKO MORA COSMETIK', 'TOKO MORA KOSMETIK', 'TOKO MOM ZIE', 'TOKO QUEEN KOSMETIK ( MARELAN )', 'TOKO MITHA ADYA', 'TOKO MITHA KOSMETIK', 'TOKO PERFECT 10', 'TOKO JEPRI', 'TOKO KAZANA', 'FENNA FANTINI ( TOKO FENS TITI PAPAN )', 'TOKO YUNDA COSMETIK', 'TOKO WM COSMETIK', 'TOKO WM COSMETIK ( MABAR )', 'PT. YUNIKUSHO PRIMA LESTARI', 'TOKO MADE BY CARAMEL', 'TOKO SAZIFA KOSMETIK', 'TOKO SAZIFA KOSMTEIK', 'TOKO DHIFA KOSMETIK', 'TOKO WP BEAUTY', 'TOKO SUN KADO', 'TOKO SUN KADO MABAR', 'NAZWA BEAUTY', 'BEAUTY CIPTA ABADI ( KOTTY - MEDAN )'
+                        ])
+
+                        SET_AREA_2 = set([
+                            'APOTEK BERTUAH', 'PT. DECO 100 (INDRAPURA)', 'PT. DECO 100 (K. TANJUNG)', 'TOKO BUTET JONI', 'TOKO RELASI BARU', 'TOKO WAHYU MARKET', 'APOTIK BINTANG TERANG', 'APOTIK FARHAN', 'APOTIK TETAP SEMANGAT ( CIKAMPAK )', 'CV. USAHA BARU', 'TOKO GLOBAL BEAUTY ( CIKAMPAK )', 'TOKO ICA COSMETIK & PARFUM', 'TOKO LISA ( KOTA PINANG )', 'APOTIK SUTA', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - R.PRAPAT )', 'PT.SURIATAMA MAHKOTA.K (RANTAU)', 'PT.SURIATAMA MAHKOTA.K (RANTAU II)', 'TOKO EVI KOSMETIK', 'TOKO JAYA BARU', 'TOKO MOLY', 'TOKO SM', 'CV, SUMBER SEGAR LESTARI (R.PRAPAT)', 'TOKO TOSEBA', 'TOKO LESTARI ( R.PRAPAT )', 'TOKO FIFO', 'TOKO DAYA FARMA', 'APOTIK MAIDI', 'TOKO ANGEL ( T.BALAI )', 'TOKO ARWANA', 'TOKO DAILY', 'TOKO MEYLIN', 'TOKO ROBIN COSMETIK', 'TOKO SARVITA', 'APOTIK BETA FARMA', 'TOKO SUKSES BERSAMA', 'CV. KISARAN RITELINDO (IRIAN KSRN)', 'MEDINA SITANGGANG.HJ', 'RINI DESWITASARI DAMANIK ( INAGUSHOP )', 'SUMBER USAHA BERSAMA KISARAN ( TK. BUDIMAN )', 'TOKO AHUK', 'TOKO ANEKA BARU', 'TOKO BAHAGIA', 'TOKO BERKAH JAYA (KISARAN)', 'TOKO OBAT JAKA WIJAYA', 'TOKO WIJAYA', 'TOKO VENESIA', 'APOTIK MAKMUR RASIDIN',
+                            'BOM SWALAYAN', 'DENY DWI PRAYOGI MANIK (TOKO VANILLA SKINCARE DAN COSMETIC)', 'SS MART ( PANTAI LABU )', 'SUMI', 'TOKO ABADI', 'TOKO ABADI ( PAKAM )', 'TOKO AYONG', 'TOKO INDAH ( PERBAUNGAN )', 'TOKO MIA KOSMETIK', 'TOKO OBAT MARTUNAS', 'TOKO POPPY KOSMETIK', 'TOKO SARI', 'TOKO TIMUR JAYA ( LUBUK PAKAM )', 'WINLY ACCESORIES', 'TOKO NABILA KOSMETIK', 'APOTEK ASIDO FARMA', 'ANDRY ONGKO WIJAYA ( TOKO PERFECT 10 - TANJUNG MORAWA )', 'APOTIK KASIH NT', 'APOTEK MAJU JAYA II', 'APOTEK PHALMA AGUNG', 'TOKO ISTANA KADO', 'CASSY STORE', 'TOKO TIARA PELANGI', 'TOKO YUCHI KOSMETIK', 'TOKO ADINDA KOSMETIK', 'TOKO DINDA KOSMETIK', 'TOKO KELDA BEAUTY STORE', 'TOKO KEMBAR KOSMETIK', 'TOKO REZEKI ACONG', 'TOKO TINIK', 'APOTEK MORIA', 'TOKO UPIK KORAN', 'TOKO AMI ( TEMBUNG )', 'APOTEK RIZKI FARMA', 'TOKO TIARA KOSMETIK', 'TOKO JMS COSMETIK', 'TOKO IVORY KOSMETIK', 'TOKO OLIVE BEAUTY', 'TOKO INTAN SILALAHI', 'TOKO AJENG COLLECTION', 'TOKO SOLEK KUY', 'TOKO RINA KOSMETIK', 'CANTIGI KOSMETIK', 'KANAKU SHOP', 'APOTEK TAMA PARNA', 'TOKO DALIMUNTHE KOSMETIK', 'TOKO KNOCK SKINCARE', 'TOKO GLO STORE', 'TOKO BEAUTY ART', 'CV. WANGSA JAYA PERKASA ( PERFECT 10 - TEMBUNG )', 'TOKO CHERISH ID', 'TOKO CITY COSMETIK', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - TEMBUNG )', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - HALAT MDN )', 'TOKO MONALISA', 'TOKO SJJ KOSMETIK', 'TOKO RUMAH KOSMETIK ( GALANG )', 'TOKO GROSIR ONLINE', 'TOKO MARRIE GLOW UP', 'TOKO TIMUR JAYA (GALANG)', 'MONA TOSERBA SWALAYAN', 'TOKO SUDI MAMPIR', 'TOKO USAHA BARU', 'GWEEND KOSMETIK', 'TOKO LAPAK KOSMETIK', 'APOTEK CAHAYA', 'APOTEK TORI KASIH', 'TOKO FATIYAH', 'TOKO BASA BASA', 'APOTIK MUNTHE', 'TOKO WELLA', 'TOKO AUDREY', 'TOKO OBAT IVANA', 'TOKO PINK COSMETIK', 'TOKO EVINA SKINCARE', 'TOKO ANGGI KOSMETIK', 'TOKO OLIVIA KOSMETIK', 'TOKO OBAT IDO', 'TOKO RAINBOW', 'UD. TERPIMPIN', 'TOKO BINTANG', 'APOTIK BUNDA AZIZ', 'TOKO SINDY', 'STEFANNI', 'TOKO HH KOSMETIK', 'TOKO YASMIN', 'TOKO BINTANG COSMETIK', 'TOKO N & Z KOSMETIK', 'TOKO SUPPLY KOSMETIK', 'TOKO VIOLET', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - DELI TUA )', 'PT.RADYSA DHARMA ABADI', 'SANDRA', 'TOKO OCHA', 'TOKO CALVIN COSMETIC', 'TOKO KHANZA ( MEDAN )', 'TOKO DUTA COSMETIK ( MEDAN )', 'TOKO ANDRE', 'TOKO TREN ABG', 'APOTIK NEW KARUNIA', 'TOKO STATION COSMETIC', 'DEWI', 'TOKO ZALFA COSMETIK', 'APOTIK RAYA 3', 'TOKO AYY KOSMETIK', 'TOKO GLOW UP COSMETIK', 'RIZAL MARKET'
+                        ])
+
+                        SET_AREA_3 = set([
+                            'SALON LINA', 'TOKO AZURAH KOSMETIK', 'TOKO AZZA COSMETIC', 'TOKO LILI (K.SIMPANG )', 'TOKO RIAN ( K. SIMPANG )', 'UD. BATRAS', 'ULY COSMETIK / TK JUL KAKAK', 'ZIA STORE', 'DEDEK OLSHOP', 'TOKO TUNAS BARU', 'ABDUL KAHAR / TOKO ZATUL MUNA', 'ASNAWI / BERINGIN JAYA SWALAYAN', 'BERINGIN JAYA SWALAYAN', 'MAKMUR SWALAYAN ( IDI )', 'RISKA SAFRIANDA ( TOKO FENDY COSMETIK - PEURLAK )', 'TOKO AURA KOSMETIK (CIKAMPAK)', 'TOKO BENI ASOKA', 'TOKO BERINGIN JAYA COSMETIK', 'TOKO MITA COSMETIK', 'TOKO PUTRI INTAN COSMETIK', 'TOKO RUMAH KOSMETIK', 'TOKO SINAR DUNIA', 'TOKO TAMITA BARU', 'TOKO BINTANG PERDANA ( PERLAK )', 'TOKO BINTANG PERDANA ( KUTA BINJAI )', 'TOKO LESTARI ( KUTA BINJAI )', 'TOKO MAJU JAYA ( KUTA BINJEI )', 'TOKO MOGANA', 'TOKO RAYON BARU', 'TOKO SETIA BUDI', 'TOKO WARDAH KOSMETIK ( PATON LABU )', 'AKBAR JAYA MART 2 ( PANTON LABU )', 'ADERATA SWALAYAN', 'MAKMUR SWALAYAN (STADION)', 'MUTIARA MARKET', 'NISA OLSHOP', 'PT. PESONA ASIA GROUP ( GM STORE - LANGSA )', 'PT.SURIATAMA MAHKOTA KENCANA (LANGSA)', 'SWALAYAN MAKMUR', 'SWALAYAN WARISAN MURNI', 'TOKO ADAM KOSMETIK', 'TOKO ADAM KOSMETIK ( LANGSA )', 'TOKO BABA COSMETIK', 'TOKO DELIMA 2', 'TOKO FADLY JAYA', 'TOKO HOUSE BEAUTY AND PARFUM', 'TOKO ALI PISANG', 'TOKO JASA DELIMA', 'TOKO JASA DELIMA 3 / ABIDIR', 'TOKO MARNI ACC', 'TOKO RIAN 2 / STEVEN', 'W MART', 'WARISAN EXTRA MARKET',
+                            'TOKO JODI', 'TOKO MARIANA', 'TOKO AAI', 'TOKO VINA KOSMETIK', 'TOKO CINDY T.H', 'TOKO EVARNI', 'TOKO SKIN SAVVY', 'TOKO TWOCARE.ID', 'TOKO HOKI 88', 'TOKO GRACE', 'TOKO MEDAN E-SHOP', 'TOKO DEWI DONA', 'TOKO D & M COSMETIK', 'TOKO KIARA KOSMETIK', 'TO. RAZAN', 'APOTIK RAZAN', 'APOTIK MANDALA JAYA', 'TOKO AILING', 'ALFONSO AGUSTINUS C. NAPITUPULU', 'PT. CALL GIRLS CANTIK', 'TOKO DAUS', 'TOKO AZZAHRA', 'TOKO WN', 'TOKO ENDANG (P. KUALA)', 'TOKO LENI COSMETIK', 'TOKO HANS', 'RABIAH LUBIS (TK. EIGHTY BEAUTY )', 'PT. BERSAMA GLAMINDO INDONESIA ( MISS GLAM - USU )', 'TOKO UNDERPRICE SKIN CARE', 'TOKO SAMBAS BEAUTY CENTER', 'TOKO DEWI INDAH', 'TOKO AHUN', 'TOKO JOLIN', 'TOKO SHANGRILLA', 'TOKO LISA ( SAMBAS )', 'TOKO LISA COSMETIK ( PETISAH )', 'TOKO ANA SUI', 'TOKO CLAUDIA', 'TOKO KENZO (SAMBAS)', 'TOKO MEGA CENTER/ RUDI', 'TOKO ALUNG', 'TOKO AYONG ( KATAMSO )', 'PT.PINMOOD INDONESIA SEJAHTERA', 'TOKO JIHAN SHOP', 'TOKO. KUDA EMAS SAKTI', 'TOKO SARAZ COSMETIK', 'TOKO QEIS BEAUTY', 'TOKO GLADIS (BINJAI)', 'TOKO BLESS (BINJAI)', 'CV. MEGA CENTER / BUDI', 'TOKO MEGA CENTER /TONY', 'TOKO KL KOSMETIK', 'TOKO WIN COSMETIC ( BINJAI )', 'MAJU SUKSES TANINA', 'TOKO RIMA KOSMETIK', 'WILLOW MART', 'TOKO H & R', 'V-MART COFFEE', 'TOKO SUKSES JAYA', 'SALON NONI', 'TOKO MEL SHOP', 'TOKO GLOBAL SHOP', 'TOKO PUTRI KOSMETIK ( SUNGGAL )', 'APOTIK SEHATI', 'APOTIK BERSINAR FARMA', 'LIN SHOP', 'ROMAULI FRANSISCA BR .SIMBOLON,S.FARM ( AP.HARAPAN BARU )'
+                        ])
+
+                        SET_MT = set([
+                            'PT. SMARCO MANDIRI SUKSES', 'MARTIN / OKE SWALAYAN (JAMIN)', 'SINURAYA SWALAYAN', 'LIORA MART', 'CHYKES MINI MARKET', 'IDO SWALAYAN I', 'MARTIN / OKE SUPERMARKET ( TANJUNG MORAWA )', 'REPA SWALAYAN', 'PT. SURIATAMA MAHKOTA KENCANA ( TAMORA )', 'BEBIE SUSANTO (IRIAN TJ.MORAWA)', 'AMPLAS SWALAYAN', 'PT.JAYA ANUGRAH S.A(BRAST.G)', 'PT.JAYA ANUGRAH S.A (BRAST.G)', 'PT.TAHTA SUKSES ABADI/BRASTAGI TIARA', 'PT.JAYA ANUGRAH S.A(BRAST.C)', 'PT.JAYA ANUGRAH S.A (BRAST.C)', 'PT.JAYA ANUGRAH SUKSES ABADI/BRASTAGI MANHATTAN', 'PT.JAYA ANUGRAH SUKSES ABADI/ BRASTAGI MANHATTAN', 'PT. MITRA BELANJA ANDA ( BRASTAGI CEMARA )', 'CV. BIMA MART', 'CV.IRAMA HOUSEWARE INDONESIA', 'SANDY TURANGAN (DIAMOND CITRA WISATA)', 'PT. DIAMOND SUKSES WIRAUSAHA', 'BINA JOHOR SWALAYAN', 'TOKO JAYA BARU', 'CV.SURYA MENTARI ( SUN SUPERMARKET )', 'PT.MUSTIKA MITRA ABADI ( ROYAL MART )', 'PT.SURIATAMA MAHKOTA.K(KP. BARU)', 'PT.SURIATAMA MAHKOTA.K (MEDAN JOHOR)', 'WILLOW MART', 'V- MART COFFEE', 'SAIGON SWALAYAN', 'PT.TIGA SAUDARA ASIA', 'CV. GRIYA MANDIRI SEJAHTERA ( MANDIRI SWALAYAN )', 'SUN KADO MABAR', 'PT. JIMART SUKSES ABADI', 'PT.JIMART SUKSES ABADI', 'FUIMI HARSO ( S24 MINI MARKET )', 'PT.CEMARA ASRI PASAR BUAH', 'PT.KEMANG INDAH PASAR BUAH', 'PT. PLANGKARAYA SEMI MART', 'IDO SWALAYAN II', 'SEMBADA SWALAYAN', 'ANGGI MINI MARKET', 'BAHAGIA 2 SWALAYAN', 'MINI MARKET SITABAR', 'RR SWALAYAN', 'AA SWALAYAN', 'LUCKY JAYA SWALAYAN/TITI PAPAN', 'LUCKY JAYA SWALAYAN (VETERAN)', 'PT.SURIATAMA MAHKOTA.K(MARELAN)', 'CV. IRIAN BAHAGIA BERSAMA (HM.J)', 'PT. IRIAN UNTUNG BERSAMA(AKSARA)', 'CV. IRIAN SEJAHTERA BERSAMA (IRIAN TEMBUNG)', 'UCI MARKET'
+                        ])
+
+                        # Peta Hak Milik Salesman ke Area
+                        SALES_AREA_MAP = {
+                            'FERY': ['Area 1'], 'SANTI': ['Area 1'], 'DINA': ['Area 1'],
+                            'GANI': ['Area 2'], 'HAMZAH': ['Area 2'], 'FANDI': ['Area 2'], 'RIZKI': ['Area 2'],
+                            'BASTIAN': ['Area 3'],
+                            'RAPI': ['Area 1', 'Area 3'], 'WIRA': ['Area 1', 'Area 3'], 'DEVI': ['Area 1', 'Area 3'], 
+                            'MAWAR': ['Area 1', 'Area 3'], 'ADE': ['Area 1', 'Area 3'], 'THERESYA': ['Area 1', 'Area 3'], 'DWI': ['Area 1', 'Area 3'],
+                            'BAYU': ['Area 2', 'Area 3'],
+                            'RISKA': ['Area MT'], 'ROZY': ['Area MT'], 'RISKA MT': ['Area MT'], 'ROZY MT': ['Area MT']
+                        }
+
+                        # Peta Otoritas Merk
                         otoritas_brand = {}
                         for spv, brands_dict in TARGET_DATABASE.items():
                             otoritas_brand[spv] = list(brands_dict.keys())
                         for sales, targets in INDIVIDUAL_TARGETS.items():
                             if sales not in otoritas_brand: otoritas_brand[sales] = []
                             otoritas_brand[sales].extend(list(targets.keys()))
-                            
-                        df_hist_valid = df_audit_base[df_audit_base['Penjualan'] != 'Non-Sales']
-                        hist_counts = df_hist_valid.groupby(['Nama Outlet', 'Merk', 'Penjualan']).size().reset_index(name='count')
-                        hist_counts = hist_counts.sort_values('count', ascending=False).drop_duplicates(['Nama Outlet', 'Merk'])
-                        hist_owner_dict = hist_counts.set_index(['Nama Outlet', 'Merk'])['Penjualan'].to_dict()
 
-                        # --- 2. UI FILTER AUDIT DENGAN FORM (Bypass Reload) ---
+                        # --- 2. UI FILTER AUDIT DENGAN FORM ---
                         st.markdown("#### 🔎 Filter Audit Cepat")
                         
                         list_tahun = sorted(df_audit_base['Tanggal'].dt.year.dropna().unique(), reverse=True)
@@ -3260,21 +3288,15 @@ def main_dashboard():
                         
                         with st.form(key="form_filter_audit"):
                             col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-                            
                             with col_f1: 
-                                # Tahun dipertahankan selectbox karena biasanya audit dilakukan per tahun pembukuan
                                 f_tahun = st.selectbox("🗓️ Tahun:", list_tahun, index=list_tahun.index(default_thn) if default_thn in list_tahun else 0)
-                            
                             with col_f2:
                                 f_bulan = st.multiselect("⏳ Bulan (Kosongkan untuk Semua):", list_bulan)
-                            
                             with col_f3:
                                 f_merk = st.multiselect("📦 Merk (Kosongkan untuk Semua):", list_merk)
-                            
                             with col_f4:
                                 f_sales = st.multiselect("👤 Sales (Kosongkan untuk Semua):", list_sales)
                                 
-                            # Tombol ini yang menahan layar agar tidak reload sebelum ditekan
                             submit_filter = st.form_submit_button("🔍 Terapkan Filter")
 
                         # --- 3. POTONG DATA SEBELUM DIAUDIT ---
@@ -3289,14 +3311,21 @@ def main_dashboard():
                         if f_sales:
                             df_to_audit = df_to_audit[df_to_audit['Penjualan'].isin(f_sales)]
 
-                        # --- 4. EKSEKUSI PEMERIKSAAN BARIS PER BARIS ---
+                        # --- 4. EKSEKUSI PEMERIKSAAN BARIS PER BARIS (AUDIT 2.0) ---
                         if not df_to_audit.empty:
                             anomali_data = []
+                            
                             for _, row in df_to_audit.iterrows():
                                 kasus = []
-                                toko = row['Nama Outlet']
-                                merk = row['Merk']
+                                toko_asli = str(row.get('Nama Outlet', '')).strip().upper()
                                 
+                                # Terapkan Alias agar nama toko seragam saat diaudit
+                                toko = toko_asli
+                                for alias, target_name in STORE_ALIASES.items():
+                                    if alias in toko:
+                                        toko = toko.replace(alias, target_name)
+
+                                merk = row['Merk']
                                 sales_asli = str(row.get('Sales_Asli_Fakturis', '-')).strip()
                                 if sales_asli.lower() in ['nan', 'none', '', '-']:
                                     sales_asli = 'Kosong (Belum Diinput)'
@@ -3306,29 +3335,57 @@ def main_dashboard():
                                 tanggal_val = row['Tanggal']
                                 no_faktur = str(row.get('No Faktur', '-')).strip()
                                 
+                                # Cek Kekosongan Input
                                 if status_awal == 'Non-Sales' and sales_clean != 'Non-Sales':
                                     kasus.append("❌ Input nama kosong/berantakan")
                                 elif status_awal == 'Non-Sales' and sales_clean == 'Non-Sales':
                                     kasus.append("❌ Input kosong & Toko tidak punya histori")
                                     
                                 if sales_clean != 'Non-Sales':
-                                    allowed = otoritas_brand.get(sales_clean, [])
-                                    is_brand_violation = (merk not in allowed) and (merk != "-")
+                                    # Aturan 1: Cek Wewenang Merk
+                                    allowed_brands = otoritas_brand.get(sales_clean, [])
+                                    if merk not in allowed_brands and merk != "-":
+                                        kasus.append(f"⛔ Pelanggaran Merk: {sales_clean} dilarang jual {merk}")
                                     
-                                    if is_brand_violation:
-                                        # Tampilkan peringatan pelanggaran merk saja
-                                        kasus.append(f"⛔ Pelanggaran! {sales_clean} tidak punya wewenang merk {merk}")
-                                    else:
-                                        # Merk legal. Cek apakah ini anomali rute sungguhan
-                                        hist_owner = hist_owner_dict.get((toko, merk), None)
-                                        if hist_owner and hist_owner != sales_clean:
-                                            # Cek wewenang pemilik aslinya
-                                            owner_allowed_brands = otoritas_brand.get(hist_owner, [])
-                                            if merk in owner_allowed_brands:
-                                                # Jika pemilik asli berhak atas merk ini, maka ini anomali rute
-                                                kasus.append(f"⚠️ Anomali Rute: Milik {hist_owner}, difakturkan ke {sales_clean}")
-                                            # Jika pemilik asli tidak berhak (seperti kasus RAPI), maka ABAIKAN. Ini legal.
+                                    # Aturan 2: Cek Kepemilikan Area & NOO
+                                    toko_areas = []
+                                    is_registered = False
+                                    
+                                    if toko in SET_MT:
+                                        is_registered = True
+                                        toko_areas.append('Area MT')
+                                    if toko in SET_AREA_1:
+                                        is_registered = True
+                                        toko_areas.append('Area 1')
+                                    if toko in SET_AREA_2:
+                                        is_registered = True
+                                        toko_areas.append('Area 2')
+                                    if toko in SET_AREA_3:
+                                        is_registered = True
+                                        toko_areas.append('Area 3')
                                         
+                                    if not is_registered:
+                                        kasus.append("⚠️ Toko Belum Terdaftar / Salah Ketik")
+                                    else:
+                                        # Pengecualian Overlap Toko Ganda (MT & Area 3)
+                                        if toko in ['WILLOW MART', 'V- MART COFFEE', 'V-MART COFFEE']:
+                                            toko_areas = ['Area MT', 'Area 3']
+                                        
+                                        # Cek Teritori Siantar Khusus Sri Ramadhani
+                                        if 'SRI RAHMADHANI' in sales_clean or 'SRI RAMADHANI' in sales_clean:
+                                            kota_toko = str(row.get('Kota', '')).upper()
+                                            if 'SIANTAR' not in kota_toko and 'PEMATANGSIANTAR' not in kota_toko:
+                                                kasus.append(f"🗺️ Pelanggaran Teritori: {sales_clean} hanya boleh di Siantar")
+                                        else:
+                                            # Cek Bentrok Area Umum
+                                            allowed_areas = SALES_AREA_MAP.get(sales_clean, [])
+                                            # Jika salesman tidak ada di map (misal: Aswin), biarkan bebas / tidak di-flag area
+                                            if allowed_areas:
+                                                # Jika Area Toko TIDAK ADA SATUPUN yang cocok dengan Area Salesman
+                                                if not any(a in allowed_areas for a in toko_areas):
+                                                    toko_area_str = " & ".join(toko_areas)
+                                                    kasus.append(f"🗺️ Pelanggaran Wilayah: Toko ini milik {toko_area_str}")
+                                
                                 if kasus:
                                     inv_key = f"{toko}_{tanggal_val.strftime('%Y%m%d')}" if no_faktur in ['-', '', 'nan', 'None'] else no_faktur
                                     
@@ -3337,7 +3394,7 @@ def main_dashboard():
                                         'Tanggal': tanggal_val.strftime('%d %b %Y') if pd.notnull(tanggal_val) else "-",
                                         'No Faktur': no_faktur,
                                         'Invoice_Key': inv_key,
-                                        'Nama Toko': toko,
+                                        'Nama Toko': toko_asli,
                                         'Merk': merk,
                                         'Ketik Fakturis (Asli)': sales_asli,
                                         'Pemilik Sah (Sistem)': sales_clean,
@@ -3359,8 +3416,7 @@ def main_dashboard():
                                 c_aud1, c_aud2 = st.columns([3, 1])
                                 c_aud1.error(f"🚨 ALERT: Menampilkan {len(df_consolidated)} faktur bermasalah setelah konsolidasi!")
                                 
-                                # Logika pembatasan akses download khusus untuk direktur
-                                if st.session_state.get('username') == 'direktur':
+                                if st.session_state.get('role') == 'direktur':
                                     csv_audit = df_consolidated.to_csv(index=False).encode('utf-8')
                                     c_aud2.download_button(
                                         label="📥 Download Berkas Bukti (CSV)",
@@ -3377,7 +3433,7 @@ def main_dashboard():
                                     use_container_width=True, hide_index=True
                                 )
                             else:
-                                st.success("✅ Tidak ada faktur bermasalah yang sesuai dengan kriteria filter Anda.")
+                                st.success("✅ Hebat! Tidak ada faktur bermasalah. Semua input fakturis dan rute salesman bersih 100%.")
                         else:
                             st.info("Tidak ada data transaksi pada rentang filter yang Anda pilih.")
                             
