@@ -3265,9 +3265,6 @@ def main_dashboard():
 
                         # Peta Hak Milik Salesman ke Area
                         SALES_AREA_MAP = {
-
-                        # Peta Hak Milik Salesman ke Area
-                        SALES_AREA_MAP = {
                             'FERY': ['Area 1'], 'SANTI': ['Area 1'], 'DINA': ['Area 1'],
                             'GANI': ['Area 2'], 'HAMZAH': ['Area 2'], 'FANDI': ['Area 2'], 'RIZKI': ['Area 2'],
                             'BASTIAN': ['Area 3'],
